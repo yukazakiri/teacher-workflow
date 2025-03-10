@@ -9,6 +9,7 @@ use App\Filament\Pages\EditTeam;
 use App\Listeners\SwitchTeam;
 use App\Models\Team;
 use App\Models\User;
+use CodeWithDennis\FilamentThemeInspector\FilamentThemeInspectorPlugin;
 use DutchCodingCompany\FilamentDeveloperLogins\FilamentDeveloperLoginsPlugin;
 use Filament\Events\TenantSet;
 use Filament\Facades\Filament;
@@ -41,15 +42,23 @@ class AppPanelProvider extends PanelProvider
     {
         $panel
             ->default()
-            ->id('app')
-            ->path('app')
+            ->id("app")
+            ->path("app")
             ->login()
+            ->sidebarCollapsibleOnDesktop()
+              // ->topNavigation()
             ->registration()
             ->passwordReset()
             ->emailVerification()
-            ->viteTheme('resources/css/app.css')
+            ->viteTheme("resources/css/app.css")
             ->colors([
-                'primary' => Color::Neutral,
+                "primary" => "#cba6f7",
+                "gray" => "#11111b",
+                "info" => "#b4befe",
+                "danger" => "#f38ba8",
+                "success" => "#a6e3a1",
+                "warning" => "#fab387",
+                'surface' => '#585b70',
             ])
             ->userMenuItems([
                 // MenuItem::make()
@@ -59,8 +68,14 @@ class AppPanelProvider extends PanelProvider
                 //         ? url(EditProfile::getUrl())
                 //         : url($panel->getPath())),
             ])
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
-            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
+            ->discoverResources(
+                in: app_path("Filament/Resources"),
+                for: "App\\Filament\\Resources"
+            )
+            ->discoverPages(
+                in: app_path("Filament/Pages"),
+                for: "App\\Filament\\Pages"
+            )
             ->pages([
                 // Pages\Dashboard::class,
                 // Dashboard::class,
@@ -68,12 +83,17 @@ class AppPanelProvider extends PanelProvider
                 ApiTokens::class,
             ])
             ->plugins([
-            FilamentDeveloperLoginsPlugin::make()
+                FilamentDeveloperLoginsPlugin::make()
                     ->enabled()
-                    ->users(fn () => User::pluck('email', 'name')->toArray()),
-                    // FilamentSimpleThemePlugin::make(),
+                    ->users(fn() => User::pluck("email", "name")->toArray()),
+                // FilamentSimpleThemePlugin::make(),
+                // FilamentThemeInspectorPlugin::make()
+                //     ->toggle(),
             ])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
+            ->discoverWidgets(
+                in: app_path("Filament/Widgets"),
+                for: "App\\Filament\\Widgets"
+            )
             ->widgets([
                 Widgets\AccountWidget::class,
                 Widgets\FilamentInfoWidget::class,
@@ -89,18 +109,18 @@ class AppPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
-            ->authMiddleware([
-                Authenticate::class,
-            ]);
+            ->authMiddleware([Authenticate::class]);
 
         if (Features::hasApiFeatures()) {
             $panel->userMenuItems([
                 MenuItem::make()
-                    ->label('API Tokens')
-                    ->icon('heroicon-o-key')
-                    ->url(fn () => $this->shouldRegisterMenuItem()
-                        ? url(ApiTokens::getUrl())
-                        : url($panel->getPath())),
+                    ->label("API Tokens")
+                    ->icon("heroicon-o-key")
+                    ->url(
+                        fn() => $this->shouldRegisterMenuItem()
+                            ? url(ApiTokens::getUrl())
+                            : url($panel->getPath())
+                    ),
             ]);
         }
 
@@ -144,10 +164,7 @@ class AppPanelProvider extends PanelProvider
         /**
          * Listen and switch team if tenant was changed
          */
-        Event::listen(
-            TenantSet::class,
-            SwitchTeam::class,
-        );
+        Event::listen(TenantSet::class, SwitchTeam::class);
     }
 
     public function shouldRegisterMenuItem(): bool

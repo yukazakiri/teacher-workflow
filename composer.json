@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.2",
         "barryvdh/laravel-dompdf": "^3.1",
+        "codewithdennis/filament-theme-inspector": "^0.0.7",
         "dutchcodingcompany/filament-developer-logins": "^1.8",
         "filament/filament": "^3.3",
         "laravel/framework": "^12.0",

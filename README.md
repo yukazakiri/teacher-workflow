@@ -1,6 +1,5 @@
-Here’s a professional and structured **Markdown README** for your open-source project. You can paste this directly into your GitHub repository:
 
-```markdown
+
 # Teacher Workflow Optimization Platform  
 **Capstone Project for Data Center College of the Philippines, Incorporated**  
 **Bachelor of Science in Information Technology**  
@@ -174,13 +173,11 @@ This project is licensed under the **MIT License**.
 For inquiries, contact:  
 - **Angelika Gernade Dumsang**: angelika.dumsang@dccp.edu.ph  
 - **Loreano Dee Louis Mariano Lukkanit**: loreano.lukkanit@dccp.edu.ph  
-```  
+  
 
 ---
 
 ### Notes for Customization:  
 1. Replace placeholder links (e.g., `your-username`) with your actual GitHub username.  
 2. Add screenshots or diagrams (e.g., architecture workflow) in an `/assets` folder and link them in the README.  
-3. Include badges (e.g., GitHub license, version) at the top for visibility.  
-
-This README balances clarity, technical details, and project context while adhering to open-source best practices. Let me know if you need adjustments!
+3. Include badges (e.g., GitHub license, version) at the top for visibility.

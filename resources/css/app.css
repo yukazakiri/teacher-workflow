@@ -2,3 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 @tailwind variants;
+
+.fi-sidebar-header {
+    @apply bg-gradient-to-l rounded-t-3xl from-gray-200/80 to-gray-300/60 backdrop-blur-md shadow-md border-none dark:from-gray-700/90 dark:to-gray-800/70 transition-all duration-300 ease-in-out !important
+}
+.fi-tenant-menu-trigger {
+    @apply bg-transparent hover:bg-gray-200/70 hover:scale-105 rounded-lg text-gray-700 dark:text-gray-300 dark:hover:bg-gray-700/70 transition-all duration-200 ease-out !important
+}
+.fi-sidebar-nav {
+    @apply bg-gradient-to-l from-gray-200/80 to-gray-300/60 backdrop-blur-md shadow-md border-none dark:from-gray-700/90 dark:to-gray-800/70 transition-all duration-300 ease-in-out !important
+}
+.fi-sidebar-item-button {
+    @apply rounded-lg hover:bg-gray-200/90 hover:translate-x-1 dark:hover:bg-gray-700/80 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 ease-out !important
+}
+.fi-sidebar-item-label {
+    @apply text-gray-700 font-medium dark:text-gray-200 transition-all duration-200 group-hover:text-primary-600 dark:group-hover:text-primary-400 !important
+}
+.fi-sidebar-item-icon {
+    @apply text-gray-600 dark:text-gray-400 transition-all duration-200 group-hover:text-primary-500 dark:group-hover:text-primary-400 group-hover:scale-110 !important
+}
+.fi-sidebar-group-label {
+    @apply text-xs uppercase tracking-wider text-gray-500 font-semibold dark:text-gray-400 px-3 py-2 opacity-80 !important
+}
+.fi-sidebar-group-button {
+    @apply hover:bg-gray-200/70 hover:translate-x-0.5 dark:hover:bg-gray-700/60 rounded-lg transition-all duration-200 ease-out !important
+}
+
+.fi-main-sidebar {
+    @apply my-4 mx-4 bg-gradient-to-l from-gray-200/90 to-gray-300/70 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 dark:from-gray-700/95 dark:to-gray-800/80 transition-all duration-300 ease-in-out hover:shadow-2xl transform hover:-translate-x-1 !important
+}
+/* .fi-dropdown {
+    @apply bg-gray-300/40 border-none shadow-none dark:bg-gray-800 !important
+} */
+.fi-dropdown-trigger {
+    @apply rounded-b-3xl bg-gradient-to-l from-gray-200/90 to-gray-300/70 backdrop-blur-md border border-gray-200/50 shadow-xl dark:border-gray-700/50 dark:from-gray-700/95 dark:to-gray-800/80 transition-all duration-200 ease-out hover:shadow-2xl transform hover:-translate-x-1 !important
+}
+
+.fi-layout {
+    @apply bg-gray-100/90 backdrop-blur-md border-none dark:bg-gray-500/95 dark:backdrop-blur-md dark:shadow-none transition-all duration-300 ease-in-out !important
+}
+/* .fi-main {
+    @apply bg-gray-200/90 backdrop-blur-md border-none pl-8 dark:bg-gray-700/95 dark:backdrop-blur-md dark:shadow-none transition-all duration-300 ease-in-out !important
+} */
+.fi-topbar {
+    @apply bg-gray-100/90 backdrop-blur-md border-none dark:bg-gray-500/95 dark:backdrop-blur-md dark:shadow-none transition-all duration-300 ease-in-out !important
+}
+.fi-topbar-content {
+    @apply px-8 py-4 flex items-center justify-between gap-4 !important
+}
+.fi-breadcrumbs {
+    @apply text-sm font-semibold text-gray-700 dark:text-gray-200 flex items-center !important
+}
+.fi-breadcrumbs-item {
+    @apply hover:text-primary-600 hover:scale-105 dark:hover:text-primary-400 transition-all duration-200 !important
+}
+
+/* .fi-topbar-item {
+    @apply rounded-lg p-2 text-gray-600 hover:bg-gray-100/80 hover:text-primary-600 dark:text-gray-300 dark:hover:bg-gray-800/70 dark:hover:text-primary-400 transition-all duration-200 ease-out !important
+} */
+.fi-icon-button {
+    @apply rounded-full p-2.5 bg-white/50 text-gray-700 hover:bg-primary-50 hover:text-primary-600 hover:scale-110 dark:bg-gray-800/50 dark:text-gray-300 dark:hover:bg-gray-700/70 dark:hover:text-primary-400 shadow-sm transition-all duration-200 ease-out !important
+}
+
+.fi-ta {
+    @apply shadow-lg
+}
