@@ -19,6 +19,7 @@ class CreateTeam extends RegisterTenant
         return $form
             ->schema([
                 TextInput::make('name')
+                    ->label('Class Name')
                     ->translateLabel(),
             ]);
     }
