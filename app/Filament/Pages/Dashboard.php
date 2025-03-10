@@ -21,10 +21,10 @@ use Filament\Forms\Components\Livewire;
 use Filament\Pages\Page;
 use Illuminate\Contracts\Support\Htmlable;
 use Laravel\Jetstream\Http\Livewire\TeamMemberManager;
+use Laravel\Jetstream\Jetstream;
 
 class Dashboard extends PagesDashboard
 {
-
     protected static string $routePath = '/';
 
     protected static ?int $navigationSort = -2;
@@ -32,7 +32,7 @@ class Dashboard extends PagesDashboard
     /**
      * @var view-string
      */
-    // protected static string $view = 'filament-panels::pages.dashboard';
+    protected static string $view = 'filament.pages.dashboard';
 
     public static function getNavigationLabel(): string
     {
@@ -81,11 +81,6 @@ class Dashboard extends PagesDashboard
     {
         return static::$title ?? __('filament-panels::pages/dashboard.title');
     }
-     protected static string $view = 'filament.pages.dashboard';
-    // public function getHeader(): ?string
-    // {
-    //     return 'Team Dashboard';
-    // }
 
     protected function getHeaderActions(): array
     {
@@ -99,30 +94,26 @@ class Dashboard extends PagesDashboard
                     Select::make('team_id')
                         ->label('Select Team')
                         ->options(function () {
-                            return Auth::user()->allTeams()->pluck('name', 'id');
+                            return Auth::user()->teams->pluck('name', 'id');
                         })
                         ->required(),
-                        ])
-                        ->action(function (array $data): void {
-                            $team = Team::find($data['team_id']);
+                ])
+                ->action(function (array $data): void {
+                    $team = Team::find($data['team_id']);
 
-                            if ($team && Auth::user()->belongsToTeam($team)) {
-                                // Use Jetstream's event system to switch teams
-                                Auth::user()->switchTeam($team);
+                    if ($team && Auth::user()->belongsToTeam($team)) {
+                        // Use the Jetstream method to switch teams
+                        Auth::user()->switchTeam($team);
 
-                                // Laravel will automatically fire the Jetstream\Events\TeamSwitched event
-                                // which will handle team switching logic
+                        Notification::make()
+                            ->title('Team Switched')
+                            ->body("You are now using the {$team->name} team.")
+                            ->success()
+                            ->send();
 
-                                Notification::make()
-                                    ->title('Team Switched')
-                                    ->body("You are now using the {$team->name} team.")
-                                    ->success()
-                                    ->send();
-
-                                // Redirect to refresh the page with the new team context
-                                $this->redirect(route('filament.app.pages.dashboard', ['tenant' => $team->id]));
-                            }
-                        }),
+                        $this->redirect(route('filament.app.pages.dashboard', ['tenant' => $team->id]));
+                    }
+                }),
 
             CreateAction::make('invite_member')
                 ->label('Invite Team Member')
@@ -176,11 +167,14 @@ class Dashboard extends PagesDashboard
                 ])
                 ->action(function (array $data): void {
                     $user = Auth::user();
+
+                    // Create a new team using Jetstream's API
                     $team = $user->ownedTeams()->create([
                         'name' => $data['name'],
                         'personal_team' => false,
                     ]);
 
+                    // Switch to the newly created team
                     $user->switchTeam($team);
 
                     Notification::make()
@@ -189,59 +183,90 @@ class Dashboard extends PagesDashboard
                         ->success()
                         ->send();
 
-                    $this->redirect(route('filament.app.pages.dashboard'));
+                        $this->redirect(route('filament.app.pages.dashboard', ['tenant' => $team->id]));
                 }),
         ];
     }
 
     protected function getViewData(): array
-        {
-            $currentTeam = Auth::user()->currentTeam;
-            $allTeams = Auth::user()->allTeams();
+    {
+        $user = Auth::user();
+        $currentTeam = $user->currentTeam;
 
-            // Get pending invitations for current team
-            $pendingInvitations = TeamInvitation::where('team_id', $currentTeam->id)->get();
+        // Get all teams the user belongs to
+        $allTeams = $user->allTeams();
 
-            // Get team members with their roles
-            $teamMembers = $currentTeam->users->map(function ($user) use ($currentTeam) {
-                $roleName = $user->teamRole($currentTeam)->name ?? 'Member';
-                return [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'photo' => $user->profile_photo_url,
-                    'role' => $roleName,
-                    'isOwner' => $currentTeam->owner_id === $user->id,
-                    'joinedAt' => $user->created_at->diffForHumans(),
-                ];
-            });
+        // Get teams owned by the user
+        $ownedTeams = $user->ownedTeams;
 
-            // Get current user's upcoming tasks or activities (example)
-            $userActivity = collect([
-                // Here you could query user's tasks, recent activities, etc.
-            ]);
+        // Get teams the user is a member of but doesn't own
+        $joinedTeams = $allTeams->filter(function ($team) use ($user) {
+            return $team->user_id !== $user->id;
+        });
 
-            // Team stats
-            $stats = [
-                'memberCount' => $currentTeam->users->count(),
-                'pendingInvites' => $pendingInvitations->count(),
-                'isOwner' => Auth::user()->ownsTeam($currentTeam),
-                'createdAt' => $currentTeam->created_at->diffForHumans()
-            ];
+        // Get pending invitations for current team
+        $pendingInvitations = TeamInvitation::where('team_id', $currentTeam->id)->get();
+
+        // Get team members with their roles
+        $teamMembers = $currentTeam->users->map(function ($teamUser) use ($currentTeam) {
+            // Get the role name using Jetstream's API
+            $teamRole = null;
+
+            if ($teamUser->hasTeamRole($currentTeam, 'admin')) {
+                $teamRole = 'Admin';
+            } elseif ($teamUser->hasTeamRole($currentTeam, 'editor')) {
+                $teamRole = 'Editor';
+            } else {
+                $teamRole = 'Member';
+            }
+
+            // Check if user is the team owner
+            $isOwner = $currentTeam->user_id === $teamUser->id;
+            if ($isOwner) {
+                $teamRole = 'Owner';
+            }
 
             return [
-                'currentTeam' => $currentTeam,
-                'allTeams' => $allTeams,
-                'teamMembers' => $teamMembers,
-                'pendingInvitations' => $pendingInvitations,
-                'stats' => $stats,
-                'userRole' => Auth::user()->teamRole($currentTeam)->name ?? 'Member',
+                'id' => $teamUser->id,
+                'name' => $teamUser->name,
+                'email' => $teamUser->email,
+                'photo' => $teamUser->profile_photo_url,
+                'role' => $teamRole,
+                'isOwner' => $isOwner,
+                'joinedAt' => $teamUser->created_at->diffForHumans(),
             ];
+        });
+
+        // Team stats
+        $stats = [
+            'memberCount' => $currentTeam->users->count(),
+            'pendingInvites' => $pendingInvitations->count(),
+            'isOwner' => $currentTeam->user_id === $user->id,
+            'createdAt' => $currentTeam->created_at->diffForHumans()
+        ];
+
+        // Get user's role in current team
+        $userRole = 'Member';
+
+        if ($user->hasTeamRole($currentTeam, 'admin')) {
+            $userRole = 'Admin';
+        } elseif ($user->hasTeamRole($currentTeam, 'editor')) {
+            $userRole = 'Editor';
         }
 
-    public function mount(): void
-    {
-        // parent::mount();
-        $this->heading = 'Team Dashboard: ' . Auth::user()->currentTeam->name;
+        if ($currentTeam->user_id === $user->id) {
+            $userRole = 'Owner';
+        }
+
+        return [
+            'currentTeam' => $currentTeam,
+            'allTeams' => $allTeams,
+            'ownedTeams' => $ownedTeams,
+            'joinedTeams' => $joinedTeams,
+            'teamMembers' => $teamMembers,
+            'pendingInvitations' => $pendingInvitations,
+            'stats' => $stats,
+            'userRole' => $userRole,
+        ];
     }
 }

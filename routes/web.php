@@ -31,6 +31,10 @@ Route::get('/team-invitations/{invitation}', [TeamInvitationController::class, '
     ->middleware(['signed', 'verified', 'auth', AuthenticateSession::class])
     ->name('team-invitations.accept');
 
+Route::delete('/team-invitations/{invitation}', [TeamInvitationController::class, 'destroy'])
+    ->middleware(['auth', AuthenticateSession::class])
+    ->name('team-invitations.destroy');
+
 // Exam routes
 Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('/exams/{exam}/export', [ExamController::class, 'export'])->name('exams.export');
