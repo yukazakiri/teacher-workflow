@@ -201,73 +201,6 @@
                     @endif
                 </div>
             </x-filament::section>
-
-            <!-- Team Members -->
-            <x-filament::section class="mt-6">
-                <x-slot name="heading">
-                    <div class="flex items-center gap-2">
-                        <x-filament::icon icon="heroicon-o-user-group" class="w-5 h-5 text-primary-500" />
-                        <span>Team Members</span>
-                    </div>
-                </x-slot>
-
-                <x-slot name="headerActions">
-                    @if($stats['isOwner'])
-                        <x-filament::button
-                            size="sm"
-                            color="primary"
-                            wire:click="mountAction('invite_member')"
-                            icon="heroicon-m-user-plus"
-                        >
-                            Invite
-                        </x-filament::button>
-                    @endif
-                </x-slot>
-
-                <div class="space-y-3">
-                    @forelse($teamMembers as $member)
-                        <div class="flex items-center justify-between p-3 transition rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/60">
-                            <div class="flex items-center gap-3">
-                                <div class="flex-shrink-0">
-                                    @if($member['photo'])
-                                        <img class="object-cover w-10 h-10 rounded-full" src="{{ $member['photo'] }}" alt="{{ $member['name'] }}">
-                                    @else
-                                        <div class="flex items-center justify-center w-10 h-10 text-sm font-medium text-white rounded-full bg-primary-600">
-                                            {{ substr($member['name'], 0, 1) }}
-                                        </div>
-                                    @endif
-                                </div>
-                                <div>
-                                    <h4 class="text-sm font-medium text-gray-900 dark:text-white">
-                                        {{ $member['name'] }}
-                                        @if($member['isOwner'])
-                                            <x-filament::badge size="sm" color="success">Owner</x-filament::badge>
-                                        @endif
-                                    </h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ $member['email'] }}</p>
-                                </div>
-                            </div>
-
-                            <div class="flex items-center">
-                                <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ $member['role'] }}</span>
-
-                                @if($stats['isOwner'] && !$member['isOwner'] && $member['id'] !== auth()->id())
-                                    <x-filament::icon-button
-                                        icon="heroicon-m-ellipsis-vertical"
-                                        label="Options"
-                                        color="gray"
-                                        class="ml-3"
-                                    />
-                                @endif
-                            </div>
-                        </div>
-                    @empty
-                        <div class="p-4 text-center">
-                            <p class="text-sm text-gray-500 dark:text-gray-400">No team members found.</p>
-                        </div>
-                    @endforelse
-                </div>
-            </x-filament::section>
         </div>
 
         <!-- Teams You've Joined -->
@@ -331,55 +264,14 @@
                     @endif
                 </div>
             </x-filament::section>
-
-            <!-- Pending Invitations (Conditional) -->
-            @if($stats['isOwner'] && $pendingInvitations->count() > 0)
-            <x-filament::section class="mt-6">
-                <x-slot name="heading">
-                    <div class="flex items-center gap-2">
-                        <x-filament::icon icon="heroicon-o-envelope" class="w-5 h-5 text-amber-500" />
-                        <span>Pending Invitations</span>
-                    </div>
-                </x-slot>
-
-                <div class="space-y-3">
-                    @foreach($pendingInvitations as $invitation)
-                        <div class="flex items-center justify-between p-3 transition rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/60">
-                            <div class="flex items-center gap-3">
-                                <div class="flex items-center justify-center w-8 h-8 text-sm font-medium text-white rounded-full bg-amber-500">
-                                    {{ substr($invitation->email, 0, 1) }}
-                                </div>
-                                <div>
-                                    <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $invitation->email }}</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">
-                                        Invited as {{ ucfirst($invitation->role) }}
-                                        • {{ $invitation->created_at->diffForHumans() }}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div class="flex items-center gap-2">
-                                <x-filament::button
-                                    size="xs"
-                                    color="danger"
-                                    icon="heroicon-m-trash"
-                                >
-                                    Cancel
-                                </x-filament::button>
-
-                                <x-filament::button
-                                    size="xs"
-                                    color="gray"
-                                    icon="heroicon-m-paper-airplane"
-                                >
-                                    Resend
-                                </x-filament::button>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </x-filament::section>
-            @endif
         </div>
+    </div>
+
+    <!-- Widgets Section -->
+    <div class="mt-6">
+        @livewire(App\Filament\Widgets\TeamMembersTableWidget::class)
+    </div>
+    <div class='mt-6'>
+    @livewire(App\Filament\Widgets\PendingInvitationsTableWidget::class)
     </div>
 </x-filament-panels::page>

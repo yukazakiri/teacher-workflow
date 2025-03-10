@@ -22,6 +22,9 @@ use Filament\Pages\Page;
 use Illuminate\Contracts\Support\Htmlable;
 use Laravel\Jetstream\Http\Livewire\TeamMemberManager;
 use Laravel\Jetstream\Jetstream;
+use Illuminate\Support\Facades\DB;
+use App\Filament\Widgets\TeamMembersTableWidget;
+use App\Filament\Widgets\PendingInvitationsTableWidget;
 
 class Dashboard extends PagesDashboard
 {
@@ -58,7 +61,11 @@ class Dashboard extends PagesDashboard
      */
     public function getWidgets(): array
     {
-        return Filament::getWidgets();
+        return [
+            TeamMembersTableWidget::class,
+            PendingInvitationsTableWidget::class,
+            ...Filament::getWidgets(),
+        ];
     }
 
     /**
@@ -101,9 +108,11 @@ class Dashboard extends PagesDashboard
                 ->action(function (array $data): void {
                     $team = Team::find($data['team_id']);
 
-                    if ($team && Auth::user()->belongsToTeam($team)) {
-                        // Use the Jetstream method to switch teams
-                        Auth::user()->switchTeam($team);
+                    if ($team && $team->users->contains(Auth::user())) {
+                        // Switch team by updating the user's current_team_id
+                        DB::table('users')
+                            ->where('id', Auth::id())
+                            ->update(['current_team_id' => $team->id]);
 
                         Notification::make()
                             ->title('Team Switched')
@@ -168,14 +177,20 @@ class Dashboard extends PagesDashboard
                 ->action(function (array $data): void {
                     $user = Auth::user();
 
-                    // Create a new team using Jetstream's API
-                    $team = $user->ownedTeams()->create([
+                    // Create a new team
+                    $team = Team::create([
+                        'user_id' => $user->id,
                         'name' => $data['name'],
                         'personal_team' => false,
                     ]);
 
-                    // Switch to the newly created team
-                    $user->switchTeam($team);
+                    // Add the user to the team
+                    $team->users()->attach($user, ['role' => 'admin']);
+
+                    // Set as current team
+                    DB::table('users')
+                        ->where('id', $user->id)
+                        ->update(['current_team_id' => $team->id]);
 
                     Notification::make()
                         ->title('Team Created')
@@ -183,7 +198,7 @@ class Dashboard extends PagesDashboard
                         ->success()
                         ->send();
 
-                        $this->redirect(route('filament.app.pages.dashboard', ['tenant' => $team->id]));
+                    $this->redirect(route('filament.app.pages.dashboard', ['tenant' => $team->id]));
                 }),
         ];
     }
@@ -194,63 +209,36 @@ class Dashboard extends PagesDashboard
         $currentTeam = $user->currentTeam;
 
         // Get all teams the user belongs to
-        $allTeams = $user->allTeams();
+        $allTeams = Team::whereHas('users', function ($query) use ($user) {
+            $query->where('users.id', $user->id);
+        })->get();
 
         // Get teams owned by the user
-        $ownedTeams = $user->ownedTeams;
+        $ownedTeams = Team::where('user_id', $user->id)->get();
 
         // Get teams the user is a member of but doesn't own
         $joinedTeams = $allTeams->filter(function ($team) use ($user) {
             return $team->user_id !== $user->id;
         });
 
-        // Get pending invitations for current team
-        $pendingInvitations = TeamInvitation::where('team_id', $currentTeam->id)->get();
-
-        // Get team members with their roles
-        $teamMembers = $currentTeam->users->map(function ($teamUser) use ($currentTeam) {
-            // Get the role name using Jetstream's API
-            $teamRole = null;
-
-            if ($teamUser->hasTeamRole($currentTeam, 'admin')) {
-                $teamRole = 'Admin';
-            } elseif ($teamUser->hasTeamRole($currentTeam, 'editor')) {
-                $teamRole = 'Editor';
-            } else {
-                $teamRole = 'Member';
-            }
-
-            // Check if user is the team owner
-            $isOwner = $currentTeam->user_id === $teamUser->id;
-            if ($isOwner) {
-                $teamRole = 'Owner';
-            }
-
-            return [
-                'id' => $teamUser->id,
-                'name' => $teamUser->name,
-                'email' => $teamUser->email,
-                'photo' => $teamUser->profile_photo_url,
-                'role' => $teamRole,
-                'isOwner' => $isOwner,
-                'joinedAt' => $teamUser->created_at->diffForHumans(),
-            ];
-        });
-
         // Team stats
         $stats = [
             'memberCount' => $currentTeam->users->count(),
-            'pendingInvites' => $pendingInvitations->count(),
+            'pendingInvites' => TeamInvitation::where('team_id', $currentTeam->id)->count(),
             'isOwner' => $currentTeam->user_id === $user->id,
             'createdAt' => $currentTeam->created_at->diffForHumans()
         ];
 
         // Get user's role in current team
         $userRole = 'Member';
-
-        if ($user->hasTeamRole($currentTeam, 'admin')) {
+        $pivotRole = DB::table('team_user')
+            ->where('team_id', $currentTeam->id)
+            ->where('user_id', $user->id)
+            ->value('role');
+        
+        if ($pivotRole === 'admin') {
             $userRole = 'Admin';
-        } elseif ($user->hasTeamRole($currentTeam, 'editor')) {
+        } elseif ($pivotRole === 'editor') {
             $userRole = 'Editor';
         }
 
@@ -263,8 +251,6 @@ class Dashboard extends PagesDashboard
             'allTeams' => $allTeams,
             'ownedTeams' => $ownedTeams,
             'joinedTeams' => $joinedTeams,
-            'teamMembers' => $teamMembers,
-            'pendingInvitations' => $pendingInvitations,
             'stats' => $stats,
             'userRole' => $userRole,
         ];

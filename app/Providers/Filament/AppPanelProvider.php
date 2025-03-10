@@ -50,23 +50,22 @@ class AppPanelProvider extends PanelProvider
             ->registration()
             ->passwordReset()
             ->emailVerification()
-            ->viteTheme("resources/css/app.css")
+            ->viteTheme('resources/css/filament/app/theme.css')
             ->colors([
-                "primary" => "#cba6f7",
-                "gray" => "#11111b",
-                "info" => "#b4befe",
-                "danger" => "#f38ba8",
-                "success" => "#a6e3a1",
-                "warning" => "#fab387",
-                'surface' => '#585b70',
+                'primary' => Color::hex('#c6a0f6'),
+                'gray' => Color::hex('#7c7f93'),
+                'info' => Color::hex('#7287fd'),
+                'danger' => Color::hex('#e78284'),
+                'success' => Color::hex('#a6d189'),
+                'warning' => Color::hex('#fe640b'),
             ])
             ->userMenuItems([
-                // MenuItem::make()
-                //     ->label('Profile')
-                //     ->icon('heroicon-o-user-circle')
-                //     ->url(fn () => $this->shouldRegisterMenuItem()
-                //         ? url(EditProfile::getUrl())
-                //         : url($panel->getPath())),
+                MenuItem::make()
+                    ->label('Profile')
+                    ->icon('heroicon-o-user-circle')
+                    ->url(fn () => $this->shouldRegisterMenuItem()
+                        ? url(EditProfile::getUrl())
+                        : url($panel->getPath())),
             ])
             ->discoverResources(
                 in: app_path("Filament/Resources"),
@@ -81,6 +80,7 @@ class AppPanelProvider extends PanelProvider
                 // Dashboard::class,
                 EditProfile::class,
                 ApiTokens::class,
+                \App\Filament\Pages\Gradesheet::class,
             ])
             ->plugins([
                 FilamentDeveloperLoginsPlugin::make()

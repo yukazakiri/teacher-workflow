@@ -26,6 +26,7 @@ class ActivitySubmission extends Model
         'attachments',
         'status',
         'score',
+        'final_grade',
         'feedback',
         'submitted_at',
         'graded_by',
@@ -41,6 +42,8 @@ class ActivitySubmission extends Model
         'attachments' => 'array',
         'submitted_at' => 'datetime',
         'graded_at' => 'datetime',
+        'score' => 'float',
+        'final_grade' => 'float',
     ];
 
     /**

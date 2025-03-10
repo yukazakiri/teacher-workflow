@@ -7,7 +7,9 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/js/app.js',
-                './vendor/tomatophp/filament-simple-theme/resources/css/theme.css'
+                './vendor/tomatophp/filament-simple-theme/resources/css/theme.css',
+                'resources/css/filament/app/theme.css',
+                'resources/css/gradesheet.css',
             ],
             refresh: true,
         }),
