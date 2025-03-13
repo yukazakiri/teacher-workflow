@@ -52,7 +52,7 @@ class ActivityResource extends Resource
                 }
             });
     }
-    
+
     protected static ?string $model = Activity::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
@@ -241,7 +241,7 @@ class ActivityResource extends Resource
                         default => $state,
                     }),
                 Tables\Columns\TextColumn::make('format')
-                    ->formatStateUsing(fn (string $state, Activity $record): string => 
+                    ->formatStateUsing(fn (string $state, Activity $record): string =>
                         $state === 'other' ? $record->custom_format : ucfirst($state)
                     ),
                 Tables\Columns\TextColumn::make('total_points')
@@ -286,7 +286,7 @@ class ActivityResource extends Resource
                         $newActivity->title = "Copy of {$record->title}";
                         $newActivity->status = 'draft';
                         $newActivity->save();
-                        
+
                         // Duplicate roles if it's a group activity
                         if ($record->isGroupActivity()) {
                             foreach ($record->roles as $role) {
@@ -295,7 +295,7 @@ class ActivityResource extends Resource
                                 $newRole->save();
                             }
                         }
-                        
+
                         return redirect()->route('filament.admin.resources.activities.edit', $newActivity);
                     }),
                 Tables\Actions\Action::make('track_progress')
@@ -324,7 +324,8 @@ class ActivityResource extends Resource
     {
         return [
             RelationManagers\GroupsRelationManager::class,
-            RelationManagers\SubmissionsRelationManager::class,
+            // RelationManagers\SubmissionsRelationManager::class,
+            RelationManagers\StudentSubmissionsRelationManager::class,
         ];
     }
 

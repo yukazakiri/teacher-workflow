@@ -59,7 +59,7 @@ class ActivitySubmission extends Model
      */
     public function student(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'student_id');
+        return $this->belongsTo(Student::class, 'student_id');
     }
 
     /**
@@ -69,7 +69,7 @@ class ActivitySubmission extends Model
     {
         return $this->belongsTo(Group::class);
     }
-    
+
     /**
      * Get the teacher who graded the submission.
      */
@@ -109,7 +109,7 @@ class ActivitySubmission extends Model
     {
         return $this->status === 'completed';
     }
-    
+
     /**
      * Determine if the submission is late.
      */
@@ -117,7 +117,7 @@ class ActivitySubmission extends Model
     {
         return $this->status === 'late';
     }
-    
+
     /**
      * Determine if the submission has been graded.
      */

@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 use Filament\Models\Contracts\HasTenants;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable implements HasTenants, FilamentUser
 {
@@ -72,6 +73,14 @@ class User extends Authenticatable implements HasTenants, FilamentUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Get the students associated with the user.
+     */
+    public function students(): HasMany
+    {
+        return $this->hasMany(Student::class);
     }
 
     public function canAccessPanel(Panel $panel): bool

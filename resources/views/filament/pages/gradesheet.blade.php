@@ -6,7 +6,7 @@
             <div class="mb-4">
                 <h2 class="text-xl font-bold">Student Grades</h2>
                 <p class="text-gray-500 dark:text-gray-400">
-                    This spreadsheet displays all student grades for activities in this team. 
+                    This spreadsheet displays all student grades for activities in this team.
                     You can edit grades directly by clicking on the cells.
                 </p>
                 <div class="flex items-center gap-4 mt-2">
@@ -66,7 +66,7 @@
                     input.classList.remove('opacity-50');
                     input.classList.add('bg-red-50');
                     console.error('Error updating score:', error);
-                    
+
                     // Reset to previous value after error
                     setTimeout(() => {
                         input.classList.remove('bg-red-50');
@@ -74,4 +74,4 @@
                 });
         }
     </script>
-</x-filament-panels::page> 
+</x-filament-panels::page>

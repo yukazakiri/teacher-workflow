@@ -25,6 +25,9 @@ use Laravel\Jetstream\Jetstream;
 use Illuminate\Support\Facades\DB;
 use App\Filament\Widgets\TeamMembersTableWidget;
 use App\Filament\Widgets\PendingInvitationsTableWidget;
+use App\Models\Student;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Textarea;
 
 class Dashboard extends PagesDashboard
 {
@@ -122,6 +125,103 @@ class Dashboard extends PagesDashboard
 
                         $this->redirect(route('filament.app.pages.dashboard', ['tenant' => $team->id]));
                     }
+                }),
+
+            CreateAction::make('create_student')
+                ->label('Create Student')
+                ->icon('heroicon-o-user')
+                ->color('success')
+                ->form([
+                    TextInput::make('name')
+                        ->label('Student Name')
+                        ->required(),
+
+                    TextInput::make('email')
+                        ->label('Email')
+                        ->email(),
+
+                    TextInput::make('student_id')
+                        ->label('Student ID'),
+
+                    Select::make('gender')
+                        ->options([
+                            'male' => 'Male',
+                            'female' => 'Female',
+                            'other' => 'Other',
+                            'prefer_not_to_say' => 'Prefer not to say',
+                        ]),
+
+                    DatePicker::make('birth_date')
+                        ->label('Birth Date'),
+
+                    Textarea::make('notes')
+                        ->label('Notes')
+                        ->columnSpanFull(),
+                ])
+                ->action(function (array $data): void {
+                    $team = Auth::user()->currentTeam;
+
+                    // Check if a student with this email already exists in the team
+                    if (!empty($data['email'])) {
+                        $existingStudent = Student::where('team_id', $team->id)
+                            ->where('email', $data['email'])
+                            ->first();
+
+                        if ($existingStudent) {
+                            Notification::make()
+                                ->title('Student Already Exists')
+                                ->body('A student with this email already exists in your team.')
+                                ->warning()
+                                ->send();
+                            return;
+                        }
+                    }
+
+                    // Create the student
+                    $student = Student::create([
+                        'team_id' => $team->id,
+                        'name' => $data['name'],
+                        'email' => $data['email'] ?? null,
+                        'student_id' => $data['student_id'] ?? null,
+                        'gender' => $data['gender'] ?? null,
+                        'birth_date' => $data['birth_date'] ?? null,
+                        'notes' => $data['notes'] ?? null,
+                        'status' => 'active',
+                    ]);
+
+                    // If email is provided, check if a user with this email exists
+                    if (!empty($data['email'])) {
+                        $user = User::where('email', $data['email'])->first();
+
+                        if ($user) {
+                            // Link the student to the user
+                            $student->update(['user_id' => $user->id]);
+
+                            // Check if the user is already in the team
+                            if (!$team->hasUser($user)) {
+                                // Send team invitation
+                                $invitation = TeamInvitation::create([
+                                    'team_id' => $team->id,
+                                    'email' => $data['email'],
+                                    'role' => 'student',
+                                ]);
+
+                                $invitation->sendInvitationNotification();
+
+                                Notification::make()
+                                    ->title('Invitation Sent')
+                                    ->body("An invitation has been sent to {$data['email']}")
+                                    ->success()
+                                    ->send();
+                            }
+                        }
+                    }
+
+                    Notification::make()
+                        ->title('Student Created')
+                        ->body("Student {$data['name']} has been created successfully.")
+                        ->success()
+                        ->send();
                 }),
 
             CreateAction::make('invite_member')
@@ -235,7 +335,7 @@ class Dashboard extends PagesDashboard
             ->where('team_id', $currentTeam->id)
             ->where('user_id', $user->id)
             ->value('role');
-        
+
         if ($pivotRole === 'admin') {
             $userRole = 'Admin';
         } elseif ($pivotRole === 'editor') {

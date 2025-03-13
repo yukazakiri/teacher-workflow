@@ -1,0 +1,37 @@
+{
+    "mcpServers": {
+        "github.com/modelcontextprotocol/servers/tree/main/src/postgres": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-postgres",
+                "postgresql://postgres:postgress@localhost/postgres"
+            ],
+            "disabled": false,
+            "autoApprove": []
+        },
+        "github.com/modelcontextprotocol/servers/tree/main/src/filesystem": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-filesystem",
+                "/home/dccp/documents/Cline/MCP"
+            ],
+            "disabled": false,
+            "autoApprove": []
+        },
+        "github.com/modelcontextprotocol/servers/tree/main/src/sqlite": {
+            "command": "uv",
+            "args": [
+                "--directory",
+                "/home/dccp/documents/Cline/MCP/sqlite",
+                "run",
+                "mcp-server-sqlite",
+                "--db-path",
+                "/home/dccp/projects/teacher-workflow/database/database.sqlite"
+            ],
+            "disabled": false,
+            "autoApprove": []
+        }
+    }
+}

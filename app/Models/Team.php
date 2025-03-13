@@ -62,4 +62,12 @@ class Team extends JetstreamTeam
     {
         return $this->hasMany(Activity::class);
     }
+
+    /**
+     * Get the students for the team.
+     */
+    public function students(): HasMany
+    {
+        return $this->hasMany(Student::class);
+    }
 }

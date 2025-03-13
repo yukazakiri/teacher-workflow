@@ -46,16 +46,16 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     // Activity progress and reporting
     Route::get('/activities/{activity}/progress', [ActivityController::class, 'progress'])->name('activities.progress');
     Route::get('/activities/{activity}/generate-report', [ActivityController::class, 'generateReport'])->name('activities.generate-report');
-    
+
     // Submission management
     Route::post('/activity-submissions/{submission}/grade', [ActivityController::class, 'gradeSubmission'])->name('activities.grade-submission');
     Route::get('/activity-submissions/{submission}', [ActivityController::class, 'viewSubmission'])->name('activities.view-submission');
-    
+
     // Group management
     Route::post('/activities/{activity}/groups', [ActivityController::class, 'createGroup'])->name('activities.create-group');
     Route::post('/groups/{group}/add-student', [ActivityController::class, 'addStudentToGroup'])->name('groups.add-student');
     Route::delete('/groups/{group}/remove-student', [ActivityController::class, 'removeStudentFromGroup'])->name('groups.remove-student');
-    
+
     // Role management
     Route::post('/activities/{activity}/roles', [ActivityController::class, 'createRole'])->name('activities.create-role');
     Route::post('/role-assignments', [ActivityController::class, 'assignRole'])->name('role-assignments.assign');
