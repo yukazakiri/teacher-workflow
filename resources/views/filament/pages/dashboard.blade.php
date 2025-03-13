@@ -186,13 +186,14 @@
                                         </div>
 
                                         @if($team->id !== $currentTeam->id)
-                                            <x-filament::button
+                                            <x-filament::link
                                                 size="sm"
                                                 color="gray"
-                                                wire:click="mountAction('switch_team', {'team_id': {{ $team->id }}})"
+                                                href="/app/{{ $team->id }}"
+                                                :spa-mode="true"
                                             >
                                                 Switch
-                                            </x-filament::button>
+                                            </x-filament::link>
                                         @endif
                                     </div>
                                 </div>
