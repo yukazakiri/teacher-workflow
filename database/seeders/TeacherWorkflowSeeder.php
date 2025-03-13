@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\Activity;
 use App\Models\ActivityType;
+use App\Models\Student;
 use App\Models\Team;
 use App\Models\TeamInvitation;
 use App\Models\User;
@@ -30,61 +33,31 @@ class TeacherWorkflowSeeder extends Seeder
             ]
         );
 
-        // Create or get the teacher's team
-        $team = Team::firstOrCreate(
-            ['user_id' => $teacher->id],
-            [
-                'name' => 'Test Classroom',
-                'user_id' => $teacher->id,
-                'personal_team' => false,
-            ]
-        );
+        // Create activity types if they don't exist
+        $this->createActivityTypes();
 
-        // Set current team for teacher if not set
+        // Create two teams for the teacher
+        $team1 = $this->createTeamWithInvitedUsers($teacher);
+        $team2 = $this->createTeamWithStudentRecords($teacher);
+
+        // Set team1 as current team for teacher if not set
         if (!$teacher->current_team_id) {
-            $teacher->current_team_id = $team->id;
+            $teacher->current_team_id = $team1->id;
             $teacher->save();
         }
 
-        // Create 20 student users if they don't exist
-        $students = [];
-        for ($i = 1; $i <= 20; $i++) {
-            $student = User::firstOrCreate(
-                ['email' => "student{$i}@test.com"],
-                [
-                    'name' => "Student {$i}",
-                    'email' => "student{$i}@test.com",
-                    'password' => Hash::make('password'),
-                    'email_verified_at' => now(),
-                    'remember_token' => Str::random(10),
-                ]
-            );
-            $students[] = $student;
+        // Seed activities for both teams
+        $this->call(ActivitySeeder::class);
 
-            // Add student to team if not already a member
-            if (!$team->hasUser($student)) {
-                // Create invitation
-                TeamInvitation::firstOrCreate(
-                    [
-                        'team_id' => $team->id,
-                        'email' => $student->email,
-                    ],
-                    [
-                        'team_id' => $team->id,
-                        'email' => $student->email,
-                        'role' => 'student',
-                    ]
-                );
+        // Seed exams for both teams
+        $this->call(ExamSeeder::class);
+    }
 
-                // Add to team
-                $team->users()->attach(
-                    $student,
-                    ['role' => 'student']
-                );
-            }
-        }
-
-        // Create activity types if they don't exist
+    /**
+     * Create activity types
+     */
+    private function createActivityTypes(): void
+    {
         $activityTypes = [
             ['name' => 'Quiz', 'description' => 'Short assessment to test knowledge'],
             ['name' => 'Assignment', 'description' => 'Task to be completed by students'],
@@ -105,8 +78,127 @@ class TeacherWorkflowSeeder extends Seeder
                 ]
             );
         }
+    }
 
-        // Call the ActivitySeeder to create specific activities
-        $this->call(ActivitySeeder::class);
+    /**
+     * Create a team with invited users that have student role
+     *
+     * @param User $teacher The teacher user
+     * @return Team The created team
+     */
+    private function createTeamWithInvitedUsers(User $teacher): Team
+    {
+        // Create Team 1
+        $team1 = Team::firstOrCreate(
+            [
+                'name' => 'Classroom with Invited Students',
+                'user_id' => $teacher->id,
+            ],
+            [
+                'name' => 'Classroom with Invited Students',
+                'user_id' => $teacher->id,
+                'personal_team' => false,
+            ]
+        );
+
+        // Create 20 student users and invite them to the team
+        for ($i = 1; $i <= 20; $i++) {
+            $studentUser = User::firstOrCreate(
+                ['email' => "invited_student{$i}@example.com"],
+                [
+                    'name' => "Invited Student {$i}",
+                    'email' => "invited_student{$i}@example.com",
+                    'password' => Hash::make('password'),
+                    'email_verified_at' => now(),
+                    'remember_token' => Str::random(10),
+                ]
+            );
+
+            // Create invitation if not exists
+            TeamInvitation::firstOrCreate(
+                [
+                    'team_id' => $team1->id,
+                    'email' => $studentUser->email,
+                ],
+                [
+                    'team_id' => $team1->id,
+                    'email' => $studentUser->email,
+                    'role' => 'student',
+                ]
+            );
+
+            // Add user to team if not already a member
+            if (!$team1->hasUser($studentUser)) {
+                $team1->users()->attach(
+                    $studentUser,
+                    ['role' => 'student']
+                );
+            }
+
+            // Auto-create student record if not exists
+            Student::firstOrCreate(
+                [
+                    'email' => $studentUser->email,
+                    'team_id' => $team1->id,
+                ],
+                [
+                    'name' => $studentUser->name,
+                    'email' => $studentUser->email,
+                    'team_id' => $team1->id,
+                    'status' => 'active',
+                    'user_id' => $studentUser->id,
+                    'student_id' => 'ST' . str_pad((string)$i, 4, '0', STR_PAD_LEFT),
+                    'gender' => $i % 2 === 0 ? 'female' : 'male',
+                    'birth_date' => now()->subYears(rand(18, 25))->subDays(rand(1, 365)),
+                ]
+            );
+        }
+
+        return $team1;
+    }
+
+    /**
+     * Create a team with student records but no invited users
+     *
+     * @param User $teacher The teacher user
+     * @return Team The created team
+     */
+    private function createTeamWithStudentRecords(User $teacher): Team
+    {
+        // Create Team 2
+        $team2 = Team::firstOrCreate(
+            [
+                'name' => 'Classroom with Student Records Only',
+                'user_id' => $teacher->id,
+            ],
+            [
+                'name' => 'Classroom with Student Records Only',
+                'user_id' => $teacher->id,
+                'personal_team' => false,
+            ]
+        );
+
+        // Create 20 student records without user accounts
+        for ($i = 1; $i <= 20; $i++) {
+            Student::firstOrCreate(
+                [
+                    'email' => "record_student{$i}@example.com",
+                    'team_id' => $team2->id,
+                ],
+                [
+                    'name' => "Record Student {$i}",
+                    'email' => "record_student{$i}@example.com",
+                    'team_id' => $team2->id,
+                    'status' => 'active',
+                    'user_id' => null, // No associated user
+                    'student_id' => 'RS' . str_pad((string)$i, 4, '0', STR_PAD_LEFT),
+                    'gender' => $i % 2 === 0 ? 'female' : 'male',
+                    'birth_date' => now()->subYears(rand(18, 25))->subDays(rand(1, 365)),
+                    'notes' => $i % 5 === 0 ? 'Transfer student' : null,
+                ]
+            );
+        }
+
+        return $team2;
     }
 }

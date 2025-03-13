@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\Exam;
 use App\Models\Question;
 use App\Models\ExamQuestion;
+use App\Models\Student;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -19,21 +22,46 @@ class ExamSeeder extends Seeder
      */
     public function run(): void
     {
-        // Get the first user to be the teacher
-        $user = User::first();
-        $team = $user->currentTeam;
+        // Get the test user
+        $user = User::where('email', 'test@example.com')->first();
 
-        if (!$user || !$team) {
-            $this->command->error('No user or team found. Please run the user seeder first.');
+        if (!$user) {
+            $this->command->error('Test user not found. Please run the DatabaseSeeder first.');
             return;
         }
 
-        // Create 5 exams
-        for ($i = 1; $i <= 5; $i++) {
-            $this->createExam($user, $team, $i);
+        // Get all teams for the teacher
+        $teams = Team::where('user_id', $user->id)->get();
+
+        if ($teams->isEmpty()) {
+            $this->command->error('No teams found for the teacher. Please run DatabaseSeeder first.');
+            return;
+        }
+
+        // Create exams for each team
+        foreach ($teams as $team) {
+            // Check if the team has students
+            $studentCount = Student::where('team_id', $team->id)->count();
+            if ($studentCount === 0) {
+                $this->command->info("No students found in team {$team->name}. Skipping exam creation.");
+                continue;
+            }
+
+            $this->createExamsForTeam($user, $team);
         }
 
         $this->command->info('Exams have been seeded successfully!');
+    }
+
+    /**
+     * Create exams for a specific team
+     */
+    protected function createExamsForTeam(User $user, Team $team): void
+    {
+        // Create 3 exams per team
+        for ($i = 1; $i <= 3; $i++) {
+            $this->createExam($user, $team, $i);
+        }
     }
 
     /**
@@ -89,7 +117,153 @@ class ExamSeeder extends Seeder
 
             // Update the exam's total points
             $exam->update(['total_points' => $totalPoints]);
+
+            // Create exam submissions for students if the exam is published
+            if ($exam->isPublished()) {
+                $this->createExamSubmissions($exam, $team);
+            }
         });
+    }
+
+    /**
+     * Create exam submissions for an exam.
+     */
+    protected function createExamSubmissions(Exam $exam, Team $team): void
+    {
+        // Get actual students from the database for this team
+        $students = Student::where('team_id', $team->id)->get();
+
+        if ($students->isEmpty()) {
+            $this->command->info("No students found for team ID {$team->id}. Skipping submissions.");
+            return;
+        }
+
+        // Create submissions for each student
+        foreach ($students as $student) {
+            // Generate random answers for the exam
+            $answers = json_encode($this->generateRandomAnswers($exam));
+
+            // Calculate a random score between 0 and 100
+            $score = rand(0, 100);
+
+            // Determine the final grade based on the score
+            $finalGrade = $this->calculateFinalGrade($score);
+
+            // For students without associated users, we need to handle differently
+            if (!$student->user_id) {
+                // For students without users, we'll create a submission directly
+                // but we need to modify our database schema to allow this
+                $this->command->info("Student {$student->id} has no associated user. Creating submission with teacher as student_id.");
+
+                // Use the teacher's ID as the student_id for the submission
+                // This is a workaround since the foreign key constraint requires a valid user_id
+                $exam->submissions()->create([
+                    'student_id' => $exam->teacher_id, // Use teacher ID as a placeholder
+                    'status' => 'submitted',
+                    'score' => $score,
+                    'final_grade' => $finalGrade,
+                    'feedback' => $this->generateFeedback($finalGrade),
+                    'submitted_at' => now()->subDays(rand(1, 7)),
+                    'graded_by' => $exam->teacher_id,
+                    'graded_at' => now()->subDays(rand(0, 3)),
+                    'answers' => $answers,
+                ]);
+                continue;
+            }
+
+            // Create the submission for students with associated users
+            $exam->submissions()->create([
+                'student_id' => $student->user_id,
+                'status' => 'submitted',
+                'score' => $score,
+                'final_grade' => $finalGrade,
+                'feedback' => $this->generateFeedback($finalGrade),
+                'submitted_at' => now()->subDays(rand(1, 7)),
+                'graded_by' => $exam->teacher_id,
+                'graded_at' => now()->subDays(rand(0, 3)),
+                'answers' => $answers,
+            ]);
+        }
+    }
+
+    /**
+     * Generate random answers for an exam submission
+     */
+    protected function generateRandomAnswers(Exam $exam): array
+    {
+        $answers = [];
+        $questions = $exam->questions;
+
+        foreach ($questions as $question) {
+            switch ($question->type) {
+                case 'multiple_choice':
+                    $choices = $question->choices;
+                    // Convert ArrayObject to array if needed
+                    if ($choices instanceof \Illuminate\Database\Eloquent\Casts\ArrayObject) {
+                        $choices = $choices->toArray();
+                    }
+                    // Make sure we have choices before trying to get a random one
+                    if (!empty($choices)) {
+                        $choiceKeys = array_keys($choices);
+                        $answers[$question->id] = $choiceKeys[array_rand($choiceKeys)];
+                    } else {
+                        $answers[$question->id] = 'A'; // Default to A if no choices
+                    }
+                    break;
+
+                case 'true_false':
+                    $answers[$question->id] = rand(0, 1) ? 'true' : 'false';
+                    break;
+
+                case 'short_answer':
+                    $answers[$question->id] = "Answer to question {$question->id}";
+                    break;
+
+                case 'essay':
+                    $answers[$question->id] = $this->getRandomEssayAnswer();
+                    break;
+
+                case 'matching':
+                    $pairs = $question->matching_pairs;
+                    // Convert ArrayObject to array if needed
+                    if ($pairs instanceof \Illuminate\Database\Eloquent\Casts\ArrayObject) {
+                        $pairs = $pairs->toArray();
+                    }
+
+                    if (!empty($pairs)) {
+                        $shuffledValues = array_values($pairs);
+                        shuffle($shuffledValues);
+
+                        $studentMatches = [];
+                        $keys = array_keys($pairs);
+                        foreach ($keys as $index => $key) {
+                            $studentMatches[$key] = $shuffledValues[$index % count($shuffledValues)];
+                        }
+                        $answers[$question->id] = $studentMatches;
+                    } else {
+                        $answers[$question->id] = []; // Empty array if no pairs
+                    }
+                    break;
+
+                case 'fill_in_blank':
+                    $blanks = $question->answers;
+                    // Convert ArrayObject to array if needed
+                    if ($blanks instanceof \Illuminate\Database\Eloquent\Casts\ArrayObject) {
+                        $blanks = $blanks->toArray();
+                    }
+
+                    $studentBlanks = [];
+                    if (!empty($blanks)) {
+                        foreach ($blanks as $key => $value) {
+                            $studentBlanks[$key] = rand(0, 1) ? $value : $this->getRandomWord();
+                        }
+                    }
+                    $answers[$question->id] = $studentBlanks;
+                    break;
+            }
+        }
+
+        return $answers;
     }
 
     /**
@@ -113,7 +287,8 @@ class ExamSeeder extends Seeder
         switch ($type) {
             case 'multiple_choice':
                 $choices = $this->generateMultipleChoiceOptions();
-                $correct = array_rand($choices);
+                $choiceKeys = array_keys($choices);
+                $correct = $choiceKeys[array_rand($choiceKeys)];
                 $questionData['choices'] = $choices;
                 $questionData['correct_answer'] = $correct;
                 $questionData['explanation'] = "The correct answer is {$correct}. " . $this->getRandomExplanation();
@@ -317,6 +492,30 @@ class ExamSeeder extends Seeder
     }
 
     /**
+     * Get a random essay answer
+     */
+    protected function getRandomEssayAnswer(): string
+    {
+        $paragraphs = [
+            "The topic presents several important considerations that must be analyzed carefully. First, we must consider the historical context and how it has shaped our current understanding. Throughout history, various perspectives have emerged, each contributing to the complex tapestry of knowledge we now possess.",
+
+            "When examining this subject from a scientific perspective, we can observe several patterns and principles at work. The evidence suggests a correlation between various factors, though causation remains a subject of debate among experts in the field. Recent studies have shed new light on previously held assumptions.",
+
+            "From a philosophical standpoint, this raises questions about fundamental concepts such as truth, knowledge, and reality. Different schools of thought have approached these questions with varying methodologies and frameworks, leading to diverse conclusions that continue to influence contemporary discourse.",
+
+            "In conclusion, while no single answer can fully address the complexity of this topic, a multidisciplinary approach offers the most comprehensive understanding. By integrating insights from various fields and remaining open to new evidence, we can continue to refine our knowledge and approach to this important subject."
+        ];
+
+        // Return 2-3 random paragraphs
+        $selectedParagraphs = array_rand(array_flip($paragraphs), rand(2, 3));
+        if (!is_array($selectedParagraphs)) {
+            $selectedParagraphs = [$selectedParagraphs];
+        }
+
+        return implode("\n\n", $selectedParagraphs);
+    }
+
+    /**
      * Get a random rubric for essay questions
      */
     protected function getRandomRubric(): string
@@ -372,5 +571,46 @@ class ExamSeeder extends Seeder
         ];
 
         return Arr::random($words, 1)[0];
+    }
+
+    /**
+     * Get random feedback for graded submissions
+     */
+    protected function getRandomFeedback(): string
+    {
+        $feedbacks = [
+            "Excellent work! Your understanding of the concepts is clear.",
+            "Good job. There are a few areas that could use improvement.",
+            "Satisfactory work, but please pay more attention to details.",
+            "You've made some good points, but your analysis needs more depth.",
+            "Well-structured and thoughtful. Keep up the good work!",
+            "Your work shows promise, but needs more development in key areas.",
+            "Very thorough analysis. I'm impressed with your attention to detail.",
+            "You've met the basic requirements, but could have expanded more on your ideas.",
+            "Strong start, but your conclusion needs more supporting evidence.",
+            "Outstanding work! Your critical thinking skills are evident throughout."
+        ];
+
+        return Arr::random($feedbacks, 1)[0];
+    }
+
+    /**
+     * Calculate final grade based on score
+     */
+    private function calculateFinalGrade(float $score): float
+    {
+        // Implement your logic to calculate final grade based on score
+        // This is a placeholder and should be replaced with the actual implementation
+        return $score;
+    }
+
+    /**
+     * Generate feedback based on final grade
+     */
+    private function generateFeedback(float $finalGrade): string
+    {
+        // Implement your logic to generate feedback based on final grade
+        // This is a placeholder and should be replaced with the actual implementation
+        return $this->getRandomFeedback();
     }
 }
