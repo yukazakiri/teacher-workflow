@@ -216,7 +216,21 @@ class ExamSeeder extends Seeder
                     break;
 
                 case 'short_answer':
-                    $answers[$question->id] = "Answer to question {$question->id}";
+                    // For short answer, we'll sometimes use the correct answer and sometimes a random one
+                    $correctAnswer = null;
+                    if (is_object($question->correct_answer) && method_exists($question->correct_answer, 'offsetGet')) {
+                        $correctAnswerArray = $question->correct_answer->getArrayCopy();
+                        $correctAnswer = !empty($correctAnswerArray) ? $correctAnswerArray[0] : null;
+                    } else if (is_array($question->correct_answer)) {
+                        $correctAnswer = !empty($question->correct_answer) ? $question->correct_answer[0] : null;
+                    }
+
+                    // 50% chance to use the correct answer
+                    if ($correctAnswer && rand(0, 1)) {
+                        $answers[$question->id] = $correctAnswer;
+                    } else {
+                        $answers[$question->id] = "Answer to question {$question->id}";
+                    }
                     break;
 
                 case 'essay':
@@ -290,18 +304,22 @@ class ExamSeeder extends Seeder
                 $choiceKeys = array_keys($choices);
                 $correct = $choiceKeys[array_rand($choiceKeys)];
                 $questionData['choices'] = $choices;
-                $questionData['correct_answer'] = $correct;
+                // Store correct_answer as an array to match the resource implementation
+                $questionData['correct_answer'] = [$correct];
                 $questionData['explanation'] = "The correct answer is {$correct}. " . $this->getRandomExplanation();
                 break;
 
             case 'true_false':
                 $correct = Arr::random(['true', 'false'], 1)[0];
-                $questionData['correct_answer'] = $correct;
+                // Store correct_answer as an array to match the resource implementation
+                $questionData['correct_answer'] = [$correct];
                 $questionData['explanation'] = "The statement is {$correct}. " . $this->getRandomExplanation();
                 break;
 
             case 'short_answer':
-                $questionData['correct_answer'] = $this->getRandomShortAnswer();
+                $answer = $this->getRandomShortAnswer();
+                // Store correct_answer as an array to match the resource implementation
+                $questionData['correct_answer'] = [$answer];
                 $questionData['explanation'] = $this->getRandomExplanation();
                 break;
 

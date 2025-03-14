@@ -58,6 +58,7 @@ class CreateExam extends CreateRecord
                 $question->fill([
                     'teacher_id' => Auth::id(),
                     'exam_id' => $exam->id,
+                    'team_id' => Auth::user()->currentTeam->id,
                     'type' => $questionType,
                     'content' => $questionData['content'],
                     'points' => $questionData['points'],
@@ -67,17 +68,17 @@ class CreateExam extends CreateRecord
                 switch ($questionType) {
                     case 'multiple_choice':
                         $question->choices = $questionData['choices'];
-                        $question->correct_answer = $questionData['correct_answer'];
+                        $question->correct_answer = [$questionData['correct_answer']];
                         $question->explanation = $questionData['explanation'] ?? null;
                         break;
 
                     case 'true_false':
-                        $question->correct_answer = $questionData['correct_answer'];
+                        $question->correct_answer = [$questionData['correct_answer']];
                         $question->explanation = $questionData['explanation'] ?? null;
                         break;
 
                     case 'short_answer':
-                        $question->correct_answer = $questionData['correct_answer'];
+                        $question->correct_answer = [$questionData['correct_answer']];
                         $question->explanation = $questionData['explanation'] ?? null;
                         break;
 
@@ -98,11 +99,13 @@ class CreateExam extends CreateRecord
                 $question->save();
 
                 // Create exam_question pivot entry
-                $exam->examQuestions()->create([
-                    'question_id' => $question->id,
-                    'order' => $order,
-                    'points' => $questionData['points'],
-                ]);
+                if (method_exists($exam, 'examQuestions')) {
+                    $exam->examQuestions()->create([
+                        'question_id' => $question->id,
+                        'order' => $order,
+                        'points' => $questionData['points'],
+                    ]);
+                }
 
                 $order++;
             }

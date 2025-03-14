@@ -59,17 +59,41 @@ class EditExam extends EditRecord
             switch ($type) {
                 case 'multiple_choice':
                     $questionData['choices'] = $question->choices;
-                    $questionData['correct_answer'] = $question->correct_answer;
+                    if (is_object($question->correct_answer) && method_exists($question->correct_answer, 'offsetGet')) {
+                        // Get the first item from the ArrayObject
+                        $correctAnswer = $question->correct_answer->getArrayCopy();
+                        $questionData['correct_answer'] = !empty($correctAnswer) ? $correctAnswer[0] : '';
+                    } else if (is_array($question->correct_answer)) {
+                        $questionData['correct_answer'] = !empty($question->correct_answer) ? $question->correct_answer[0] : '';
+                    } else {
+                        $questionData['correct_answer'] = $question->correct_answer;
+                    }
                     $questionData['explanation'] = $question->explanation;
                     break;
 
                 case 'true_false':
-                    $questionData['correct_answer'] = $question->correct_answer;
+                    if (is_object($question->correct_answer) && method_exists($question->correct_answer, 'offsetGet')) {
+                        // Get the first item from the ArrayObject
+                        $correctAnswer = $question->correct_answer->getArrayCopy();
+                        $questionData['correct_answer'] = !empty($correctAnswer) ? $correctAnswer[0] : '';
+                    } else if (is_array($question->correct_answer)) {
+                        $questionData['correct_answer'] = !empty($question->correct_answer) ? $question->correct_answer[0] : '';
+                    } else {
+                        $questionData['correct_answer'] = $question->correct_answer;
+                    }
                     $questionData['explanation'] = $question->explanation;
                     break;
 
                 case 'short_answer':
-                    $questionData['correct_answer'] = $question->correct_answer;
+                    if (is_object($question->correct_answer) && method_exists($question->correct_answer, 'offsetGet')) {
+                        // Get the first item from the ArrayObject
+                        $correctAnswer = $question->correct_answer->getArrayCopy();
+                        $questionData['correct_answer'] = !empty($correctAnswer) ? $correctAnswer[0] : '';
+                    } else if (is_array($question->correct_answer)) {
+                        $questionData['correct_answer'] = !empty($question->correct_answer) ? $question->correct_answer[0] : '';
+                    } else {
+                        $questionData['correct_answer'] = $question->correct_answer;
+                    }
                     $questionData['explanation'] = $question->explanation;
                     break;
 
@@ -165,51 +189,51 @@ class EditExam extends EditRecord
                 // Set specific fields based on question type
                 switch ($questionType) {
                     case 'multiple_choice':
-                                            $question->choices = $questionData['choices'];
-                                            $question->correct_answer = $questionData['correct_answer'];
-                                            $question->explanation = $questionData['explanation'] ?? null;
-                                            break;
+                        $question->choices = $questionData['choices'];
+                        $question->correct_answer = [$questionData['correct_answer']];
+                        $question->explanation = $questionData['explanation'] ?? null;
+                        break;
 
-                                        case 'true_false':
-                                            $question->correct_answer = $questionData['correct_answer'];
-                                            $question->explanation = $questionData['explanation'] ?? null;
-                                            break;
+                    case 'true_false':
+                        $question->correct_answer = [$questionData['correct_answer']];
+                        $question->explanation = $questionData['explanation'] ?? null;
+                        break;
 
-                                        case 'short_answer':
-                                            $question->correct_answer = $questionData['correct_answer'];
-                                            $question->explanation = $questionData['explanation'] ?? null;
-                                            break;
+                    case 'short_answer':
+                        $question->correct_answer = [$questionData['correct_answer']];
+                        $question->explanation = $questionData['explanation'] ?? null;
+                        break;
 
-                                        case 'essay':
-                                            $question->rubric = $questionData['rubric'];
-                                            $question->word_limit = $questionData['word_limit'] ?? null;
-                                            break;
+                    case 'essay':
+                        $question->rubric = $questionData['rubric'];
+                        $question->word_limit = $questionData['word_limit'] ?? null;
+                        break;
 
-                                        case 'matching':
-                                            $question->matching_pairs = $questionData['matching_pairs'];
-                                            break;
+                    case 'matching':
+                        $question->matching_pairs = $questionData['matching_pairs'];
+                        break;
 
-                                        case 'fill_in_blank':
-                                            $question->answers = $questionData['answers'];
-                                            break;
-                                    }
+                    case 'fill_in_blank':
+                        $question->answers = $questionData['answers'];
+                        break;
+                }
 
-                                    $question->save();
+                $question->save();
 
-                                    // Create exam_question pivot entry
-                                    if (method_exists($exam, 'examQuestions')) {
-                                        $exam->examQuestions()->create([
-                                            'question_id' => $question->id,
-                                            'order' => $order,
-                                            'points' => $questionData['points'],
-                                        ]);
-                                    }
+                // Create exam_question pivot entry
+                if (method_exists($exam, 'examQuestions')) {
+                    $exam->examQuestions()->create([
+                        'question_id' => $question->id,
+                        'order' => $order,
+                        'points' => $questionData['points'],
+                    ]);
+                }
 
-                                    $order++;
-                                }
-                            }
+                $order++;
+            }
+        }
 
-                            // Update the exam's total points
-                            $exam->updateTotalPoints();
-                        }
-                    }
+        // Update the exam's total points
+        $exam->updateTotalPoints();
+    }
+}

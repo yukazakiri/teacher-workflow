@@ -52,6 +52,14 @@ class Exam extends Model
     }
 
     /**
+     * Get the exam questions pivot records.
+     */
+    public function examQuestions(): HasMany
+    {
+        return $this->hasMany(ExamQuestion::class);
+    }
+
+    /**
      * Get the submissions for the exam.
      */
     public function submissions(): HasMany

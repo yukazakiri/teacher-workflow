@@ -95,14 +95,22 @@ class ExamResource extends Resource
                 ->label('Correct Answer')
                 ->options(fn (Get $get) => collect($get('choices'))->mapWithKeys(fn ($value, $key) => [$key => $key]))
                 ->required()
-                ->reactive(),
+                ->reactive()
+                ->afterStateHydrated(function ($state, $set) {
+                    // Convert from ArrayObject to string if needed
+                    if (is_object($state) && method_exists($state, 'offsetGet')) {
+                        $arrayState = $state->getArrayCopy();
+                        $set('correct_answer', !empty($arrayState) ? $arrayState[0] : '');
+                    } else if (is_array($state)) {
+                        $set('correct_answer', !empty($state) ? $state[0] : '');
+                    }
+                })
+                ->dehydrateStateUsing(fn ($state) => $state),
             TextInput::make('points')
                 ->numeric()
                 ->default(1)
                 ->required(),
-            // Textarea::make('explanation')
-            //     ->label('Explanation')
-            //     ->helperText('Explain why this is the correct answer'),
+
         ];
     }
 
@@ -121,7 +129,17 @@ class ExamResource extends Resource
                             'true' => 'True',
                             'false' => 'False',
                         ])
-                        ->required(),
+                        ->required()
+                        ->afterStateHydrated(function ($state, $set) {
+                            // Convert from ArrayObject to string if needed
+                            if (is_object($state) && method_exists($state, 'offsetGet')) {
+                                $arrayState = $state->getArrayCopy();
+                                $set('correct_answer', !empty($arrayState) ? $arrayState[0] : '');
+                            } else if (is_array($state)) {
+                                $set('correct_answer', !empty($state) ? $state[0] : '');
+                            }
+                        })
+                        ->dehydrateStateUsing(fn ($state) => $state),
                     TextInput::make('points')
                         ->numeric()
                         ->default(1)
@@ -142,7 +160,17 @@ class ExamResource extends Resource
                 ->columnSpanFull(),
             TextInput::make('correct_answer')
                 ->label('Correct Answer')
-                ->required(),
+                ->required()
+                ->afterStateHydrated(function ($state, $set) {
+                    // Convert from ArrayObject to string if needed
+                    if (is_object($state) && method_exists($state, 'offsetGet')) {
+                        $arrayState = $state->getArrayCopy();
+                        $set('correct_answer', !empty($arrayState) ? $arrayState[0] : '');
+                    } else if (is_array($state)) {
+                        $set('correct_answer', !empty($state) ? $state[0] : '');
+                    }
+                })
+                ->dehydrateStateUsing(fn ($state) => $state),
             TextInput::make('points')
                 ->numeric()
                 ->default(1)

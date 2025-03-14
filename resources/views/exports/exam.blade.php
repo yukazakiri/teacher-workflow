@@ -60,8 +60,8 @@
         <div class="section-title">QUESTIONS</div>
         @foreach($exam->questions as $index => $question)
         <div class="question">
-            <div class="question-header">{{ $index + 1 }}. ({{ $question->points ?? 0 }} pts)</div>
-            <div class="question-content">{!! $question->content !!}</div>
+            <div class="question-content"> <span class="question-header">{{ $index + 1 }}. </span>{!! $question->content !!}</div>
+            {{-- <div class="question-header">{{ $index + 1 }}. {!! $question->content !!}</div> --}}
 
             @if($question->options)
             <div class="options">
