@@ -23,7 +23,7 @@
                         <div>
                             @if($stats['isOwner'])
                                 <div class="px-3 py-1 text-xs font-medium rounded-full bg-white/20 backdrop-blur-sm">
-                                    Team Owner
+                                    Claas Owner
                                 </div>
                             @else
                                 <div class="px-3 py-1 text-xs font-medium rounded-full bg-white/20 backdrop-blur-sm">
@@ -42,7 +42,7 @@
                                         <x-filament::icon icon="heroicon-o-user-group" class="w-5 h-5" />
                                     </div>
                                     <div>
-                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Team Members</p>
+                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Class Members</p>
                                         <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $stats['memberCount'] }}</p>
                                     </div>
                                 </div>
@@ -70,7 +70,7 @@
                                         <x-filament::icon icon="heroicon-o-building-office-2" class="w-5 h-5" />
                                     </div>
                                     <div>
-                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Teams</p>
+                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Classes</p>
                                         <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $allTeams->count() }}</p>
                                     </div>
                                 </div>

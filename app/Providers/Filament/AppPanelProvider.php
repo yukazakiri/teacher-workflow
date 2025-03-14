@@ -59,14 +59,22 @@ class AppPanelProvider extends PanelProvider
                 'success' => Color::hex('#a6d189'),
                 'warning' => Color::hex('#fe640b'),
             ])
-            ->userMenuItems([
-                MenuItem::make()
-                    ->label('Profile')
-                    ->icon('heroicon-o-user-circle')
-                    ->url(fn () => $this->shouldRegisterMenuItem()
-                        ? url(EditProfile::getUrl())
-                        : url($panel->getPath())),
-            ])
+            // ->userMenuItems([
+            //     MenuItem::make()
+            //         ->label('Profile')
+            //         ->icon('heroicon-o-user-circle')
+            //         ->url(function () use ($panel) {
+            //             if ($this->shouldRegisterMenuItem()) {
+            //                 // Check if we're in a tenant context
+            //                 $tenant = Filament::getTenant();
+            //                 if ($tenant) {
+            //                     return url(EditProfile::getUrl(['tenant' => $tenant->getKey()]));
+            //                 }
+            //                 return url(EditProfile::getUrl());
+            //             }
+            //             return url($panel->getPath());
+            //         }),
+            // ])
             ->discoverResources(
                 in: app_path("Filament/Resources"),
                 for: "App\\Filament\\Resources"
