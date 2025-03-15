@@ -1,278 +1,246 @@
 <x-filament-panels::page>
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <!-- Current Team Card -->
-        <div class="lg:col-span-3">
-            <div class="overflow-hidden bg-white rounded-xl shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
-                <div class="relative bg-gradient-to-r from-primary-600 to-primary-500 p-6 text-white">
-                    <div class="absolute inset-0 bg-black/10"></div>
-                    <div class="relative flex items-center justify-between">
-                        <div class="flex items-center space-x-4">
-                            <div class="flex items-center justify-center w-16 h-16 text-xl font-bold rounded-full bg-white/20 backdrop-blur-sm">
-                                {{ substr($currentTeam->name, 0, 2) }}
-                            </div>
-                            <div>
-                                <h2 class="text-2xl font-bold">{{ $currentTeam->name }}</h2>
-                                <p class="text-sm text-white/80">
-                                    Created {{ $currentTeam->created_at->diffForHumans() }}
-                                    @if($currentTeam->personal_team)
-                                        • Personal Team
-                                    @endif
-                                </p>
+    <div class="space-y-8">
+        <!-- Current Team Banner -->
+        <div class="relative overflow-hidden rounded-xl bg-gradient-to-r from-primary-600 to-primary-400 dark:from-primary-900 dark:to-primary-700">
+            <div class="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,#fff,rgba(255,255,255,0.6))]"></div>
+            <div class="relative p-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="flex-shrink-0 bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg">
+                            <div class="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-2xl font-bold text-primary-700 dark:text-primary-300">
+                                {{ substr($currentTeam->name, 0, 1) }}
                             </div>
                         </div>
                         <div>
-                            @if($stats['isOwner'])
-                                <div class="px-3 py-1 text-xs font-medium rounded-full bg-white/20 backdrop-blur-sm">
-                                    Claas Owner
-                                </div>
-                            @else
-                                <div class="px-3 py-1 text-xs font-medium rounded-full bg-white/20 backdrop-blur-sm">
+                            <h1 class="text-2xl font-bold text-white">{{ $currentTeam->name }}</h1>
+                            <div class="flex flex-wrap gap-2 mt-2">
+                                <div class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-white/20 text-white backdrop-blur-sm">
+                                    <x-heroicon-o-user class="w-3 h-3 mr-1" />
                                     {{ $userRole }}
                                 </div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-                <div class="p-6">
-                    <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-                        <div class="p-4 transition bg-gray-50 rounded-lg dark:bg-gray-800">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-3">
-                                    <div class="p-2 text-primary-600 bg-primary-100 rounded-lg dark:bg-primary-900/50 dark:text-primary-400">
-                                        <x-filament::icon icon="heroicon-o-user-group" class="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Class Members</p>
-                                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $stats['memberCount'] }}</p>
-                                    </div>
+                                <div class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-white/20 text-white backdrop-blur-sm">
+                                    <x-heroicon-o-user-group class="w-3 h-3 mr-1" />
+                                    {{ $stats['memberCount'] }} {{ Str::plural('member', $stats['memberCount']) }}
                                 </div>
-                            </div>
-                        </div>
-
-                        <div class="p-4 transition bg-gray-50 rounded-lg dark:bg-gray-800">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-3">
-                                    <div class="p-2 text-amber-600 bg-amber-100 rounded-lg dark:bg-amber-900/50 dark:text-amber-400">
-                                        <x-filament::icon icon="heroicon-o-envelope" class="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Pending Invites</p>
-                                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $stats['pendingInvites'] }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="p-4 transition bg-gray-50 rounded-lg dark:bg-gray-800">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-3">
-                                    <div class="p-2 text-emerald-600 bg-emerald-100 rounded-lg dark:bg-emerald-900/50 dark:text-emerald-400">
-                                        <x-filament::icon icon="heroicon-o-building-office-2" class="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Classes</p>
-                                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $allTeams->count() }}</p>
-                                    </div>
+                                <div class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-white/20 text-white backdrop-blur-sm">
+                                    <x-heroicon-o-calendar class="w-3 h-3 mr-1" />
+                                    Created {{ $stats['createdAt'] }}
                                 </div>
                             </div>
                         </div>
                     </div>
-
-                    <div class="flex flex-wrap gap-3 mt-6">
-                        <x-filament::button
-                            wire:click="mountAction('invite_member')"
-                            color="primary"
-                            icon="heroicon-m-user-plus"
-                        >
-                            Invite Member
-                        </x-filament::button>
-
-                        <x-filament::button
-                            wire:click="mountAction('switch_team')"
-                            color="gray"
-                            icon="heroicon-m-arrows-right-left"
-                        >
-                            Switch Team
-                        </x-filament::button>
-
-                        <x-filament::button
-                            wire:click="mountAction('create_team')"
-                            color="success"
-                            icon="heroicon-m-plus"
-                        >
-                            Create Team
-                        </x-filament::button>
-
-                        @if($stats['isOwner'])
-                        <x-filament::button
-                            tag="a"
-                            href="{{ route('teams.show', $currentTeam->id) }}"
-                            target="_blank"
-                            color="info"
-                            icon="heroicon-m-cog-6-tooth"
-                        >
-                            Team Settings
-                        </x-filament::button>
-                        @endif
-                    </div>
+                    @if($stats['isOwner'])
+                        <div class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-amber-500 text-white shadow-sm">
+                            <x-heroicon-o-star class="w-4 h-4 mr-1" />
+                            Team Owner
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
 
-        <!-- Teams You Own -->
-        <div class="lg:col-span-2">
-            <x-filament::section>
-                <x-slot name="heading">
-                    <div class="flex items-center gap-2">
-                        <x-filament::icon icon="heroicon-o-building-library" class="w-5 h-5 text-primary-500" />
-                        <span>Teams You Own</span>
-                    </div>
-                </x-slot>
-
-                <x-slot name="headerActions">
-                    <x-filament::button
-                        size="sm"
-                        color="success"
-                        wire:click="mountAction('create_team')"
-                        icon="heroicon-m-plus"
-                    >
-                        New Team
-                    </x-filament::button>
-                </x-slot>
-
-                <div class="space-y-4">
-                    @if($ownedTeams->isEmpty())
-                        <div class="flex flex-col items-center justify-center p-6 text-center">
-                            <div class="p-3 mb-4 text-primary-500 bg-primary-100 rounded-full dark:bg-primary-900/50">
-                                <x-filament::icon icon="heroicon-o-building-office-2" class="w-6 h-6" />
-                            </div>
-                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">No Teams Created Yet</h3>
-                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                Create your first team to start collaborating with others.
-                            </p>
-                            <x-filament::button
-                                wire:click="mountAction('create_team')"
-                                color="primary"
-                                icon="heroicon-m-plus"
-                                class="mt-4"
-                            >
-                                Create Team
-                            </x-filament::button>
-                        </div>
-                    @else
-                        @foreach($ownedTeams as $team)
-                            <div class="relative overflow-hidden transition-all duration-300 bg-white border rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700 hover:shadow-md group">
-                                @if($team->id === $currentTeam->id)
-                                    <div class="absolute top-0 right-0 px-2 py-1 text-xs font-medium text-white bg-primary-500 rounded-bl-lg">
-                                        Current
+        <!-- Owned Teams Grid -->
+        <div>
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold tracking-tight">Teams You Own</h2>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-500 dark:text-gray-400">{{ $ownedTeams->count() }} {{ Str::plural('team', $ownedTeams->count()) }}</span>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                @foreach($ownedTeams as $team)
+                    <div class="group relative bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-gray-700">
+                        <!-- Color Bar -->
+                        @php
+                            $colors = [
+                                ['from-blue-500 to-indigo-500', 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'],
+                                ['from-rose-500 to-pink-500', 'bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300'],
+                                ['from-amber-500 to-yellow-500', 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'],
+                                ['from-emerald-500 to-green-500', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'],
+                                ['from-violet-500 to-purple-500', 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300'],
+                                ['from-cyan-500 to-sky-500', 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300']
+                            ];
+                            $colorIndex = $team->id % count($colors);
+                            $gradientClass = $colors[$colorIndex][0];
+                            $textBgClass = $colors[$colorIndex][1];
+                        @endphp
+                        
+                        <div class="h-2 w-full bg-gradient-to-r {{ $gradientClass }}"></div>
+                        
+                        <div class="p-5">
+                            <div class="flex justify-between items-start">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full {{ $textBgClass }} flex items-center justify-center text-lg font-bold">
+                                        {{ substr($team->name, 0, 1) }}
                                     </div>
-                                @endif
-
-                                <div class="p-4">
-                                    <div class="flex items-center gap-4">
-                                        <div class="flex items-center justify-center w-12 h-12 text-lg font-bold text-white rounded-lg {{ $team->id === $currentTeam->id ? 'bg-primary-600' : 'bg-gray-600' }}">
-                                            {{ substr($team->name, 0, 2) }}
-                                        </div>
-
-                                        <div class="flex-1 min-w-0">
-                                            <h3 class="text-base font-semibold text-gray-900 truncate dark:text-white">
-                                                {{ $team->name }}
-                                            </h3>
-                                            <div class="flex items-center mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                                <span>{{ $team->users->count() }} {{ $team->users->count() === 1 ? 'member' : 'members' }}</span>
-                                                <span class="mx-1.5">•</span>
-                                                <span>Created {{ $team->created_at->diffForHumans() }}</span>
-                                            </div>
-                                        </div>
-
-                                        @if($team->id !== $currentTeam->id)
-                                            <x-filament::link
-                                                size="sm"
-                                                color="gray"
-                                                href="/app/{{ $team->id }}"
-                                                :spa-mode="true"
-                                            >
-                                                Switch
-                                            </x-filament::link>
-                                        @endif
+                                    <div>
+                                        <h3 class="font-semibold text-lg text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                                            {{ $team->name }}
+                                        </h3>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                                            Created {{ $team->created_at->diffForHumans() }}
+                                        </p>
                                     </div>
                                 </div>
-                            </div>
-                        @endforeach
-                    @endif
-                </div>
-            </x-filament::section>
-        </div>
-
-        <!-- Teams You've Joined -->
-        <div class="lg:col-span-1">
-            <x-filament::section>
-                <x-slot name="heading">
-                    <div class="flex items-center gap-2">
-                        <x-filament::icon icon="heroicon-o-user-circle" class="w-5 h-5 text-primary-500" />
-                        <span>Teams You've Joined</span>
-                    </div>
-                </x-slot>
-
-                <div class="space-y-4">
-                    @if($joinedTeams->isEmpty())
-                        <div class="flex flex-col items-center justify-center p-6 text-center">
-                            <div class="p-3 mb-4 text-gray-400 bg-gray-100 rounded-full dark:bg-gray-700">
-                                <x-filament::icon icon="heroicon-o-user-group" class="w-6 h-6" />
-                            </div>
-                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">No Joined Teams</h3>
-                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                You haven't joined any teams yet.
-                            </p>
-                        </div>
-                    @else
-                        @foreach($joinedTeams as $team)
-                            <div class="relative overflow-hidden transition-all duration-300 bg-white border rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700 hover:shadow-md group">
-                                @if($team->id === $currentTeam->id)
-                                    <div class="absolute top-0 right-0 px-2 py-1 text-xs font-medium text-white bg-primary-500 rounded-bl-lg">
-                                        Current
-                                    </div>
-                                @endif
-
-                                <div class="p-4">
-                                    <div class="flex items-center gap-3">
-                                        <div class="flex items-center justify-center w-10 h-10 text-sm font-bold text-white rounded-lg {{ $team->id === $currentTeam->id ? 'bg-primary-600' : 'bg-gray-600' }}">
-                                            {{ substr($team->name, 0, 2) }}
-                                        </div>
-
-                                        <div class="flex-1 min-w-0">
-                                            <h3 class="text-sm font-semibold text-gray-900 truncate dark:text-white">
-                                                {{ $team->name }}
-                                            </h3>
-                                            <div class="flex items-center mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                                <span>{{ $team->users->count() }} {{ $team->users->count() === 1 ? 'member' : 'members' }}</span>
-                                            </div>
-                                        </div>
-
-                                        @if($team->id !== $currentTeam->id)
-                                            <x-filament::button
-                                                size="xs"
-                                                color="gray"
-                                                wire:click="mountAction('switch_team', {'team_id': {{ $team->id }}})"
-                                            >
-                                                Switch
-                                            </x-filament::button>
-                                        @endif
-                                    </div>
+                                
+                                <div class="flex flex-col items-end gap-2">
+                                    @if($currentTeam->id === $team->id)
+                                        <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-success-100 text-success-700 dark:bg-success-900 dark:text-success-300">
+                                            <x-heroicon-o-check-circle class="w-3 h-3 mr-1" />
+                                            Current
+                                        </span>
+                                    @endif
+                                    
+                                    <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
+                                        <x-heroicon-o-star class="w-3 h-3 mr-1" />
+                                        Owner
+                                    </span>
                                 </div>
                             </div>
-                        @endforeach
-                    @endif
-                </div>
-            </x-filament::section>
+                            
+                            <div class="mt-4 flex flex-wrap gap-2">
+                                <div class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                                    <x-heroicon-o-user-group class="w-3 h-3 mr-1" />
+                                    {{ $team->users->count() }} {{ Str::plural('member', $team->users->count()) }}
+                                </div>
+                                
+                                @if($team->pendingInvites > 0)
+                                    <div class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
+                                        <x-heroicon-o-envelope class="w-3 h-3 mr-1" />
+                                        {{ $team->pendingInvites }} {{ Str::plural('invitation', $team->pendingInvites) }}
+                                    </div>
+                                @endif
+                                
+                                @if($team->personal_team)
+                                    <div class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                        <x-heroicon-o-home class="w-3 h-3 mr-1" />
+                                        Personal
+                                    </div>
+                                @endif
+                            </div>
+                            
+                            <div class="mt-5 pt-4 border-t border-gray-100 dark:border-gray-700">
+                                @if($currentTeam->id !== $team->id)
+                                    <form action="{{ route('filament.app.team.switch', $team) }}" method="POST">
+                                        @csrf
+                                        <x-filament::button type="submit" color="primary" size="sm" class="w-full justify-center">
+                                            <x-heroicon-o-arrow-right-circle class="w-4 h-4 mr-1" />
+                                            Switch to this team
+                                        </x-filament::button>
+                                    </form>
+                                @else
+                                    <div class="flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+                                        <x-heroicon-o-check-circle class="w-4 h-4 mr-1 text-success-500" />
+                                        You are currently using this team
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
         </div>
-    </div>
 
-    <!-- Widgets Section -->
-    <div class="mt-6">
-        @livewire(App\Filament\Widgets\TeamMembersTableWidget::class)
-    </div>
-    <div class='mt-6'>
-    @livewire(App\Filament\Widgets\PendingInvitationsTableWidget::class)
+        <!-- Joined Teams Grid -->
+        @if($joinedTeams->count() > 0)
+        <div>
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold tracking-tight">Teams You've Joined</h2>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-500 dark:text-gray-400">{{ $joinedTeams->count() }} {{ Str::plural('team', $joinedTeams->count()) }}</span>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                @foreach($joinedTeams as $team)
+                    <div class="group relative bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-gray-700">
+                        <!-- Color Bar -->
+                        @php
+                            $colors = [
+                                ['from-blue-500 to-indigo-500', 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'],
+                                ['from-rose-500 to-pink-500', 'bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300'],
+                                ['from-amber-500 to-yellow-500', 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'],
+                                ['from-emerald-500 to-green-500', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'],
+                                ['from-violet-500 to-purple-500', 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300'],
+                                ['from-cyan-500 to-sky-500', 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300']
+                            ];
+                            $colorIndex = $team->id % count($colors);
+                            $gradientClass = $colors[$colorIndex][0];
+                            $textBgClass = $colors[$colorIndex][1];
+                        @endphp
+                        
+                        <div class="h-2 w-full bg-gradient-to-r {{ $gradientClass }}"></div>
+                        
+                        <div class="p-5">
+                            <div class="flex justify-between items-start">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full {{ $textBgClass }} flex items-center justify-center text-lg font-bold">
+                                        {{ substr($team->name, 0, 1) }}
+                                    </div>
+                                    <div>
+                                        <h3 class="font-semibold text-lg text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                                            {{ $team->name }}
+                                        </h3>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                                            Owner: {{ $team->owner->name }}
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex flex-col items-end gap-2">
+                                    @if($currentTeam->id === $team->id)
+                                        <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-success-100 text-success-700 dark:bg-success-900 dark:text-success-300">
+                                            <x-heroicon-o-check-circle class="w-3 h-3 mr-1" />
+                                            Current
+                                        </span>
+                                    @endif
+                                    
+                                    <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
+                                        <x-heroicon-o-user-plus class="w-3 h-3 mr-1" />
+                                        Joined
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4 flex flex-wrap gap-2">
+                                <div class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                                    <x-heroicon-o-user-group class="w-3 h-3 mr-1" />
+                                    {{ $team->users->count() }} {{ Str::plural('member', $team->users->count()) }}
+                                </div>
+                                
+                                <div class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300">
+                                    <x-heroicon-o-user class="w-3 h-3 mr-1" />
+                                    {{ $team->userRole }}
+                                </div>
+                                
+                                <div class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                                    <x-heroicon-o-calendar class="w-3 h-3 mr-1" />
+                                    Joined {{ $team->joinedAt }}
+                                </div>
+                            </div>
+                            
+                            <div class="mt-5 pt-4 border-t border-gray-100 dark:border-gray-700">
+                                @if($currentTeam->id !== $team->id)
+                                    <form action="{{ route('filament.app.team.switch', $team) }}" method="POST">
+                                        @csrf
+                                        <x-filament::button type="submit" color="primary" size="sm" class="w-full justify-center">
+                                            <x-heroicon-o-arrow-right-circle class="w-4 h-4 mr-1" />
+                                            Switch to this team
+                                        </x-filament::button>
+                                    </form>
+                                @else
+                                    <div class="flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+                                        <x-heroicon-o-check-circle class="w-4 h-4 mr-1 text-success-500" />
+                                        You are currently using this team
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
     </div>
 </x-filament-panels::page>

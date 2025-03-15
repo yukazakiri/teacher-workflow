@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 use Laravel\Jetstream\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\ExamController;
 use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\ActivitySubmissionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -42,9 +43,12 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
 });
 
 // Activity routes
-Route::middleware(['auth:sanctum', 'verified'])->group(function () {
+Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified'])->group(function () {
     // Activity progress and reporting
-    Route::get('/activities/{activity}/progress', [ActivityController::class, 'progress'])->name('activities.progress');
+    Route::get('/activities/{activity}/progress', function (App\Models\Activity $activity) {
+        return view('activities.progress', ['activity' => $activity]);
+    })->name('activities.progress');
+
     Route::get('/activities/{activity}/generate-report', [ActivityController::class, 'generateReport'])->name('activities.generate-report');
 
     // Submission management
@@ -60,4 +64,13 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::post('/activities/{activity}/roles', [ActivityController::class, 'createRole'])->name('activities.create-role');
     Route::post('/role-assignments', [ActivityController::class, 'assignRole'])->name('role-assignments.assign');
     Route::delete('/role-assignments/{assignment}', [ActivityController::class, 'removeRoleAssignment'])->name('role-assignments.remove');
+
+    Route::get('/activities/{activity}/submit', [ActivitySubmissionController::class, 'showSubmissionForm'])
+        ->name('activities.submit');
+    
+    Route::post('/activities/{activity}/submit', [ActivitySubmissionController::class, 'storeSubmission'])
+        ->name('activities.submit.store');
+    
+    Route::delete('/submissions/{submission}/attachments/{index}', [ActivitySubmissionController::class, 'deleteAttachment'])
+        ->name('submissions.attachments.delete');
 });

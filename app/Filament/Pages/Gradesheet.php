@@ -37,6 +37,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Tables\Columns\TextColumn as TablesTextColumn;
 use Filament\Tables\Actions\Action as TablesAction;
 use Illuminate\Support\Facades\Log;
+use Laravel\Jetstream\Jetstream;
 
 class Gradesheet extends Page implements HasTable
 {
@@ -53,13 +54,48 @@ class Gradesheet extends Page implements HasTable
     public ?int $writtenWeight = 40;
     public ?int $performanceWeight = 60;
     public bool $showFinalGrades = true;
+    
+    // Store the current user's role in the team
+    protected string $userRole = 'student';
+    
+    // Store if the user is the team owner
+    protected bool $isTeamOwner = false;
+    
+    // Store the student ID if the user is a student
+    protected ?string $studentId = null;
 
     // Store activity scores to avoid SQL errors when updating
     public array $activityScores = [];
 
     public function mount(): void
     {
-        $this->teamId = Auth::user()->currentTeam->id;
+        $user = Auth::user();
+        $this->teamId = $user->currentTeam->id;
+        
+        // Check if user is team owner
+        $this->isTeamOwner = $user->currentTeam->user_id === $user->id;
+        
+        // Get user's role in the team
+        $teamUser = DB::table('team_user')
+            ->where('team_id', $this->teamId)
+            ->where('user_id', $user->id)
+            ->first();
+            
+        if ($teamUser) {
+            $this->userRole = $teamUser->role;
+        }
+        
+        // If user is a student, find their student record
+        if (!$this->isTeamOwner && $this->userRole === 'student') {
+            $student = Student::where('team_id', $this->teamId)
+                ->where('user_id', $user->id)
+                ->first();
+                
+            if ($student) {
+                $this->studentId = $student->id;
+            }
+        }
+        
         $this->form->fill();
         $this->loadActivityScores();
     }
@@ -106,6 +142,7 @@ class Gradesheet extends Page implements HasTable
                                     ->default(40)
                                     ->required()
                                     ->reactive()
+                                    ->disabled(fn() => !$this->canEditGrades())
                                     ->afterStateUpdated(function (Set $set, Get $get) {
                                         $writtenWeight = (int) $get('writtenWeight');
                                         $set('performanceWeight', 100 - $writtenWeight);
@@ -119,6 +156,7 @@ class Gradesheet extends Page implements HasTable
                                     ->default(60)
                                     ->required()
                                     ->reactive()
+                                    ->disabled(fn() => !$this->canEditGrades())
                                     ->afterStateUpdated(function (Set $set, Get $get) {
                                         $performanceWeight = (int) $get('performanceWeight');
                                         $set('writtenWeight', 100 - $performanceWeight);
@@ -127,6 +165,7 @@ class Gradesheet extends Page implements HasTable
                                 Toggle::make('showFinalGrades')
                                     ->label('Show Final Grades')
                                     ->default(true)
+                                    ->disabled(fn() => !$this->canEditGrades())
                                     ->inline(false),
                             ]),
                     ])
@@ -175,6 +214,11 @@ class Gradesheet extends Page implements HasTable
                 })
                 ->numeric()
                 ->action(function ($record, $state) use ($activity) {
+                    // Only show action if user can edit grades
+                    if (!$this->canEditGrades()) {
+                        return null;
+                    }
+                    
                     return TablesAction::make('updateScore')
                         ->form([
                             TextInput::make('score')
@@ -229,158 +273,170 @@ class Gradesheet extends Page implements HasTable
                 });
         }
 
+        // Build the query based on user role
+        $query = Student::query()
+            ->where('team_id', $this->teamId)
+            ->where('status', 'active');
+            
+        // If user is a student, only show their own record
+        if (!$this->isTeamOwner && $this->userRole === 'student' && $this->studentId) {
+            $query->where('id', $this->studentId);
+        }
+
+        $actions = [];
+        
+        // Only show actions if user can edit grades
+        if ($this->canEditGrades()) {
+            $actions[] = TableAction::make('edit_scores')
+                ->label('Edit Scores')
+                ->icon('heroicon-m-pencil-square')
+                ->modalWidth('lg')
+                ->slideOver()
+                ->form(function (Student $record) use ($activities): array {
+                    $schema = [];
+
+                    foreach ($activities as $activity) {
+                        $schema[] = TextInput::make("scores.{$activity->id}")
+                            ->label(function () use ($activity): string {
+                                $categoryPrefix = $activity->isWrittenActivity() ? '[W] ' : '[P] ';
+                                return $categoryPrefix . $activity->title . ' (' . $activity->total_points . ' pts)';
+                            })
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(fn() => $activity->total_points)
+                            ->default(fn() => $this->activityScores[$record->id][$activity->id] ?? null);
+                    }
+
+                    return [
+                        Section::make('Activity Scores')
+                            ->description(fn(Student $record) => "Edit scores for {$record->name}")
+                            ->schema($schema)
+                            ->columns(1),
+                    ];
+                })
+                ->action(function (array $data, Student $record): void {
+                    foreach ($data['scores'] as $activityId => $score) {
+                        $this->updateScore($record->id, $activityId, $score);
+                    }
+
+                    $this->loadActivityScores();
+
+                    Notification::make()
+                        ->title('Scores updated successfully')
+                        ->success()
+                        ->send();
+                });
+        }
+        
+        // Always show view final grade action
+        $actions[] = TableAction::make('view_final_grade')
+            ->label('View Final Grade')
+            ->icon('heroicon-m-calculator')
+            ->color('success')
+            ->modalHeading(fn(Student $record) => "Final Grade for {$record->name}")
+            ->modalDescription('Detailed breakdown of the student\'s final grade based on activity scores.')
+            ->modalWidth('md')
+            ->action(function () {})
+            ->modalContent(function (Student $record) use ($activities): HtmlString {
+                // Get written and performance activities
+                $writtenActivities = $activities->filter(fn($activity) => $activity->isWrittenActivity());
+                $performanceActivities = $activities->filter(fn($activity) => $activity->isPerformanceActivity());
+
+                // Calculate category averages
+                $writtenAverage = $this->calculateCategoryAverage($record->id, $activities, 'written');
+                $performanceAverage = $this->calculateCategoryAverage($record->id, $activities, 'performance');
+
+                // Calculate final grade
+                $finalGrade = $this->calculateFinalGrade($record->id, $activities);
+
+                // Build the HTML content
+                $html = '
+                <div class="space-y-6">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
+                            <h3 class="text-base font-medium text-gray-900 dark:text-white">Written Activities</h3>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Weight: ' . $this->writtenWeight . '%</p>
+                            <p class="mt-4 text-2xl font-bold text-primary-600 dark:text-primary-400">' . $writtenAverage . '</p>
+                        </div>
+
+                        <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
+                            <h3 class="text-base font-medium text-gray-900 dark:text-white">Performance Activities</h3>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Weight: ' . $this->performanceWeight . '%</p>
+                            <p class="mt-4 text-2xl font-bold text-primary-600 dark:text-primary-400">' . $performanceAverage . '</p>
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg bg-gray-100 p-6 dark:bg-gray-700">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Final Grade</h3>
+                        <p class="mt-6 text-3xl">' . $finalGrade . '</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <h3 class="text-base font-medium text-gray-900 dark:text-white">Activity Breakdown</h3>
+                        <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-50 dark:bg-gray-800">
+                                    <tr>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Activity</th>
+                                        <th scope="col" class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Score</th>
+                                        <th scope="col" class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Total</th>
+                                        <th scope="col" class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Percentage</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-900">';
+
+                // Add rows for each activity
+                foreach ($activities as $activity) {
+                    $score = $this->activityScores[$record->id][$activity->id] ?? null;
+                    $scoreDisplay = $score !== null ? $score : '-';
+
+                    // Format percentage with % symbol
+                    $percentageDisplay = $score !== null
+                        ? number_format(($score / $activity->total_points) * 100, 1) . '%'
+                        : '-';
+
+                    // Apply color based on percentage
+                    $percentageColor = '';
+                    if ($score !== null) {
+                        $percentage = ($score / $activity->total_points) * 100;
+                        $percentageColor = match(true) {
+                            $percentage >= 90 => 'text-success-600 dark:text-success-400',
+                            $percentage >= 80 => 'text-primary-600 dark:text-primary-400',
+                            $percentage >= 70 => 'text-warning-600 dark:text-warning-400',
+                            default => 'text-danger-600 dark:text-danger-400',
+                        };
+                    }
+
+                    // Determine category badge
+                    $categoryBadge = $activity->isWrittenActivity()
+                        ? '<span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">W</span>'
+                        : '<span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900 dark:text-red-300">P</span>';
+
+                    $html .= '
+                        <tr>
+                            <td class="whitespace-nowrap px-4 py-2 text-sm text-gray-900 dark:text-white">
+                                ' . $categoryBadge . ' ' . e($activity->title) . '
+                            </td>
+                            <td class="whitespace-nowrap px-4 py-2 text-right text-sm font-medium text-gray-900 dark:text-white">' . $scoreDisplay . '</td>
+                            <td class="whitespace-nowrap px-4 py-2 text-right text-sm text-gray-500 dark:text-gray-400">' . $activity->total_points . '</td>
+                            <td class="whitespace-nowrap px-4 py-2 text-right text-sm font-medium ' . $percentageColor . '">' . $percentageDisplay . '</td>
+                        </tr>';
+                }
+
+                $html .= '
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>';
+
+                return new HtmlString($html);
+            });
+
         return $table
-            ->query(
-                Student::query()
-                    ->where('team_id', $this->teamId)
-                    ->where('status', 'active')
-            )
+            ->query($query)
             ->columns($columns)
-            ->actions([
-                TableAction::make('edit_scores')
-                    ->label('Edit Scores')
-                    ->icon('heroicon-m-pencil-square')
-                    ->modalWidth('lg')
-                    ->slideOver()
-                    ->form(function (Student $record) use ($activities): array {
-                        $schema = [];
-
-                        foreach ($activities as $activity) {
-                            $schema[] = TextInput::make("scores.{$activity->id}")
-                                ->label(function () use ($activity): string {
-                                    $categoryPrefix = $activity->isWrittenActivity() ? '[W] ' : '[P] ';
-                                    return $categoryPrefix . $activity->title . ' (' . $activity->total_points . ' pts)';
-                                })
-                                ->numeric()
-                                ->minValue(0)
-                                ->maxValue(fn() => $activity->total_points)
-                                ->default(fn() => $this->activityScores[$record->id][$activity->id] ?? null);
-                        }
-
-                        return [
-                            Section::make('Activity Scores')
-                                ->description(fn(Student $record) => "Edit scores for {$record->name}")
-                                ->schema($schema)
-                                ->columns(1),
-                        ];
-                    })
-                    ->action(function (array $data, Student $record): void {
-                        foreach ($data['scores'] as $activityId => $score) {
-                            $this->updateScore($record->id, $activityId, $score);
-                        }
-
-                        $this->loadActivityScores();
-
-                        Notification::make()
-                            ->title('Scores updated successfully')
-                            ->success()
-                            ->send();
-                    }),
-
-                TableAction::make('view_final_grade')
-                    ->label('View Final Grade')
-                    ->icon('heroicon-m-calculator')
-                    ->color('success')
-                    ->modalHeading(fn(Student $record) => "Final Grade for {$record->name}")
-                    ->modalDescription('Detailed breakdown of the student\'s final grade based on activity scores.')
-                    ->modalWidth('md')
-                    ->action(function () {})
-                    ->modalContent(function (Student $record) use ($activities): HtmlString {
-                        // Get written and performance activities
-                        $writtenActivities = $activities->filter(fn($activity) => $activity->isWrittenActivity());
-                        $performanceActivities = $activities->filter(fn($activity) => $activity->isPerformanceActivity());
-
-                        // Calculate category averages
-                        $writtenAverage = $this->calculateCategoryAverage($record->id, $activities, 'written');
-                        $performanceAverage = $this->calculateCategoryAverage($record->id, $activities, 'performance');
-
-                        // Calculate final grade
-                        $finalGrade = $this->calculateFinalGrade($record->id, $activities);
-
-                        // Build the HTML content
-                        $html = '
-                        <div class="space-y-6">
-                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-                                    <h3 class="text-base font-medium text-gray-900 dark:text-white">Written Activities</h3>
-                                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Weight: ' . $this->writtenWeight . '%</p>
-                                    <p class="mt-4 text-2xl font-bold text-primary-600 dark:text-primary-400">' . $writtenAverage . '</p>
-                                </div>
-
-                                <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-                                    <h3 class="text-base font-medium text-gray-900 dark:text-white">Performance Activities</h3>
-                                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Weight: ' . $this->performanceWeight . '%</p>
-                                    <p class="mt-4 text-2xl font-bold text-primary-600 dark:text-primary-400">' . $performanceAverage . '</p>
-                                </div>
-                            </div>
-
-                            <div class="rounded-lg bg-gray-100 p-6 dark:bg-gray-700">
-                                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Final Grade</h3>
-                                <p class="mt-6 text-3xl">' . $finalGrade . '</p>
-                            </div>
-
-                            <div class="space-y-4">
-                                <h3 class="text-base font-medium text-gray-900 dark:text-white">Activity Breakdown</h3>
-                                <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
-                                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                        <thead class="bg-gray-50 dark:bg-gray-800">
-                                            <tr>
-                                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Activity</th>
-                                                <th scope="col" class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Score</th>
-                                                <th scope="col" class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Total</th>
-                                                <th scope="col" class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Percentage</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-900">';
-
-                        // Add rows for each activity
-                        foreach ($activities as $activity) {
-                            $score = $this->activityScores[$record->id][$activity->id] ?? null;
-                            $scoreDisplay = $score !== null ? $score : '-';
-
-                            // Format percentage with % symbol
-                            $percentageDisplay = $score !== null
-                                ? number_format(($score / $activity->total_points) * 100, 1) . '%'
-                                : '-';
-
-                            // Apply color based on percentage
-                            $percentageColor = '';
-                            if ($score !== null) {
-                                $percentage = ($score / $activity->total_points) * 100;
-                                $percentageColor = match(true) {
-                                    $percentage >= 90 => 'text-success-600 dark:text-success-400',
-                                    $percentage >= 80 => 'text-primary-600 dark:text-primary-400',
-                                    $percentage >= 70 => 'text-warning-600 dark:text-warning-400',
-                                    default => 'text-danger-600 dark:text-danger-400',
-                                };
-                            }
-
-                            // Determine category badge
-                            $categoryBadge = $activity->isWrittenActivity()
-                                ? '<span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">W</span>'
-                                : '<span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900 dark:text-red-300">P</span>';
-
-                            $html .= '
-                                <tr>
-                                    <td class="whitespace-nowrap px-4 py-2 text-sm text-gray-900 dark:text-white">
-                                        ' . $categoryBadge . ' ' . e($activity->title) . '
-                                    </td>
-                                    <td class="whitespace-nowrap px-4 py-2 text-right text-sm font-medium text-gray-900 dark:text-white">' . $scoreDisplay . '</td>
-                                    <td class="whitespace-nowrap px-4 py-2 text-right text-sm text-gray-500 dark:text-gray-400">' . $activity->total_points . '</td>
-                                    <td class="whitespace-nowrap px-4 py-2 text-right text-sm font-medium ' . $percentageColor . '">' . $percentageDisplay . '</td>
-                                </tr>';
-                        }
-
-                        $html .= '
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>';
-
-                        return new HtmlString($html);
-                    })
-            ])
+            ->actions($actions)
             ->striped()
             ->paginated(false)
             ->recordClasses(fn($record) => 'h-14');
@@ -537,10 +593,22 @@ class Gradesheet extends Page implements HasTable
         return round($finalGrade, 2);
     }
 
+    /**
+     * Check if the current user can edit grades
+     */
+    protected function canEditGrades(): bool
+    {
+        // Team owners and teachers can edit grades
+        return $this->isTeamOwner || $this->userRole === 'teacher';
+    }
+
     protected function getHeaderActions(): array
     {
-        return [
-            Action::make('calculateFinalGrades')
+        $actions = [];
+        
+        // Only show actions if user can edit grades
+        if ($this->canEditGrades()) {
+            $actions[] = Action::make('calculateFinalGrades')
                 ->label('Calculate Final Grades')
                 ->icon('heroicon-o-calculator')
                 ->size(ActionSize::Large)
@@ -572,17 +640,19 @@ class Gradesheet extends Page implements HasTable
                         ->send();
 
                     $this->loadActivityScores();
-                }),
+                });
 
-            Action::make('export')
+            $actions[] = Action::make('export')
                 ->label('Export Grades')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->size(ActionSize::Large)
                 ->color('success')
                 ->action(function () {
                     return $this->exportGrades();
-                }),
-        ];
+                });
+        }
+        
+        return $actions;
     }
 
     protected function exportGrades()

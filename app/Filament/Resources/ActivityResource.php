@@ -40,17 +40,24 @@ class ActivityResource extends Resource
 {
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
+        $query = parent::getEloquentQuery()
             ->whereHas('team', function (Builder $query) {
                 $query->where('id', Auth::user()->currentTeam->id);
-            })
-            ->where(function (Builder $query) {
-                // Show all activities for the team owner, but only their own activities for other team members
-                $isOwner = Auth::user()->currentTeam->user_id === Auth::id();
-                if (!$isOwner) {
-                    $query->where('teacher_id', Auth::id());
-                }
             });
+
+        // If user is team owner or has teacher role, show all activities
+        $isOwner = Auth::user()->currentTeam->user_id === Auth::id();
+        $isTeacher = Auth::user()->hasTeamRole(Auth::user()->currentTeam, 'teacher');
+        
+        if (!$isOwner && !$isTeacher) {
+            // For students, only show published activities
+            $query->where('status', 'published');
+        } elseif (!$isOwner && $isTeacher) {
+            // For teachers who are not team owners, only show activities they created
+            $query->where('teacher_id', Auth::id());
+        }
+
+        return $query;
     }
 
     protected static ?string $model = Activity::class;
@@ -278,9 +285,17 @@ class ActivityResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                    // ->visible(function (Activity $record) {
+                    //     $user = Auth::user();
+                    //     return $user->can('edit', $record);
+                    // }),
                 Tables\Actions\Action::make('duplicate')
                     ->label('Duplicate')
                     ->icon('heroicon-o-document-duplicate')
+                    ->visible(function (Activity $record) {
+                        $user = Auth::user();
+                        return $user->can('duplicate', $record);
+                    })
                     ->action(function (Activity $record) {
                         $newActivity = $record->replicate();
                         $newActivity->title = "Copy of {$record->title}";
@@ -302,17 +317,42 @@ class ActivityResource extends Resource
                     ->label('Track Progress')
                     ->icon('heroicon-o-chart-bar')
                     ->url(fn (Activity $record) => route('activities.progress', $record))
-                    ->visible(fn (Activity $record) => $record->isPublished()),
+                    ->visible(function (Activity $record) {
+                        $user = Auth::user();
+                        return $user->can('trackProgress', $record);
+                    }),
+                Tables\Actions\Action::make('submit')
+                    ->label('Submit Work')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->url(fn (Activity $record) => route('activities.submit', $record))
+                    ->visible(function (Activity $record) {
+                        $user = Auth::user();
+                        return $user->can('submit', $record);
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->visible(function () {
+                            $user = Auth::user();
+                            $isOwner = $user->currentTeam->user_id === $user->id;
+                            $isTeacher = $user->hasTeamRole($user->currentTeam, 'teacher');
+                            return $isOwner || $isTeacher;
+                        }),
                     Tables\Actions\BulkAction::make('publish')
                         ->label('Publish Selected')
                         ->icon('heroicon-o-check-circle')
+                        ->visible(function () {
+                            $user = Auth::user();
+                            $isOwner = $user->currentTeam->user_id === $user->id;
+                            $isTeacher = $user->hasTeamRole($user->currentTeam, 'teacher');
+                            return $isOwner || $isTeacher;
+                        })
                         ->action(function (\Illuminate\Support\Collection $records) {
                             $records->each(function (Activity $record) {
-                                $record->update(['status' => 'published']);
+                                if (Auth::user()->can('update', $record)) {
+                                    $record->update(['status' => 'published']);
+                                }
                             });
                         })
                         ->deselectRecordsAfterCompletion(),
@@ -336,5 +376,14 @@ class ActivityResource extends Resource
             'create' => Pages\CreateActivity::route('/create'),
             'edit' => Pages\EditActivity::route('/{record}/edit'),
         ];
+    }
+
+    public static function canCreate(): bool
+    {
+        $user = Auth::user();
+        $isOwner = $user->currentTeam->user_id === $user->id;
+        $isTeacher = $user->hasTeamRole($user->currentTeam, 'teacher');
+        
+        return $isOwner || $isTeacher;
     }
 }

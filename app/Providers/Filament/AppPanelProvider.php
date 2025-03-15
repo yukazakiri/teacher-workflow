@@ -2,39 +2,41 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Pages\ApiTokens;
-use App\Filament\Pages\CreateTeam;
-use App\Filament\Pages\EditProfile;
-use App\Filament\Pages\EditTeam;
-use App\Listeners\SwitchTeam;
+use Filament\Pages;
+use Filament\Panel;
 use App\Models\Team;
 use App\Models\User;
-use CodeWithDennis\FilamentThemeInspector\FilamentThemeInspectorPlugin;
-use DutchCodingCompany\FilamentDeveloperLogins\FilamentDeveloperLoginsPlugin;
+use Filament\Widgets;
+use Filament\PanelProvider;
+use Laravel\Fortify\Fortify;
+use App\Listeners\SwitchTeam;
+use Filament\Pages\Dashboard;
 use Filament\Events\TenantSet;
 use Filament\Facades\Filament;
-use Filament\Http\Middleware\Authenticate;
-use Filament\Http\Middleware\DisableBladeIconComponents;
-use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Laravel\Jetstream\Features;
+use App\Filament\Pages\EditTeam;
+use Laravel\Jetstream\Jetstream;
+use App\Filament\Pages\ApiTokens;
 use Filament\Navigation\MenuItem;
-use Filament\Pages;
-use Filament\Pages\Dashboard;
-use Filament\Panel;
-use Filament\PanelProvider;
+use App\Filament\Pages\CreateTeam;
 use Filament\Support\Colors\Color;
-use Filament\Widgets;
-use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use App\Filament\Pages\EditProfile;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Route;
+use Filament\Http\Middleware\Authenticate;
+use Illuminate\Session\Middleware\StartSession;
+use Devonab\FilamentEasyFooter\EasyFooterPlugin;
 use Illuminate\Cookie\Middleware\EncryptCookies;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
-use Illuminate\Session\Middleware\StartSession;
-use Illuminate\Support\Facades\Event;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Laravel\Fortify\Fortify;
-use Laravel\Jetstream\Features;
-use Laravel\Jetstream\Jetstream;
+use Filament\Http\Middleware\DisableBladeIconComponents;
+use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use TomatoPHP\FilamentSimpleTheme\FilamentSimpleThemePlugin;
+use CodeWithDennis\FilamentThemeInspector\FilamentThemeInspectorPlugin;
+use DutchCodingCompany\FilamentDeveloperLogins\FilamentDeveloperLoginsPlugin;
 
 class AppPanelProvider extends PanelProvider
 {
@@ -45,6 +47,7 @@ class AppPanelProvider extends PanelProvider
             ->id("app")
             ->path("app")
             ->login()
+            ->spa()
             ->sidebarCollapsibleOnDesktop()
               // ->topNavigation()
             ->registration()
@@ -84,8 +87,7 @@ class AppPanelProvider extends PanelProvider
                 for: "App\\Filament\\Pages"
             )
             ->pages([
-                // Pages\Dashboard::class,
-                // Dashboard::class,
+                \App\Filament\Pages\Dashboard::class,
                 EditProfile::class,
                 ApiTokens::class,
                 \App\Filament\Pages\Gradesheet::class,
@@ -94,6 +96,8 @@ class AppPanelProvider extends PanelProvider
                 FilamentDeveloperLoginsPlugin::make()
                     ->enabled()
                     ->users(fn() => User::pluck("email", "name")->toArray()),
+                    EasyFooterPlugin::make()
+                    ->withLoadTime(),
                 // FilamentSimpleThemePlugin::make(),
                 // FilamentThemeInspectorPlugin::make()
                 //     ->toggle(),
@@ -132,27 +136,27 @@ class AppPanelProvider extends PanelProvider
             ]);
         }
 
-        if (Features::hasTeamFeatures()) {
-            $panel
-                ->tenant(Team::class)
-                ->tenantRegistration(CreateTeam::class)
-                ->tenantProfile(EditTeam::class)
-                // ->tenantMenuItems([
-                //     MenuItem::make()
-                //         ->label('Settings')
-                //         // ->url(fn (): string => Settings::getUrl())
-                //         ->icon('heroicon-m-cog-8-tooth'),
-                //     // ...
-                // ])
-                ->userMenuItems([
-                    // MenuItem::make()
-                    //     ->label(fn () => __('Team Settings'))
-                    //     ->icon('heroicon-o-cog-6-tooth')
-                    //     ->url(fn () => $this->shouldRegisterMenuItem()
-                    //         ? url(EditTeam::getUrl())
-                    //         : url($panel->getPath())),
-                ]);
-        }
+        // if (Features::hasTeamFeatures()) {
+        //     $panel
+        //         ->tenant(Team::class)
+        //         ->tenantRegistration(CreateTeam::class)
+        //         ->tenantProfile(EditTeam::class)
+        //         // ->tenantMenuItems([
+        //         //     MenuItem::make()
+        //         //         ->label('Settings')
+        //         //         // ->url(fn (): string => Settings::getUrl())
+        //         //         ->icon('heroicon-m-cog-8-tooth'),
+        //         //     // ...
+        //         // ])
+        //         ->userMenuItems([
+        //             // MenuItem::make()
+        //             //     ->label(fn () => __('Team Settings'))
+        //             //     ->icon('heroicon-o-cog-6-tooth')
+        //             //     ->url(fn () => $this->shouldRegisterMenuItem()
+        //             //         ? url(EditTeam::getUrl())
+        //             //         : url($panel->getPath())),
+        //         ]);
+        // }
 
         return $panel;
     }
@@ -173,6 +177,23 @@ class AppPanelProvider extends PanelProvider
          * Listen and switch team if tenant was changed
          */
         Event::listen(TenantSet::class, SwitchTeam::class);
+        
+        /**
+         * Register custom routes for team switching
+         */
+        Route::middleware([
+            'web',
+            'auth:sanctum',
+            config('jetstream.auth_session'),
+            'verified',
+        ])->group(function () {
+            Route::post('/app/team/switch/{team}', function (Team $team) {
+                // This will trigger the TenantSet event which is handled by SwitchTeam listener
+                Filament::setTenant($team);
+                
+                return redirect()->route('filament.app.pages.dashboard');
+            })->name('filament.app.team.switch');
+        });
     }
 
     public function shouldRegisterMenuItem(): bool
