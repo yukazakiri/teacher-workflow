@@ -288,10 +288,20 @@ class ExamSeeder extends Seeder
         $points = $this->getRandomPoints($type);
         $content = $this->getRandomQuestionContent($type, $index);
 
+        // Get the question type ID from the database
+        $questionType = DB::table('question_types')
+            ->where('name', Question::TYPES[$type])
+            ->first();
+
+        if (!$questionType) {
+            throw new \Exception("Question type '{$type}' not found in the database.");
+        }
+
         $questionData = [
             'teacher_id' => $user->id,
             'exam_id' => $exam->id,
             'team_id' => $exam->team_id,
+            'question_type_id' => $questionType->id,
             'type' => $type,
             'content' => $content,
             'points' => $points,

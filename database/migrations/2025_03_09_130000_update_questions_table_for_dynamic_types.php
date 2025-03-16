@@ -14,11 +14,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('questions', function (Blueprint $table) {
-            // Drop old columns
-            $table->dropForeign(['question_type_id']);
-            $table->dropColumn(['question_type_id', 'options', 'answer_key']);
-
-            // Add new columns for dynamic question types
+            // Add columns for dynamic question types
             $table->string('type')->after('exam_id'); // multiple_choice, true_false, etc.
             $table->json('choices')->nullable()->after('content'); // For multiple choice questions
             $table->json('correct_answer')->nullable()->after('choices'); // Can be string or array depending on type
@@ -36,7 +32,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('questions', function (Blueprint $table) {
-            // Remove new columns
+            // Remove columns added in up()
             $table->dropColumn([
                 'type',
                 'choices',
@@ -47,11 +43,6 @@ return new class extends Migration
                 'matching_pairs',
                 'answers',
             ]);
-
-            // Restore old columns
-            $table->foreignUuid('question_type_id')->constrained()->cascadeOnDelete();
-            $table->json('options')->nullable();
-            $table->string('answer_key')->nullable();
         });
     }
 };

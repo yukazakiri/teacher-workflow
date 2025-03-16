@@ -1,4 +1,4 @@
-<?php
+no<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::create('students', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignUuid('team_id')->constrained('teams')->cascadeOnDelete();
             $table->foreignUuid('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('name');
             $table->string('email')->nullable();
@@ -23,7 +22,8 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->string('status')->default('active'); // active, inactive, graduated
             $table->timestamps();
-
+            $table->foreignUuid('team_id')->nullable()->constrained('teams')->cascadeOnDelete();
+            
             // Add unique constraint for team_id and email combination
             $table->unique(['team_id', 'email']);
         });

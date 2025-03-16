@@ -61,7 +61,7 @@
                                 ['from-violet-500 to-purple-500', 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300'],
                                 ['from-cyan-500 to-sky-500', 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300']
                             ];
-                            $colorIndex = $team->id % count($colors);
+                            $colorIndex = (int)$team->id % count($colors);
                             $gradientClass = $colors[$colorIndex][0];
                             $textBgClass = $colors[$colorIndex][1];
                         @endphp
@@ -165,7 +165,7 @@
                                 ['from-violet-500 to-purple-500', 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300'],
                                 ['from-cyan-500 to-sky-500', 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300']
                             ];
-                            $colorIndex = $team->id % count($colors);
+                            $colorIndex = (int)$team->id % count($colors);
                             $gradientClass = $colors[$colorIndex][0];
                             $textBgClass = $colors[$colorIndex][1];
                         @endphp

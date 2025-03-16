@@ -14,19 +14,27 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // For SQLite, we need to drop and recreate foreign keys differently
         Schema::table('activity_progress', function (Blueprint $table) {
-            // Disable foreign key constraints temporarily
-            DB::statement('PRAGMA foreign_keys = OFF');
+            // Check for existing foreign key using PostgreSQL information schema
+            $foreignKeyExists = DB::select("
+                SELECT 1
+                FROM information_schema.table_constraints tc
+                JOIN information_schema.key_column_usage kcu
+                  ON tc.constraint_name = kcu.constraint_name
+                WHERE tc.table_name = 'activity_progress'
+                  AND tc.constraint_type = 'FOREIGN KEY'
+                  AND kcu.column_name = 'student_id'
+            ");
+
+            if (!empty($foreignKeyExists)) {
+                $table->dropForeign(['student_id']);
+            }
 
             // Add the correct foreign key constraint
             $table->foreign('student_id')
-                ->references('id')
-                ->on('students')
-                ->onDelete('cascade');
-
-            // Re-enable foreign key constraints
-            DB::statement('PRAGMA foreign_keys = ON');
+                  ->references('id')
+                  ->on('students')
+                  ->onDelete('cascade');
         });
 
         // Log the change for debugging
@@ -39,14 +47,13 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('activity_progress', function (Blueprint $table) {
-            // Disable foreign key constraints temporarily
-            DB::statement('PRAGMA foreign_keys = OFF');
-
-            // SQLite doesn't support dropForeign directly
-            // We would need to recreate the table to truly revert this change
-
-            // Re-enable foreign key constraints
-            DB::statement('PRAGMA foreign_keys = ON');
+            // Drop the foreign key added in up()
+            $table->dropForeign(['student_id']);
+            
+            // Recreate original foreign key (assuming it was previously without onDelete)
+            $table->foreign('student_id')
+                  ->references('id')
+                  ->on('students');
         });
     }
 };

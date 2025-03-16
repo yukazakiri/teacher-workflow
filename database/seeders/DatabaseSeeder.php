@@ -15,6 +15,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Database\Seeders\TeacherWorkflowSeeder;
+use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
 {
@@ -89,18 +90,26 @@ class DatabaseSeeder extends Seeder
      */
     private function createTeamWithInvitedUsers(User $teacher): Team
     {
-        // Create Team 1
-        $team1 = Team::firstOrCreate(
-            [
-                'name' => 'Classroom with Invited Students',
-                'user_id' => $teacher->id,
-            ],
-            [
+        // Check if team already exists
+        $existingTeam = Team::where('name', 'Classroom with Invited Students')
+            ->where('user_id', $teacher->id)
+            ->first();
+            
+        if ($existingTeam) {
+            $team1 = $existingTeam;
+        } else {
+            // Create Team 1
+            $team1 = new Team([
                 'name' => 'Classroom with Invited Students',
                 'user_id' => $teacher->id,
                 'personal_team' => false,
-            ]
-        );
+            ]);
+            $team1->id = (string) \Illuminate\Support\Str::uuid();
+            $team1->save();
+        }
+        
+        // Debug team ID
+        echo "Team ID: " . $team1->id . " (Type: " . gettype($team1->id) . ")\n";
 
         // Create 20 student users and invite them to the team
         $students = [];
@@ -117,24 +126,32 @@ class DatabaseSeeder extends Seeder
             );
 
             // Create invitation if not exists
-            TeamInvitation::firstOrCreate(
-                [
-                    'team_id' => $team1->id,
-                    'email' => $studentUser->email,
-                ],
-                [
+            $existingInvitation = TeamInvitation::where('team_id', $team1->id)
+                ->where('email', $studentUser->email)
+                ->first();
+                
+            if (!$existingInvitation) {
+                TeamInvitation::create([
                     'team_id' => $team1->id,
                     'email' => $studentUser->email,
                     'role' => 'student',
-                ]
-            );
+                ]);
+            }
 
             // Add user to team if not already a member
-            if (!$team1->hasUser($studentUser)) {
-                $team1->users()->attach(
-                    $studentUser,
-                    ['role' => 'student']
-                );
+            $existingMember = DB::table('team_user')
+                ->where('team_id', $team1->id)
+                ->where('user_id', $studentUser->id)
+                ->first();
+                
+            if (!$existingMember) {
+                DB::table('team_user')->insert([
+                    'team_id' => $team1->id,
+                    'user_id' => $studentUser->id,
+                    'role' => 'student',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
             }
 
             // Auto-create student record if not exists
@@ -172,18 +189,23 @@ class DatabaseSeeder extends Seeder
      */
     private function createTeamWithStudentRecords(User $teacher): Team
     {
-        // Create Team 2
-        $team2 = Team::firstOrCreate(
-            [
-                'name' => 'Classroom with Student Records Only',
-                'user_id' => $teacher->id,
-            ],
-            [
+        // Check if team already exists
+        $existingTeam = Team::where('name', 'Classroom with Student Records Only')
+            ->where('user_id', $teacher->id)
+            ->first();
+            
+        if ($existingTeam) {
+            $team2 = $existingTeam;
+        } else {
+            // Create Team 2
+            $team2 = new Team([
                 'name' => 'Classroom with Student Records Only',
                 'user_id' => $teacher->id,
                 'personal_team' => false,
-            ]
-        );
+            ]);
+            $team2->id = (string) \Illuminate\Support\Str::uuid();
+            $team2->save();
+        }
 
         // Create 20 student records without user accounts
         $students = [];

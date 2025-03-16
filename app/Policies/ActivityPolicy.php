@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Models\Activity;
+use App\Models\Student;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
@@ -17,7 +18,7 @@ class ActivityPolicy
      */
     public function viewAny(User $user): bool
     {
-        return true; // Everyone can access the index, but what they see will be filtered
+        return true;
     }
 
     /**
@@ -25,24 +26,14 @@ class ActivityPolicy
      */
     public function view(User $user, Activity $activity): bool
     {
-        // First verify the user belongs to the team
-        if (!$user->belongsToTeam($activity->team)) {
-            return false;
+        // Teachers can view activities they created or in their team
+        if ($user->hasTeamRole($user->currentTeam, 'teacher') || $user->hasTeamRole($user->currentTeam, 'admin')) {
+            return $user->id === $activity->teacher_id || $user->currentTeam->id === $activity->team_id;
         }
 
-        // Team owners can view any activity in their team
-        if ($user->ownsTeam($activity->team)) {
-            return true;
-        }
-
-        // Teachers can view any activity in their team
-        if ($user->hasTeamRole($activity->team, 'teacher')) {
-            return true;
-        }
-
-        // Students can only view published activities
-        if ($user->hasTeamRole($activity->team, 'student')) {
-            return $activity->isPublished();
+        // Students can view published activities in their team
+        if ($user->hasTeamRole($user->currentTeam, 'student')) {
+            return $activity->isPublished() && $user->currentTeam->id === $activity->team_id;
         }
 
         return false;
@@ -53,9 +44,7 @@ class ActivityPolicy
      */
     public function create(User $user): bool
     {
-        // Only team owners and teachers can create activities
-        return $user->ownsTeam($user->currentTeam) || 
-               $user->hasTeamRole($user->currentTeam, 'teacher');
+        return $user->hasTeamRole($user->currentTeam, 'teacher') || $user->hasTeamRole($user->currentTeam, 'admin');
     }
 
     /**
@@ -63,22 +52,9 @@ class ActivityPolicy
      */
     public function update(User $user, Activity $activity): bool
     {
-        // First verify the user belongs to the team
-        if (!$user->belongsToTeam($activity->team)) {
-            return false;
-        }
-
-        // Team owners can update any activity in their team
-        if ($user->ownsTeam($activity->team)) {
-            return true;
-        }
-
-        // Teachers can update activities they created
-        if ($user->hasTeamRole($activity->team, 'teacher')) {
-            return $activity->teacher_id === $user->id;
-        }
-
-        return false;
+        // Only the teacher who created the activity or an admin can update it
+        return $user->id === $activity->teacher_id || 
+               ($user->hasTeamRole($user->currentTeam, 'admin') && $user->currentTeam->id === $activity->team_id);
     }
 
     /**
@@ -86,108 +62,110 @@ class ActivityPolicy
      */
     public function delete(User $user, Activity $activity): bool
     {
-        // First verify the user belongs to the team
-        if (!$user->belongsToTeam($activity->team)) {
-            return false;
-        }
-
-        // Team owners can delete any activity in their team
-        if ($user->ownsTeam($activity->team)) {
-            return true;
-        }
-
-        // Teachers can delete activities they created
-        if ($user->hasTeamRole($activity->team, 'teacher')) {
-            return $activity->teacher_id === $user->id;
-        }
-
-        return false;
+        // Only the teacher who created the activity or an admin can delete it
+        return $user->id === $activity->teacher_id || 
+               ($user->hasTeamRole($user->currentTeam, 'admin') && $user->currentTeam->id === $activity->team_id);
     }
 
     /**
-     * Determine whether the user can duplicate the model.
-     */
-    public function duplicate(User $user, Activity $activity): bool
-    {
-        // First verify the user belongs to the team
-        if (!$user->belongsToTeam($activity->team)) {
-            return false;
-        }
-
-        // Team owners can duplicate any activity in their team
-        if ($user->ownsTeam($activity->team)) {
-            return true;
-        }
-
-        // Teachers can duplicate activities in their team
-        if ($user->hasTeamRole($activity->team, 'teacher')) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Determine whether the user can track progress of the model.
-     */
-    public function trackProgress(User $user, Activity $activity): bool
-    {
-        // First verify the user belongs to the team
-        if (!$user->belongsToTeam($activity->team)) {
-            return false;
-        }
-
-        // Only published activities can have their progress tracked
-        if (!$activity->isPublished()) {
-            return false;
-        }
-
-        // Team owners can track progress of any activity in their team
-        if ($user->ownsTeam($activity->team)) {
-            return true;
-        }
-
-        // Teachers can track progress of activities in their team
-        if ($user->hasTeamRole($activity->team, 'teacher')) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Determine whether the user can submit to the activity.
+     * Determine whether the user can submit work for the activity.
      */
     public function submit(User $user, Activity $activity): bool
     {
-        // First verify the user belongs to the team
-        if (!$user->belongsToTeam($activity->team)) {
+        // Only students can submit work, and only for published activities in their team
+        if (!$user->hasTeamRole($user->currentTeam, 'student')) {
             return false;
         }
 
-        // Only published activities can be submitted to
+        // Cannot submit to draft or archived activities
         if (!$activity->isPublished()) {
             return false;
         }
 
-        // Only students can submit to activities
-        if ($user->hasTeamRole($activity->team, 'student')) {
-            return true;
+        // Must be in the same team
+        if ($user->currentTeam->id !== $activity->team_id) {
+            return false;
         }
 
-        return false;
+        // Check if the activity is manual scoring only
+        if ($activity->isManualActivity()) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
-     * Determine whether the user can edit the model.
+     * Determine whether the user can grade submissions for the activity.
      */
-    public function edit(User $user, Activity $activity): bool
+    public function grade(User $user, Activity $activity): bool
     {
-        // // Only team owners and teachers can edit activities in their team
-        // if ($user->id === $activity->team->user_id || $user->hasTeamRole($activity->team, 'teacher')) {
-        //     return $activity->team_id === $user->currentTeam->id;
-        // }
+        // Only teachers can grade submissions
+        if (!$user->hasTeamRole($user->currentTeam, 'teacher') && !$user->hasTeamRole($user->currentTeam, 'admin')) {
+            return false;
+        }
+
+        // Must be in the same team
+        if ($user->currentTeam->id !== $activity->team_id) {
+            return false;
+        }
 
         return true;
+    }
+
+    /**
+     * Determine whether the user can submit work on behalf of a student.
+     */
+    public function submitForStudent(User $user, Activity $activity, Student $student): bool
+    {
+        // Only teachers can submit on behalf of students
+        if (!$user->hasTeamRole($user->currentTeam, 'teacher') && !$user->hasTeamRole($user->currentTeam, 'admin')) {
+            return false;
+        }
+
+        // Must be in the same team
+        if ($user->currentTeam->id !== $activity->team_id) {
+            return false;
+        }
+
+        // The activity must allow teacher submissions
+        if (!$activity->allowsTeacherSubmission()) {
+            return false;
+        }
+
+        // The student must be in the same team
+        if ($student->team_id !== $activity->team_id) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Determine whether the user can upload resources for the activity.
+     */
+    public function uploadResource(User $user, Activity $activity): bool
+    {
+        // Only teachers can upload resources
+        if (!$user->hasTeamRole($user->currentTeam, 'teacher') && !$user->hasTeamRole($user->currentTeam, 'admin')) {
+            return false;
+        }
+
+        // Must be in the same team
+        if ($user->currentTeam->id !== $activity->team_id) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Determine whether the user can manage resources for the activity.
+     */
+    public function manageResources(User $user, Activity $activity): bool
+    {
+        // Only the teacher who created the activity or an admin can manage resources
+        return $user->id === $activity->teacher_id || 
+               ($user->hasTeamRole($user->currentTeam, 'admin') && $user->currentTeam->id === $activity->team_id);
     }
 }

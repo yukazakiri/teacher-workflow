@@ -23,7 +23,8 @@ return new class extends Migration
             $table->uuid('teacher_id');
             $table->uuid('question_type_id');
             $table->uuid('exam_id');
-            $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+            $table->uuid('team_id');
+            $table->foreign('team_id')->references('id')->on('teams')->onDelete('cascade');
             $table->text('content');
             $table->text('answer_key')->nullable();
             $table->integer('points')->default(1);

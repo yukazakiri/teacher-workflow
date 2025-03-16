@@ -16,11 +16,20 @@ return new class extends Migration
     {
         // For SQLite, we need to drop and recreate foreign keys differently
         Schema::table('activity_submissions', function (Blueprint $table) {
-            // Disable foreign key constraints temporarily
-            DB::statement('PRAGMA foreign_keys = OFF');
+            // Check for existing foreign key using PostgreSQL information schema
+            $foreignKeyExists = DB::select("
+                SELECT 1
+                FROM information_schema.table_constraints tc
+                JOIN information_schema.key_column_usage kcu
+                  ON tc.constraint_name = kcu.constraint_name
+                WHERE tc.table_name = 'activity_submissions'
+                  AND tc.constraint_type = 'FOREIGN KEY'
+                  AND kcu.column_name = 'student_id'
+            ");
 
-            // Drop existing foreign keys if they exist
-            // SQLite doesn't support dropForeign directly, so we'll recreate the table later
+            if (!empty($foreignKeyExists)) {
+                $table->dropForeign(['student_id']);
+            }
 
             // Add the correct foreign key constraint
             $table->foreign('student_id')
@@ -28,8 +37,6 @@ return new class extends Migration
                 ->on('students')
                 ->onDelete('cascade');
 
-            // Re-enable foreign key constraints
-            DB::statement('PRAGMA foreign_keys = ON');
         });
 
         // Log the change for debugging
@@ -42,14 +49,20 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('activity_submissions', function (Blueprint $table) {
-            // Disable foreign key constraints temporarily
-            DB::statement('PRAGMA foreign_keys = OFF');
+            // Check for existing foreign key using PostgreSQL information schema
+            $foreignKeyExists = DB::select("
+                SELECT 1
+                FROM information_schema.table_constraints tc
+                JOIN information_schema.key_column_usage kcu
+                  ON tc.constraint_name = kcu.constraint_name
+                WHERE tc.table_name = 'activity_submissions'
+                  AND tc.constraint_type = 'FOREIGN KEY'
+                  AND kcu.column_name = 'student_id'
+            ");
 
-            // SQLite doesn't support dropForeign directly
-            // We would need to recreate the table to truly revert this change
-
-            // Re-enable foreign key constraints
-            DB::statement('PRAGMA foreign_keys = ON');
+            if (!empty($foreignKeyExists)) {
+                $table->dropForeign(['student_id']);
+            }
         });
     }
 };

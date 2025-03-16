@@ -33,6 +33,12 @@ class Activity extends Model
         'total_points',
         'status',
         'deadline',
+        'submission_type',
+        'allow_file_uploads',
+        'allowed_file_types',
+        'max_file_size',
+        'allow_teacher_submission',
+        'form_structure',
     ];
 
     /**
@@ -42,6 +48,11 @@ class Activity extends Model
      */
     protected $casts = [
         'deadline' => 'datetime',
+        'allow_file_uploads' => 'boolean',
+        'allowed_file_types' => 'array',
+        'max_file_size' => 'integer',
+        'allow_teacher_submission' => 'boolean',
+        'form_structure' => 'array',
     ];
 
     /**
@@ -98,6 +109,14 @@ class Activity extends Model
     public function progressRecords(): HasMany
     {
         return $this->hasMany(ActivityProgress::class);
+    }
+
+    /**
+     * Get the resources attached to this activity.
+     */
+    public function resources(): HasMany
+    {
+        return $this->hasMany(ActivityResource::class);
     }
 
     /**
@@ -162,5 +181,45 @@ class Activity extends Model
     public function isPerformanceActivity(): bool
     {
         return $this->category === 'performance';
+    }
+
+    /**
+     * Determine if the activity allows file uploads.
+     */
+    public function allowsFileUploads(): bool
+    {
+        return $this->allow_file_uploads;
+    }
+
+    /**
+     * Determine if the activity allows teacher submissions on behalf of students.
+     */
+    public function allowsTeacherSubmission(): bool
+    {
+        return $this->allow_teacher_submission;
+    }
+
+    /**
+     * Determine if the activity is a form-based activity.
+     */
+    public function isFormActivity(): bool
+    {
+        return $this->submission_type === 'form';
+    }
+
+    /**
+     * Determine if the activity is a resource submission activity.
+     */
+    public function isResourceActivity(): bool
+    {
+        return $this->submission_type === 'resource';
+    }
+
+    /**
+     * Determine if the activity is a manual scoring activity.
+     */
+    public function isManualActivity(): bool
+    {
+        return $this->submission_type === 'manual';
     }
 }

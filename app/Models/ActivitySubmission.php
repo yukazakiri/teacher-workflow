@@ -23,12 +23,14 @@ class ActivitySubmission extends Model
         'student_id',
         'group_id',
         'content',
+        'form_responses',
         'attachments',
         'status',
         'score',
         'final_grade',
         'feedback',
         'submitted_at',
+        'submitted_by_teacher',
         'graded_by',
         'graded_at',
     ];
@@ -40,10 +42,12 @@ class ActivitySubmission extends Model
      */
     protected $casts = [
         'attachments' => 'array',
+        'form_responses' => 'array',
         'submitted_at' => 'datetime',
         'graded_at' => 'datetime',
         'score' => 'float',
         'final_grade' => 'float',
+        'submitted_by_teacher' => 'boolean',
     ];
 
     /**
@@ -124,5 +128,13 @@ class ActivitySubmission extends Model
     public function isGraded(): bool
     {
         return $this->graded_at !== null;
+    }
+
+    /**
+     * Determine if the submission was made by a teacher on behalf of a student.
+     */
+    public function isSubmittedByTeacher(): bool
+    {
+        return $this->submitted_by_teacher === true;
     }
 }
