@@ -18,6 +18,7 @@ class QuestionType extends Model
      */
     protected $fillable = [
         'name',
+        'slug',
         'description',
     ];
 

@@ -15,22 +15,23 @@ return new class extends Migration
     {
         // Seed question types
         $questionTypes = [
-            ['id' => Str::uuid()->toString(), 'name' => 'Multiple Choice', 'description' => 'Questions with multiple options where one or more can be correct'],
-            ['id' => Str::uuid()->toString(), 'name' => 'True/False', 'description' => 'Questions with binary true or false answers'],
-            ['id' => Str::uuid()->toString(), 'name' => 'Short Answer', 'description' => 'Questions requiring a brief text response'],
-            ['id' => Str::uuid()->toString(), 'name' => 'Essay', 'description' => 'Questions requiring an extended written response'],
-            ['id' => Str::uuid()->toString(), 'name' => 'Matching', 'description' => 'Questions requiring matching items from two columns'],
-            ['id' => Str::uuid()->toString(), 'name' => 'Fill in the Blank', 'description' => 'Questions with missing words to be filled in'],
+        ['id' => Str::uuid()->toString(), 'name' => 'Multiple Choice', 'description' => 'Questions with multiple options where one or more can be correct', 'slug' => 'multiple_choice'],
+        ['id' => Str::uuid()->toString(), 'name' => 'True/False', 'description' => 'Questions with binary true or false answers', 'slug' => 'true_false'],
+        ['id' => Str::uuid()->toString(), 'name' => 'Short Answer', 'description' => 'Questions requiring a brief text response', 'slug' => 'short_answer'],
+        ['id' => Str::uuid()->toString(), 'name' => 'Essay', 'description' => 'Questions requiring an extended written response', 'slug' => 'essay'],
+        ['id' => Str::uuid()->toString(), 'name' => 'Matching', 'description' => 'Questions requiring matching items from two columns', 'slug' => 'matching'],
+        ['id' => Str::uuid()->toString(), 'name' => 'Fill in the Blank', 'description' => 'Questions with missing words to be filled in', 'slug' => 'fill_in_blank'],
         ];
 
         foreach ($questionTypes as $type) {
-            DB::table('question_types')->insert([
-                'id' => $type['id'],
-                'name' => $type['name'],
-                'description' => $type['description'],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        DB::table('question_types')->insert([
+        'id' => $type['id'],
+        'name' => $type['name'],
+        'description' => $type['description'],
+        'slug' => $type['slug'],
+        'created_at' => now(),
+        'updated_at' => now(),
+        ]);
         }
 
         // Seed activity types

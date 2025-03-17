@@ -132,7 +132,7 @@
                                 @else
                                     <div class="flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
                                         <x-heroicon-o-check-circle class="w-4 h-4 mr-1 text-success-500" />
-                                        You are currently using this team
+                                        You are currently using this Class
                                     </div>
                                 @endif
                             </div>
@@ -146,7 +146,7 @@
         @if($joinedTeams->count() > 0)
         <div>
             <div class="flex items-center justify-between mb-6">
-                <h2 class="text-xl font-bold tracking-tight">Teams You've Joined</h2>
+                <h2 class="text-xl font-bold tracking-tight">Class You've Joined</h2>
                 <div class="flex items-center gap-2">
                     <span class="text-sm text-gray-500 dark:text-gray-400">{{ $joinedTeams->count() }} {{ Str::plural('team', $joinedTeams->count()) }}</span>
                 </div>
@@ -224,9 +224,9 @@
                                 @if($currentTeam->id !== $team->id)
                                     <form action="{{ route('filament.app.team.switch', $team) }}" method="POST">
                                         @csrf
-                                        <x-filament::button type="submit" color="primary" size="sm" class="w-full justify-center">
+                                        <x-filament::button type="submit" color="primary" size="sm" spa="true" class="w-full justify-center">
                                             <x-heroicon-o-arrow-right-circle class="w-4 h-4 mr-1" />
-                                            Switch to this team
+                                            Switch to this Class
                                         </x-filament::button>
                                     </form>
                                 @else

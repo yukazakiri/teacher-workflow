@@ -8,6 +8,8 @@ use App\Models\Exam;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
+use App\Models\QuestionType;
+use Illuminate\Database\Eloquent\Model;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -83,6 +85,38 @@ class ExamResource extends Resource
             ]);
     }
 
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['title', 'description'];
+    }
+
+    public static function beforeCreate(array $data): array
+    {
+        return static::mapQuestionTypeIds($data);
+    }
+
+    public static function beforeUpdate(Model $record, array $data): array
+    {
+        return static::mapQuestionTypeIds($data);
+    }
+
+    protected static function mapQuestionTypeIds(array $data): array
+    {
+        // If creating or updating questions from the form
+        if (isset($data['questions']) && is_array($data['questions'])) {
+            foreach ($data['questions'] as $key => $question) {
+                // Get question type ID from the type string
+                if (isset($question['type'])) {
+                    $questionType = QuestionType::where('slug', $question['type'])->first();
+                    if ($questionType) {
+                        $data['questions'][$key]['question_type_id'] = $questionType->id;
+                    }
+                }
+            }
+        }
+
+        return $data;
+    }
     public static function getRelations(): array
     {
         return [
