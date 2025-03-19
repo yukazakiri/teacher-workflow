@@ -17,6 +17,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "livewire/livewire": "^3.0",
+        "spatie/laravel-medialibrary": "^11.12",
         "stephenjude/filament-jetstream": "^0.0.16",
         "tomatophp/filament-simple-theme": "^1.0"
     },

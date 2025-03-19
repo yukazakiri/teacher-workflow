@@ -50,7 +50,7 @@ class Gradesheet extends Page implements HasTable
     protected static string $view = 'filament.pages.gradesheet';
 
     public ?array $data = [];
-    public ?int $teamId = null;
+    public ?string $teamId = null;
     public ?int $writtenWeight = 40;
     public ?int $performanceWeight = 60;
     public bool $showFinalGrades = true;

@@ -29,12 +29,18 @@
                             </div>
                         </div>
                     </div>
-                    @if($stats['isOwner'])
-                        <div class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-amber-500 text-white shadow-sm">
-                            <x-heroicon-o-star class="w-4 h-4 mr-1" />
-                            Team Owner
-                        </div>
-                    @endif
+                    <div class="flex items-center gap-3">
+                        @if($stats['isOwner'])
+                            <div class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-amber-500 text-white shadow-sm">
+                                <x-heroicon-o-star class="w-4 h-4 mr-1" />
+                                Team Owner
+                            </div>
+                        @endif
+                        <a href="{{ route('filament.app.tenant.profile', ['tenant' => $currentTeam->id]) }}" class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-white/20 text-white shadow-sm hover:bg-white/30 transition-colors">
+                            <x-heroicon-o-cog-6-tooth class="w-4 h-4 mr-1" />
+                            Team Settings
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -120,21 +126,26 @@
                                 @endif
                             </div>
                             
-                            <div class="mt-5 pt-4 border-t border-gray-100 dark:border-gray-700">
+                            <div class="mt-5 pt-4 border-t border-gray-100 dark:border-gray-700 flex gap-2">
                                 @if($currentTeam->id !== $team->id)
-                                    <form action="{{ route('filament.app.team.switch', $team) }}" method="POST">
+                                    <form action="{{ route('filament.app.team.switch', $team) }}" method="POST" class="flex-1">
                                         @csrf
                                         <x-filament::button type="submit" color="primary" size="sm" class="w-full justify-center">
                                             <x-heroicon-o-arrow-right-circle class="w-4 h-4 mr-1" />
-                                            Switch to this team
+                                            Switch
                                         </x-filament::button>
                                     </form>
                                 @else
-                                    <div class="flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+                                    <div class="flex items-center justify-center text-sm text-gray-500 dark:text-gray-400 flex-1">
                                         <x-heroicon-o-check-circle class="w-4 h-4 mr-1 text-success-500" />
-                                        You are currently using this Class
+                                        Current
                                     </div>
                                 @endif
+                                
+                                <a href="{{ route('filament.app.tenant.profile', ['tenant' => $team->id]) }}" class="inline-flex items-center justify-center px-3 py-1 rounded-md text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors">
+                                    <x-heroicon-o-cog-6-tooth class="w-4 h-4 mr-1" />
+                                    Settings
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -198,7 +209,7 @@
                                     
                                     <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300">
                                         <x-heroicon-o-user-plus class="w-3 h-3 mr-1" />
-                                        Joined
+                                        {{ $team->userRole }}
                                     </span>
                                 </div>
                             </div>
@@ -209,31 +220,33 @@
                                     {{ $team->users->count() }} {{ Str::plural('member', $team->users->count()) }}
                                 </div>
                                 
-                                <div class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300">
-                                    <x-heroicon-o-user class="w-3 h-3 mr-1" />
-                                    {{ $team->userRole }}
-                                </div>
-                                
                                 <div class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
                                     <x-heroicon-o-calendar class="w-3 h-3 mr-1" />
                                     Joined {{ $team->joinedAt }}
                                 </div>
                             </div>
                             
-                            <div class="mt-5 pt-4 border-t border-gray-100 dark:border-gray-700">
+                            <div class="mt-5 pt-4 border-t border-gray-100 dark:border-gray-700 flex gap-2">
                                 @if($currentTeam->id !== $team->id)
-                                    <form action="{{ route('filament.app.team.switch', $team) }}" method="POST">
+                                    <form action="{{ route('filament.app.team.switch', $team) }}" method="POST" class="flex-1">
                                         @csrf
                                         <x-filament::button type="submit" color="primary" size="sm" spa="true" class="w-full justify-center">
                                             <x-heroicon-o-arrow-right-circle class="w-4 h-4 mr-1" />
-                                            Switch to this Class
+                                            Switch
                                         </x-filament::button>
                                     </form>
                                 @else
-                                    <div class="flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+                                    <div class="flex items-center justify-center text-sm text-gray-500 dark:text-gray-400 flex-1">
                                         <x-heroicon-o-check-circle class="w-4 h-4 mr-1 text-success-500" />
-                                        You are currently using this team
+                                        Current
                                     </div>
+                                @endif
+                                
+                                @if(in_array($team->userRole, ['Admin', 'Owner']))
+                                    <a href="{{ route('filament.app.tenant.profile', ['tenant' => $team->id]) }}" class="inline-flex items-center justify-center px-3 py-1 rounded-md text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors">
+                                        <x-heroicon-o-cog-6-tooth class="w-4 h-4 mr-1" />
+                                        Settings
+                                    </a>
                                 @endif
                             </div>
                         </div>
@@ -242,5 +255,13 @@
             </div>
         </div>
         @endif
+        
+        <!-- Create New Team Button -->
+        <div class="flex justify-center mt-8">
+            <a href="{{ route('filament.app.tenant.registration') }}" class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 transition-colors shadow-sm">
+                <x-heroicon-o-plus-circle class="w-5 h-5 mr-2" />
+                Create New Team
+            </a>
+        </div>
     </div>
 </x-filament-panels::page>

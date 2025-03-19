@@ -82,4 +82,34 @@ class Team extends JetstreamTeam
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    /**
+     * Get the resource categories for the team.
+     */
+    public function resourceCategories(): HasMany
+    {
+        return $this->hasMany(ResourceCategory::class);
+    }
+
+    /**
+     * Get the class resources for the team.
+     */
+    public function classResources(): HasMany
+    {
+        return $this->hasMany(ClassResource::class);
+    }
+
+    /**
+     * Check if the team has a user with a specific role.
+     */
+    public function hasUserWithRole(User $user, string $role): bool
+    {
+        $teamMember = $this->users()->where('user_id', $user->id)->first();
+        
+        if (!$teamMember) {
+            return false;
+        }
+        
+        return $teamMember->membership->role === $role;
+    }
 }

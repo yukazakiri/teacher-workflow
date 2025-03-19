@@ -60,6 +60,15 @@ return [
             'report' => false,
         ],
 
+        'class_resources' => [
+            'driver' => 'local',
+            'root' => storage_path('app/class_resources'),
+            'url' => env('APP_URL').'/class-resources',
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
 
     /*

@@ -36,6 +36,20 @@ class StudentResource extends Resource
     protected static ?string $navigationLabel = 'Students';
     protected static ?int $navigationSort = 2;
 
+
+    public static function getNavigationBadge(): ?string
+    {
+        return (string) static::getModel()::query()
+            ->where('team_id', Auth::user()->currentTeam->id)
+            ->where('status', 'active')
+            ->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'primary';
+    }
+
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()

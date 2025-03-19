@@ -37,6 +37,8 @@ use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use TomatoPHP\FilamentSimpleTheme\FilamentSimpleThemePlugin;
 use CodeWithDennis\FilamentThemeInspector\FilamentThemeInspectorPlugin;
 use DutchCodingCompany\FilamentDeveloperLogins\FilamentDeveloperLoginsPlugin;
+use Illuminate\Support\Facades\Auth;
+use SebastianBergmann\Type\FalseType;
 
 class AppPanelProvider extends PanelProvider
 {
@@ -92,6 +94,7 @@ class AppPanelProvider extends PanelProvider
                 EditProfile::class,
                 ApiTokens::class,
                 \App\Filament\Pages\Gradesheet::class,
+                // \App\Filament\Pages\ClassResources::class,
             ])
             ->plugins([
                 FilamentDeveloperLoginsPlugin::make()
@@ -137,27 +140,21 @@ class AppPanelProvider extends PanelProvider
             ]);
         }
 
-        // if (Features::hasTeamFeatures()) {
-        //     $panel
-        //         ->tenant(Team::class)
-        //         ->tenantRegistration(CreateTeam::class)
-        //         ->tenantProfile(EditTeam::class)
-        //         // ->tenantMenuItems([
-        //         //     MenuItem::make()
-        //         //         ->label('Settings')
-        //         //         // ->url(fn (): string => Settings::getUrl())
-        //         //         ->icon('heroicon-m-cog-8-tooth'),
-        //         //     // ...
-        //         // ])
-        //         ->userMenuItems([
-        //             // MenuItem::make()
-        //             //     ->label(fn () => __('Team Settings'))
-        //             //     ->icon('heroicon-o-cog-6-tooth')
-        //             //     ->url(fn () => $this->shouldRegisterMenuItem()
-        //             //         ? url(EditTeam::getUrl())
-        //             //         : url($panel->getPath())),
-        //         ]);
-        // }
+        if (Features::hasTeamFeatures()) {
+            $panel
+                ->tenant(Team::class)
+                ->tenantRegistration(CreateTeam::class)
+                ->tenantProfile(EditTeam::class)
+                ->tenantMenu(false)
+                ->userMenuItems([
+                    // MenuItem::make()
+                    //     ->label(fn () => __('Team Settings'))
+                    //     ->icon('heroicon-o-cog-6-tooth')
+                    //     ->url(fn () => $this->shouldRegisterMenuItem()
+                    //         ? url(EditTeam::getUrl())
+                    //         : url($panel->getPath())),
+                ]);
+        }
 
         return $panel;
     }
@@ -192,18 +189,18 @@ class AppPanelProvider extends PanelProvider
                 // This will trigger the TenantSet event which is handled by SwitchTeam listener
                 Filament::setTenant($team);
                 
-                return redirect()->route('filament.app.pages.dashboard');
+                return redirect()->route('filament.app.pages.dashboard', ['tenant' => $team->id]);
             })->name('filament.app.team.switch');
         });
     }
 
     public function shouldRegisterMenuItem(): bool
     {
-        // $hasVerifiedEmail = auth()->user()?->hasVerifiedEmail();
+        $hasVerifiedEmail = Auth::user()?->hasVerifiedEmail();
 
-        // return Filament::hasTenancy()
-        //     ? $hasVerifiedEmail && Filament::getTenant()
-        //     : $hasVerifiedEmail;
+        return Filament::hasTenancy()
+            ? $hasVerifiedEmail && Filament::getTenant()
+            : $hasVerifiedEmail;
         return true;
     }
 }

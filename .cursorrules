@@ -28,7 +28,7 @@
     - Use Laravel's query builder for complex database queries.
     - Implement proper database migrations and seeders.
 
-    Livewire
+    Livewire & Filament
 
     - Use Livewire for dynamic components and real-time user interactions.
     - Favor the use of Livewire's lifecycle hooks and properties.
@@ -38,12 +38,12 @@
     - Use wire:loading and wire:target to provide feedback and optimize user experience.
     - Apply Livewire's security measures for components.
 
-    Tailwind CSS & daisyUI
+    Tailwind CSS & Filament
 
     - Use Tailwind CSS for styling components, following a utility-first approach.
-    - Leverage daisyUI's pre-built components for quick UI development.
-    - Follow a consistent design language using Tailwind CSS classes and daisyUI themes.
-    - Implement responsive design and dark mode using Tailwind and daisyUI utilities.
+    - Leverage Filament's pre-built components for quick UI development.
+    - Follow a consistent design language using Tailwind CSS classes and Filament themes.
+    - Implement responsive design and dark mode using Tailwind and Filament utilities.
     - Optimize for accessibility (e.g., aria-attributes) when using components.
 
     Dependencies
@@ -86,5 +86,5 @@
     - Use Laravel's built-in authentication scaffolding.
     - Implement proper API resource transformations.
     - Use Laravel's event and listener system for decoupled code.
-    - Use Tailwind CSS and daisyUI for consistent and efficient styling.
+    - Use Tailwind CSS and Filament for consistent and efficient styling.
     - Implement complex UI patterns using Livewire and Alpine.js.
