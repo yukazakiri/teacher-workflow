@@ -5,6 +5,10 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use App\Providers\EventServiceProvider;
 use App\Providers\FilamentTeamBadgeServiceProvider;
+use App\Models\Team;
+use App\Observers\TeamObserver;
+use App\Livewire\ChatInterface;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -22,6 +26,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Team::observe(TeamObserver::class);
+        Livewire::component('chat-interface', ChatInterface::class);
     }
 }

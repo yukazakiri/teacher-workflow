@@ -20,7 +20,6 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\Livewire;
 use Filament\Pages\Page;
 use Illuminate\Contracts\Support\Htmlable;
-use Laravel\Jetstream\Http\Livewire\TeamMemberManager;
 use Laravel\Jetstream\Jetstream;
 use Illuminate\Support\Facades\DB;
 use App\Filament\Widgets\TeamMembersTableWidget;
@@ -28,6 +27,7 @@ use App\Filament\Widgets\PendingInvitationsTableWidget;
 use App\Models\Student;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
+use App\Livewire\ChatInterface;
 
 class Dashboard extends PagesDashboard
 {
@@ -92,90 +92,8 @@ class Dashboard extends PagesDashboard
 
     protected function getViewData(): array
     {
-        $user = Auth::user();
-        $currentTeam = $user->currentTeam;
-
-        // Get all teams the user belongs to
-        $allTeams = Team::whereHas('users', function ($query) use ($user) {
-            $query->where('users.id', $user->id);
-        })->get();
-
-        // Get teams owned by the user
-        $ownedTeams = Team::where('user_id', $user->id)->get();
-
-        // Get teams the user is a member of but doesn't own
-        $joinedTeams = $allTeams->filter(function ($team) use ($user) {
-            return $team->user_id !== $user->id;
-        });
-
-        // Combine all teams and mark if user is owner
-        $teams = $allTeams->map(function ($team) use ($user) {
-            $team->isOwner = $team->user_id === $user->id;
-            return $team;
-        });
-
-        // Team stats
-        $stats = [
-            'memberCount' => $currentTeam->users->count(),
-            'pendingInvites' => TeamInvitation::where('team_id', $currentTeam->id)->count(),
-            'isOwner' => $currentTeam->user_id === $user->id,
-            'createdAt' => $currentTeam->created_at->diffForHumans()
-        ];
-
-        // Get user's role in current team
-        $userRole = 'Member';
-        $pivotRole = DB::table('team_user')
-            ->where('team_id', $currentTeam->id)
-            ->where('user_id', $user->id)
-            ->value('role');
-
-        if ($pivotRole === 'admin') {
-            $userRole = 'Admin';
-        } elseif ($pivotRole === 'editor') {
-            $userRole = 'Editor';
-        }
-
-        if ($currentTeam->user_id === $user->id) {
-            $userRole = 'Owner';
-        }
-
-        // Get team statistics for each team
-        $teams->each(function ($team) use ($user) {
-            $team->memberCount = $team->users->count();
-            $team->pendingInvites = TeamInvitation::where('team_id', $team->id)->count();
-            
-            // Get the user's role in this team
-            $team->userRole = 'Member';
-            $pivotRole = DB::table('team_user')
-                ->where('team_id', $team->id)
-                ->where('user_id', $user->id)
-                ->value('role');
-
-            if ($pivotRole === 'admin') {
-                $team->userRole = 'Admin';
-            } elseif ($pivotRole === 'editor') {
-                $team->userRole = 'Editor';
-            }
-
-            if ($team->user_id === $user->id) {
-                $team->userRole = 'Owner';
-            }
-            
-            // Get join date for the user
-            if (!$team->isOwner) {
-                $joinDate = $team->users->find($user->id)->pivot->created_at ?? now();
-                $team->joinedAt = $joinDate->diffForHumans();
-            }
-        });
-
         return [
-            'currentTeam' => $currentTeam,
-            'teams' => $teams,
-            'ownedTeams' => $ownedTeams,
-            'joinedTeams' => $joinedTeams,
-            'stats' => $stats,
-            'userRole' => $userRole,
-            'hasTeamFeatures' => \Laravel\Jetstream\Jetstream::hasTeamFeatures(),
+            'hasTeamFeatures' => Jetstream::hasTeamFeatures(),
         ];
     }
 }

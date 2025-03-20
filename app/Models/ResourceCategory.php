@@ -24,6 +24,17 @@ class ResourceCategory extends Model
         'color',
         'icon',
         'sort_order',
+        'type', // 'teacher_material' or 'student_resource'
+        'is_default',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'is_default' => 'boolean',
     ];
 
     /**
@@ -40,5 +51,21 @@ class ResourceCategory extends Model
     public function resources(): HasMany
     {
         return $this->hasMany(ClassResource::class, 'category_id');
+    }
+    
+    /**
+     * Determine if this category is for teacher materials.
+     */
+    public function isTeacherMaterial(): bool
+    {
+        return $this->type === 'teacher_material';
+    }
+    
+    /**
+     * Determine if this category is for student resources.
+     */
+    public function isStudentResource(): bool
+    {
+        return $this->type === 'student_resource';
     }
 } 

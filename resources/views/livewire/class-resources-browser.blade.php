@@ -19,16 +19,73 @@
                         >
                     </div>
                     
-                    <select 
-                        wire:model.live="selectedCategory" 
-                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                    >
-                        <option value="">All Categories</option>
-                        @foreach($categories as $category)
-                            <option value="{{ $category->id }}">{{ $category->name }}</option>
-                        @endforeach
-                    </select>
+                    @if($categories->count() > 0)
+                        <select 
+                            wire:model.live="selectedCategory" 
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                        >
+                            <option value="">All Categories</option>
+                            @foreach($categories as $category)
+                                @php
+                                    $prefix = $category->type === 'teacher_material' ? '🔒 Teacher: ' : '📚 Student: ';
+                                @endphp
+                                <option value="{{ $category->id }}">{{ $prefix . $category->name }}</option>
+                            @endforeach
+                        </select>
+                    @endif
                 </div>
+            </div>
+            
+            <!-- Resource Type Tabs -->
+            <div class="mb-6 border-b border-gray-200 dark:border-gray-700">
+                <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" role="tablist">
+                    <li class="mr-2" role="presentation">
+                        <button 
+                            wire:click="$set('viewMode', 'all')" 
+                            class="inline-block p-4 border-b-2 rounded-t-lg {{ $viewMode === 'all' ? 'text-primary-600 border-primary-600 dark:text-primary-500 dark:border-primary-500' : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 border-transparent' }}"
+                            type="button" 
+                            role="tab"
+                        >
+                            All Resources
+                        </button>
+                    </li>
+                    
+                    @if($isTeacher && $teacherCategoriesCount > 0)
+                        <li class="mr-2" role="presentation">
+                            <button 
+                                wire:click="$set('viewMode', 'teacher')" 
+                                class="inline-block p-4 border-b-2 rounded-t-lg {{ $viewMode === 'teacher' ? 'text-red-600 border-red-600 dark:text-red-500 dark:border-red-500' : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 border-transparent' }}"
+                                type="button" 
+                                role="tab"
+                            >
+                                <span class="flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                    Teacher Materials
+                                </span>
+                            </button>
+                        </li>
+                    @endif
+                    
+                    @if($studentCategoriesCount > 0)
+                        <li class="mr-2" role="presentation">
+                            <button 
+                                wire:click="$set('viewMode', 'student')" 
+                                class="inline-block p-4 border-b-2 rounded-t-lg {{ $viewMode === 'student' ? 'text-green-600 border-green-600 dark:text-green-500 dark:border-green-500' : 'hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 border-transparent' }}"
+                                type="button" 
+                                role="tab"
+                            >
+                                <span class="flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                    </svg>
+                                    Student Resources
+                                </span>
+                            </button>
+                        </li>
+                    @endif
+                </ul>
             </div>
             
             <!-- Category Pills -->
@@ -47,11 +104,37 @@
                             class="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full {{ $selectedCategory === $category->id ? 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-300' : 'bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600' }}"
                         >
                             <span class="w-2 h-2 mr-1 rounded-full" style="background-color: {{ $category->color }}"></span>
+                            @if($category->type === 'teacher_material')
+                                🔒 
+                            @else
+                                📚 
+                            @endif
                             {{ $category->name }}
                         </button>
                     @endforeach
                 </div>
             @endif
+            
+            <!-- View Mode Description -->
+            <div class="mb-6">
+                @if($viewMode === 'teacher')
+                    <div class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-700 dark:text-red-400" role="alert">
+                        <div class="flex items-center mb-1">
+                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+                            <span class="font-medium">Teacher Materials</span>
+                        </div>
+                        <div>These resources are only visible to teachers and the class owner. This is where you can store lesson plans, exam answers, and other sensitive materials.</div>
+                    </div>
+                @elseif($viewMode === 'student')
+                    <div class="p-4 mb-4 text-sm text-green-800 rounded-lg bg-green-50 dark:bg-gray-700 dark:text-green-400" role="alert">
+                        <div class="flex items-center mb-1">
+                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+                            <span class="font-medium">Student Resources</span>
+                        </div>
+                        <div>These resources are visible to students and can include handouts, syllabi, and study materials that students need for their classes.</div>
+                    </div>
+                @endif
+            </div>
             
             <!-- Resources Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -98,6 +181,11 @@
                                         
                                         @if($resource->category)
                                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" style="background-color: {{ $resource->category->color }}20; color: {{ $resource->category->color }}">
+                                                @if($resource->category->type === 'teacher_material')
+                                                    🔒 
+                                                @else
+                                                    📚 
+                                                @endif
                                                 {{ $resource->category->name }}
                                             </span>
                                         @endif
@@ -163,6 +251,15 @@
                         </svg>
                         <p class="text-xl font-medium">No resources found</p>
                         <p class="mt-1">Try adjusting your search or filter to find what you're looking for.</p>
+                        
+                        @if($viewMode === 'teacher' && $teacherCategoriesCount === 0)
+                            <div class="mt-4">
+                                <p class="text-sm">You need to create teacher material categories first.</p>
+                                <a href="{{ route('filament.admin.resources.resource-categories.index') }}" class="mt-2 inline-flex items-center px-4 py-2 bg-primary-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-primary-700">
+                                    Create Categories
+                                </a>
+                            </div>
+                        @endif
                     </div>
                 @endforelse
             </div>

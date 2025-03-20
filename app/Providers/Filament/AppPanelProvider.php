@@ -21,9 +21,13 @@ use Filament\Navigation\MenuItem;
 use App\Filament\Pages\CreateTeam;
 use Filament\Support\Colors\Color;
 use App\Filament\Pages\EditProfile;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
+use SebastianBergmann\Type\FalseType;
+use Filament\Navigation\NavigationGroup;
 use Filament\Http\Middleware\Authenticate;
+use Filament\Navigation\NavigationBuilder;
 use Illuminate\Session\Middleware\StartSession;
 use Devonab\FilamentEasyFooter\EasyFooterPlugin;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -37,8 +41,7 @@ use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use TomatoPHP\FilamentSimpleTheme\FilamentSimpleThemePlugin;
 use CodeWithDennis\FilamentThemeInspector\FilamentThemeInspectorPlugin;
 use DutchCodingCompany\FilamentDeveloperLogins\FilamentDeveloperLoginsPlugin;
-use Illuminate\Support\Facades\Auth;
-use SebastianBergmann\Type\FalseType;
+use Filament\Navigation\NavigationItem;
 
 class AppPanelProvider extends PanelProvider
 {
@@ -94,8 +97,13 @@ class AppPanelProvider extends PanelProvider
                 EditProfile::class,
                 ApiTokens::class,
                 \App\Filament\Pages\Gradesheet::class,
+                \App\Filament\Pages\ChatPage::class,
                 // \App\Filament\Pages\ClassResources::class,
             ])
+            ->renderHook(
+                'panels::sidebar.start',
+                fn () => view('filament.sidebar.chat-navigation')
+            )
             ->plugins([
                 FilamentDeveloperLoginsPlugin::make()
                     ->enabled()
@@ -110,6 +118,52 @@ class AppPanelProvider extends PanelProvider
                 in: app_path("Filament/Widgets"),
                 for: "App\\Filament\\Widgets"
             )
+            ->navigation(function (NavigationBuilder $builder): NavigationBuilder {
+                $user = Auth::user();
+                
+                if (!$user) {
+                    return $builder;
+                }
+                
+                $chats = \App\Models\Chat::where('user_id', $user->id)
+                    ->where('team_id', $user->currentTeam->id)
+                    ->latest()
+                    ->limit(5)
+                    ->get();
+                
+                $chatItems = [];
+                
+                // Add "All Chats" item
+                $chatItems[] = NavigationItem::make('All Chats')
+                    ->icon('heroicon-o-chat-bubble-bottom-center-text')
+                    ->isActiveWhen(fn(): bool => request()->routeIs('filament.app.pages.dashboard'))
+                    ->url(route('filament.app.pages.dashboard', ['tenant' => $user->currentTeam->id]));
+                
+                // Add "New Chat" item
+                $chatItems[] = NavigationItem::make('New Chat')
+                    ->icon('heroicon-o-plus-circle')
+                    ->isActiveWhen(fn(): bool => request()->routeIs('filament.app.pages.chat') && !request()->route('chat'))
+                    ->url(route('filament.app.pages.chat', ['tenant' => $user->currentTeam->id]));
+                
+                // Add recent chat items
+                foreach ($chats as $chat) {
+                    $chatItems[] = NavigationItem::make($chat->title)
+                        ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                        ->isActiveWhen(fn(): bool => 
+                            request()->routeIs('filament.app.pages.chat') && 
+                            request()->route('chat') == $chat->id
+                        )
+                        ->url(route('filament.app.pages.chat', [
+                            'tenant' => $user->currentTeam->id,
+                            'chat' => $chat->id
+                        ]));
+                }
+                
+                return $builder->groups([
+                    NavigationGroup::make('Chat History')
+                        ->items($chatItems),
+                ]);
+            })
             ->widgets([
                 Widgets\AccountWidget::class,
                 Widgets\FilamentInfoWidget::class,

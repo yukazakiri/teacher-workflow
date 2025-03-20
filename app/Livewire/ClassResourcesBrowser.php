@@ -18,9 +18,18 @@ class ClassResourcesBrowser extends Component
     
     public ?string $selectedCategory = null;
     
+    public ?string $viewMode = 'all'; // 'all', 'teacher', 'student'
+    
+    protected $queryString = [
+        'search' => ['except' => ''],
+        'selectedCategory' => ['except' => ''],
+        'viewMode' => ['except' => 'all'],
+    ];
+    
     public function mount()
     {
         // Initialize component
+        $this->viewMode = 'all';
     }
     
     public function updatedSearch()
@@ -33,6 +42,12 @@ class ClassResourcesBrowser extends Component
         $this->resetPage();
     }
     
+    public function updatedViewMode()
+    {
+        $this->resetPage();
+        $this->selectedCategory = null;
+    }
+    
     public function getResourcesProperty()
     {
         $team = Filament::getTenant();
@@ -41,6 +56,14 @@ class ClassResourcesBrowser extends Component
         $query = ClassResource::query()
             ->where('team_id', $team->id)
             ->with(['category', 'creator', 'media']);
+        
+        // Filter by view mode (teacher materials vs student resources)
+        if ($this->viewMode !== 'all') {
+            $categoryType = $this->viewMode === 'teacher' ? 'teacher_material' : 'student_resource';
+            $query->whereHas('category', function ($q) use ($categoryType) {
+                $q->where('type', $categoryType);
+            });
+        }
             
         // Filter by category if selected
         if ($this->selectedCategory) {
@@ -77,11 +100,40 @@ class ClassResourcesBrowser extends Component
     public function getCategoriesProperty()
     {
         $team = Filament::getTenant();
+        $user = Auth::user();
         
-        return ResourceCategory::where('team_id', $team->id)
-            ->orderBy('sort_order')
+        $query = ResourceCategory::where('team_id', $team->id);
+        
+        // Filter categories based on view mode
+        if ($this->viewMode !== 'all') {
+            $categoryType = $this->viewMode === 'teacher' ? 'teacher_material' : 'student_resource';
+            $query->where('type', $categoryType);
+        }
+        
+        // For non-teachers, only show student resource categories
+        if (!$team->hasUserWithRole($user, 'teacher') && $team->user_id !== $user->id) {
+            $query->where('type', 'student_resource');
+        }
+        
+        return $query->orderBy('sort_order')
             ->orderBy('name')
             ->get();
+    }
+    
+    public function getTeacherCategoriesCountProperty()
+    {
+        $team = Filament::getTenant();
+        return ResourceCategory::where('team_id', $team->id)
+            ->where('type', 'teacher_material')
+            ->count();
+    }
+    
+    public function getStudentCategoriesCountProperty()
+    {
+        $team = Filament::getTenant();
+        return ResourceCategory::where('team_id', $team->id)
+            ->where('type', 'student_resource')
+            ->count();
     }
     
     public function downloadResource(ClassResource $resource)
@@ -110,9 +162,16 @@ class ClassResourcesBrowser extends Component
     
     public function render()
     {
+        $user = Auth::user();
+        $team = Filament::getTenant();
+        $isTeacher = $team->hasUserWithRole($user, 'teacher') || $team->user_id === $user->id;
+        
         return view('livewire.class-resources-browser', [
             'resources' => $this->resources,
             'categories' => $this->categories,
+            'isTeacher' => $isTeacher,
+            'teacherCategoriesCount' => $this->getTeacherCategoriesCountProperty(),
+            'studentCategoriesCount' => $this->getStudentCategoriesCountProperty(),
         ]);
     }
 } 

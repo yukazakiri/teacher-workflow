@@ -12,11 +12,13 @@
         "devonab/filament-easy-footer": "^1.1",
         "dutchcodingcompany/filament-developer-logins": "^1.8",
         "filament/filament": "^3.3",
+        "illuminate/support": "*",
         "laravel/framework": "^12.0",
         "laravel/jetstream": "^4.2|^5.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "livewire/livewire": "^3.0",
+        "prism-php/prism": "^0.55.0",
         "spatie/laravel-medialibrary": "^11.12",
         "stephenjude/filament-jetstream": "^0.0.16",
         "tomatophp/filament-simple-theme": "^1.0"

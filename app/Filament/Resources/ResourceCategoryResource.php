@@ -53,6 +53,15 @@ class ResourceCategoryResource extends Resource
                             
                         Forms\Components\Textarea::make('description')
                             ->rows(3),
+                        
+                        Forms\Components\Select::make('type')
+                            ->options([
+                                'teacher_material' => 'Teacher Materials',
+                                'student_resource' => 'Student Resources',
+                            ])
+                            ->default('student_resource')
+                            ->required()
+                            ->helperText('Teacher Materials are visible only to teachers. Student Resources are accessible to students.'),
                             
                         Forms\Components\ColorPicker::make('color')
                             ->default('#4f46e5'),
@@ -72,6 +81,12 @@ class ResourceCategoryResource extends Resource
                                 'heroicon-o-pencil' => 'Pencil',
                                 'heroicon-o-puzzle-piece' => 'Puzzle Piece',
                                 'heroicon-o-video-camera' => 'Video Camera',
+                                'heroicon-o-presentation-chart-bar' => 'Presentation',
+                                'heroicon-o-bookmark' => 'Bookmark',
+                                'heroicon-o-clipboard-document-list' => 'Syllabus',
+                                'heroicon-o-clipboard-document-check' => 'Lesson Plan',
+                                'heroicon-o-rectangle-stack' => 'Stack of Documents',
+                                'heroicon-o-trophy' => 'Quiz or Test',
                             ])
                             ->default('heroicon-o-document'),
                             
@@ -90,6 +105,18 @@ class ResourceCategoryResource extends Resource
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
+                
+                Tables\Columns\BadgeColumn::make('type')
+                    ->label('Type')
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'teacher_material' => 'Teacher Materials',
+                        'student_resource' => 'Student Resources',
+                        default => $state,
+                    })
+                    ->colors([
+                        'danger' => 'teacher_material',
+                        'success' => 'student_resource',
+                    ]),
                     
                 Tables\Columns\ColorColumn::make('color'),
                 
@@ -110,7 +137,11 @@ class ResourceCategoryResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('type')
+                    ->options([
+                        'teacher_material' => 'Teacher Materials',
+                        'student_resource' => 'Student Resources',
+                    ]),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
