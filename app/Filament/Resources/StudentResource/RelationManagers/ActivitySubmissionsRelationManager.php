@@ -120,11 +120,11 @@ class ActivitySubmissionsRelationManager extends RelationManager
                     ->label('Graded By')
                     ->default('Not graded'),
 
-                TextColumn::make('graded_at')
-                    ->label('Graded At')
-                    ->dateTime()
-                    ->default('Not graded')
-                    ->sortable(),
+                // TextColumn::make('graded_at')
+                //     ->label('Graded At')
+                //     ->dateTime()
+                //     ->default('Not graded')
+                //     ->sortable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')

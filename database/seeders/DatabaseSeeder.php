@@ -24,8 +24,36 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create test user if it doesn't exist
-        $testUser = User::firstOrCreate(
+        // Create teacher account
+        $teacher = $this->createTeacherAccount();
+
+        // Create activity types
+        $this->createActivityTypes();
+
+        // Create first classroom with invited users
+        $classroomWithInvitedStudents = $this->createClassroomWithInvitedUsers($teacher);
+
+        // Create second classroom with unlinked student records
+        $classroomWithUnlinkedStudents = $this->createClassroomWithUnlinkedStudents($teacher);
+
+        // Set default team for teacher if not already set
+        if (!$teacher->current_team_id) {
+            $teacher->current_team_id = $classroomWithInvitedStudents->id;
+            $teacher->save();
+        }
+
+        // Seed exams
+        $this->call(ExamSeeder::class);
+    }
+
+    /**
+     * Create teacher account
+     *
+     * @return User
+     */
+    private function createTeacherAccount(): User
+    {
+        return User::firstOrCreate(
             ['email' => 'test@example.com'],
             [
                 'name' => 'Test User',
@@ -35,24 +63,6 @@ class DatabaseSeeder extends Seeder
                 'remember_token' => Str::random(10),
             ]
         );
-
-        // Create activity types
-        $this->createActivityTypes();
-
-        // TEAM 1: Team with invited users that have student role
-        $team1 = $this->createTeamWithInvitedUsers($testUser);
-
-        // TEAM 2: Team with student records but no invited users
-        $team2 = $this->createTeamWithStudentRecords($testUser);
-
-        // Set team1 as current team for teacher if not set
-        if (!$testUser->current_team_id) {
-            $testUser->current_team_id = $team1->id;
-            $testUser->save();
-        }
-
-        // Seed exams
-        $this->call(ExamSeeder::class);
     }
 
     /**
@@ -74,173 +84,175 @@ class DatabaseSeeder extends Seeder
         foreach ($activityTypes as $type) {
             ActivityType::firstOrCreate(
                 ['name' => $type['name']],
-                [
-                    'name' => $type['name'],
-                    'description' => $type['description'],
-                ]
+                ['description' => $type['description']]
             );
         }
     }
 
     /**
-     * Create a team with invited users that have student role
+     * Create a classroom with invited student users that are properly linked
      *
-     * @param User $teacher The teacher user
-     * @return Team The created team
+     * @param User $teacher
+     * @return Team
      */
-    private function createTeamWithInvitedUsers(User $teacher): Team
+    private function createClassroomWithInvitedUsers(User $teacher): Team
     {
-        // Check if team already exists
-        $existingTeam = Team::where('name', 'Classroom with Invited Students')
-            ->where('user_id', $teacher->id)
-            ->first();
-            
-        if ($existingTeam) {
-            $team1 = $existingTeam;
-        } else {
-            // Create Team 1
-            $team1 = new Team([
-                'name' => 'Classroom with Invited Students',
+        // Create or retrieve team
+        $classroom = Team::firstOrCreate(
+            [
+                'name' => 'Biology 101',
                 'user_id' => $teacher->id,
+            ],
+            [
                 'personal_team' => false,
-            ]);
-            $team1->id = (string) \Illuminate\Support\Str::uuid();
-            $team1->save();
-        }
-        
-        // Debug team ID
-        echo "Team ID: " . $team1->id . " (Type: " . gettype($team1->id) . ")\n";
+                'id' => Str::uuid(),
+                'join_code' => 'BIO101', // Custom join code for easier testing
+            ]
+        );
 
-        // Create 20 student users and invite them to the team
-        $students = [];
-        for ($i = 1; $i <= 20; $i++) {
+        // Create student accounts and link them to the classroom
+        $studentUsers = [];
+        $studentNames = $this->getRealisticStudentNames();
+
+        for ($i = 0; $i < 20; $i++) {
+            $studentName = $studentNames[$i];
+            $email = $this->generateStudentEmail($studentName);
+
+            // Create user account
             $studentUser = User::firstOrCreate(
-                ['email' => "invited_student{$i}@example.com"],
+                ['email' => $email],
                 [
-                    'name' => "Invited Student {$i}",
-                    'email' => "invited_student{$i}@example.com",
+                    'name' => $studentName,
                     'password' => Hash::make('password'),
                     'email_verified_at' => now(),
                     'remember_token' => Str::random(10),
                 ]
             );
 
-            // Create invitation if not exists
-            $existingInvitation = TeamInvitation::where('team_id', $team1->id)
-                ->where('email', $studentUser->email)
-                ->first();
-                
-            if (!$existingInvitation) {
-                TeamInvitation::create([
-                    'team_id' => $team1->id,
-                    'email' => $studentUser->email,
-                    'role' => 'student',
-                ]);
+            $studentUsers[] = $studentUser;
+
+            // Ensure user is a team member
+            if (!$studentUser->belongsToTeam($classroom)) {
+                // Create invitation if not exists
+                TeamInvitation::firstOrCreate(
+                    [
+                        'team_id' => $classroom->id,
+                        'email' => $studentUser->email,
+                    ],
+                    [
+                        'role' => 'student',
+                    ]
+                );
+
+                // Add user to team (simulate accepted invitation)
+                DB::table('team_user')->updateOrInsert(
+                    [
+                        'team_id' => $classroom->id,
+                        'user_id' => $studentUser->id,
+                    ],
+                    [
+                        'role' => 'student',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+
+                // Set this classroom as the student's current team if not already set
+                if (!$studentUser->current_team_id) {
+                    $studentUser->current_team_id = $classroom->id;
+                    $studentUser->save();
+                }
             }
 
-            // Add user to team if not already a member
-            $existingMember = DB::table('team_user')
-                ->where('team_id', $team1->id)
-                ->where('user_id', $studentUser->id)
-                ->first();
-                
-            if (!$existingMember) {
-                DB::table('team_user')->insert([
-                    'team_id' => $team1->id,
-                    'user_id' => $studentUser->id,
-                    'role' => 'student',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
-
-            // Auto-create student record if not exists
+            // Create linked student record if not exists
             $student = Student::firstOrCreate(
                 [
-                    'email' => $studentUser->email,
-                    'team_id' => $team1->id,
+                    'team_id' => $classroom->id,
+                    'user_id' => $studentUser->id,
                 ],
                 [
                     'name' => $studentUser->name,
                     'email' => $studentUser->email,
-                    'team_id' => $team1->id,
                     'status' => 'active',
-                    'user_id' => $studentUser->id,
-                    'student_id' => 'ST' . str_pad((string)$i, 4, '0', STR_PAD_LEFT),
-                    'gender' => $i % 2 === 0 ? 'female' : 'male',
-                    'birth_date' => now()->subYears(rand(18, 25))->subDays(rand(1, 365)),
+                    'student_id' => 'BIO' . str_pad((string)($i + 1), 3, '0', STR_PAD_LEFT),
+                    'gender' => $i % 2 === 0 ? 'male' : 'female',
+                    'birth_date' => now()->subYears(rand(18, 22))->subDays(rand(1, 365)),
+                    'notes' => $this->getRandomStudentNote($i),
                 ]
             );
 
-            $students[] = $student;
+            $studentUsers[$i] = ['user' => $studentUser, 'student' => $student];
         }
 
-        // Create activities and submissions for Team 1
-        $this->createActivitiesAndSubmissions($team1, $teacher, collect($students));
+        // Create sample activities and submissions for this classroom
+        $this->createClassroomActivities($classroom, $teacher, collect($studentUsers));
 
-        return $team1;
+        return $classroom;
     }
 
     /**
-     * Create a team with student records but no invited users
+     * Create a classroom with student records that are not linked to user accounts
      *
-     * @param User $teacher The teacher user
-     * @return Team The created team
+     * @param User $teacher
+     * @return Team
      */
-    private function createTeamWithStudentRecords(User $teacher): Team
+    private function createClassroomWithUnlinkedStudents(User $teacher): Team
     {
-        // Check if team already exists
-        $existingTeam = Team::where('name', 'Classroom with Student Records Only')
-            ->where('user_id', $teacher->id)
-            ->first();
-            
-        if ($existingTeam) {
-            $team2 = $existingTeam;
-        } else {
-            // Create Team 2
-            $team2 = new Team([
-                'name' => 'Classroom with Student Records Only',
+        // Create or retrieve team
+        $classroom = Team::firstOrCreate(
+            [
+                'name' => 'History 101',
                 'user_id' => $teacher->id,
+            ],
+            [
                 'personal_team' => false,
-            ]);
-            $team2->id = (string) \Illuminate\Support\Str::uuid();
-            $team2->save();
-        }
+                'id' => Str::uuid(),
+                'join_code' => 'HIS101', // Custom join code for easier testing
+            ]
+        );
 
-        // Create 20 student records without user accounts
+        // Create unlinked student records
         $students = [];
-        for ($i = 1; $i <= 20; $i++) {
+        $studentNames = $this->getRealisticStudentNames(30); // Get different names
+
+        for ($i = 0; $i < 20; $i++) {
+            $studentName = $studentNames[$i];
+            $email = $this->generateStudentEmail($studentName);
+
+            // Create student record without linking to a user
             $student = Student::firstOrCreate(
                 [
-                    'email' => "record_student{$i}@example.com",
-                    'team_id' => $team2->id,
+                    'team_id' => $classroom->id,
+                    'email' => $email,
                 ],
                 [
-                    'name' => "Record Student {$i}",
-                    'email' => "record_student{$i}@example.com",
-                    'team_id' => $team2->id,
+                    'name' => $studentName,
                     'status' => 'active',
-                    'user_id' => null, // No associated user
-                    'student_id' => 'RS' . str_pad((string)$i, 4, '0', STR_PAD_LEFT),
+                    'user_id' => null, // Explicitly no user link
+                    'student_id' => 'HIS' . str_pad((string)($i + 1), 3, '0', STR_PAD_LEFT),
                     'gender' => $i % 2 === 0 ? 'female' : 'male',
-                    'birth_date' => now()->subYears(rand(18, 25))->subDays(rand(1, 365)),
-                    'notes' => $i % 5 === 0 ? 'Transfer student' : null,
+                    'birth_date' => now()->subYears(rand(18, 22))->subDays(rand(1, 365)),
+                    'notes' => $this->getRandomStudentNote($i),
                 ]
             );
 
             $students[] = $student;
         }
 
-        // Create activities and submissions for Team 2
-        $this->createActivitiesAndSubmissions($team2, $teacher, collect($students));
+        // Create sample activities and submissions for this classroom
+        $this->createClassroomActivities($classroom, $teacher, collect($students));
 
-        return $team2;
+        return $classroom;
     }
 
     /**
-     * Create activities and submissions for a team
+     * Create activities and submissions for a classroom
+     *
+     * @param Team $classroom The classroom team
+     * @param User $teacher The teacher
+     * @param \Illuminate\Support\Collection $students Collection of students or user/student pairs
      */
-    private function createActivitiesAndSubmissions(Team $team, User $teacher, $students): void
+    private function createClassroomActivities(Team $classroom, User $teacher, $students): void
     {
         // Get activity types
         $quizType = ActivityType::where('name', 'Quiz')->first();
@@ -249,322 +261,379 @@ class DatabaseSeeder extends Seeder
         $essayType = ActivityType::where('name', 'Essay')->first();
         $presentationType = ActivityType::where('name', 'Presentation')->first();
 
-        // Create a written activity (Quiz)
-        if ($quizType) {
-            $quiz = Activity::firstOrCreate(
+        // Create classroom activities
+        $this->createQuizActivity($classroom, $teacher, $students, $quizType);
+        $this->createPresentationActivity($classroom, $teacher, $students, $presentationType);
+        $this->createGroupProject($classroom, $teacher, $students, $projectType);
+        $this->createEssayActivity($classroom, $teacher, $students, $essayType);
+        $this->createAssignmentActivity($classroom, $teacher, $students, $assignmentType);
+    }
+
+    /**
+     * Create a quiz activity and submissions
+     */
+    private function createQuizActivity(Team $classroom, User $teacher, $students, $quizType): void
+    {
+        if (!$quizType) return;
+
+        $quiz = Activity::firstOrCreate(
+            [
+                'team_id' => $classroom->id,
+                'title' => 'Unit 1 Quiz',
+            ],
+            [
+                'teacher_id' => $teacher->id,
+                'team_id' => $classroom->id,
+                'activity_type_id' => $quizType->id,
+                'description' => 'Quiz covering the first unit of material',
+                'instructions' => 'Answer all questions. Each question is worth 5 points.',
+                'format' => 'quiz',
+                'category' => 'written',
+                'mode' => 'individual',
+                'total_points' => 50,
+                'status' => 'published',
+            ]
+        );
+
+        // Create submissions for this activity
+        $this->createActivitySubmissions($quiz, $students, $teacher);
+    }
+
+    /**
+     * Create a presentation activity and submissions
+     */
+    private function createPresentationActivity(Team $classroom, User $teacher, $students, $presentationType): void
+    {
+        if (!$presentationType) return;
+
+        $presentation = Activity::firstOrCreate(
+            [
+                'team_id' => $classroom->id,
+                'title' => 'Topic Presentation',
+            ],
+            [
+                'teacher_id' => $teacher->id,
+                'team_id' => $classroom->id,
+                'activity_type_id' => $presentationType->id,
+                'description' => 'Present a topic related to our current unit',
+                'instructions' => 'Prepare a 5-minute presentation with visual aids.',
+                'format' => 'presentation',
+                'category' => 'performance',
+                'mode' => 'individual',
+                'total_points' => 50,
+                'status' => 'published',
+            ]
+        );
+
+        // Create submissions for this activity
+        $this->createActivitySubmissions($presentation, $students, $teacher);
+    }
+
+    /**
+     * Create a group project with roles
+     */
+    private function createGroupProject(Team $classroom, User $teacher, $students, $projectType): void
+    {
+        if (!$projectType) return;
+
+        $project = Activity::firstOrCreate(
+            [
+                'team_id' => $classroom->id,
+                'title' => 'Research Project',
+            ],
+            [
+                'teacher_id' => $teacher->id,
+                'team_id' => $classroom->id,
+                'activity_type_id' => $projectType->id,
+                'description' => 'Collaborative research project',
+                'instructions' => 'Work in groups to create a comprehensive research paper and presentation.',
+                'format' => 'project',
+                'category' => 'written',
+                'mode' => 'group',
+                'total_points' => 150,
+                'status' => 'published',
+            ]
+        );
+
+        // Create roles for the project
+        $roles = [
+            ['name' => 'Team Leader', 'description' => 'Coordinates team efforts and ensures deadlines are met'],
+            ['name' => 'Researcher', 'description' => 'Gathers information from various sources'],
+            ['name' => 'Writer', 'description' => 'Compiles research into a coherent document'],
+            ['name' => 'Editor', 'description' => 'Reviews and edits the final document'],
+        ];
+
+        foreach ($roles as $roleData) {
+            ActivityRole::firstOrCreate(
                 [
-                    'team_id' => $team->id,
-                    'title' => 'Mathematics Quiz',
+                    'activity_id' => $project->id,
+                    'name' => $roleData['name'],
                 ],
                 [
-                    'teacher_id' => $teacher->id,
-                    'team_id' => $team->id,
-                    'activity_type_id' => $quizType->id,
-                    'title' => 'Mathematics Quiz',
-                    'description' => 'A quiz to test basic mathematics knowledge',
-                    'instructions' => 'Answer all questions. Each question is worth 5 points.',
-                    'format' => 'quiz',
-                    'category' => 'written',
-                    'mode' => 'individual',
-                    'total_points' => 50,
-                    'status' => 'published',
+                    'description' => $roleData['description'],
                 ]
             );
-
-            // Create submissions for this activity
-            foreach ($students as $index => $student) {
-                $status = match ($index % 4) {
-                    0 => 'not_started',
-                    1 => 'in_progress',
-                    2 => 'submitted',
-                    3 => 'graded',
-                };
-
-                $score = $status === 'graded' ? rand(0, $quiz->total_points) : null;
-                $finalGrade = $score !== null ? ($score / $quiz->total_points) * 100 : null;
-
-                ActivitySubmission::firstOrCreate(
-                    [
-                        'activity_id' => $quiz->id,
-                        'student_id' => $student->id,
-                    ],
-                    [
-                        'activity_id' => $quiz->id,
-                        'student_id' => $student->id,
-                        'content' => $status === 'submitted' || $status === 'graded' ? 'Completed quiz with multiple-choice answers.' : null,
-                        'status' => $status,
-                        'score' => $score,
-                        'final_grade' => $finalGrade,
-                        'submitted_at' => $status === 'submitted' || $status === 'graded' ? now()->subHours(rand(1, 48)) : null,
-                        'graded_by' => $status === 'graded' ? $teacher->id : null,
-                        'graded_at' => $status === 'graded' ? now()->subHours(rand(1, 24)) : null,
-                    ]
-                );
-            }
         }
 
-        // Create a performance activity (Presentation)
-        if ($presentationType) {
-            $presentation = Activity::firstOrCreate(
+        // Create submissions for half the students
+        $this->createActivitySubmissions($project, $students->take(10), $teacher);
+    }
+
+    /**
+     * Create an essay activity with deadline
+     */
+    private function createEssayActivity(Team $classroom, User $teacher, $students, $essayType): void
+    {
+        if (!$essayType) return;
+
+        $essay = Activity::firstOrCreate(
+            [
+                'team_id' => $classroom->id,
+                'title' => 'Analytical Essay',
+            ],
+            [
+                'teacher_id' => $teacher->id,
+                'team_id' => $classroom->id,
+                'activity_type_id' => $essayType->id,
+                'description' => 'Analysis of a key topic from our current unit',
+                'instructions' => 'Write a 1000-word analytical essay with proper citations.',
+                'format' => 'assignment',
+                'category' => 'written',
+                'mode' => 'take_home',
+                'total_points' => 100,
+                'status' => 'published',
+                'deadline' => now()->addDays(14),
+            ]
+        );
+
+        // Create submissions
+        $this->createActivitySubmissions($essay, $students, $teacher);
+    }
+
+    /**
+     * Create an assignment activity
+     */
+    private function createAssignmentActivity(Team $classroom, User $teacher, $students, $assignmentType): void
+    {
+        if (!$assignmentType) return;
+
+        $assignment = Activity::firstOrCreate(
+            [
+                'team_id' => $classroom->id,
+                'title' => 'Worksheet Assignment',
+            ],
+            [
+                'teacher_id' => $teacher->id,
+                'team_id' => $classroom->id,
+                'activity_type_id' => $assignmentType->id,
+                'description' => 'Practice exercises based on recent lessons',
+                'instructions' => 'Complete all exercises in the provided worksheet.',
+                'format' => 'assignment',
+                'category' => 'written',
+                'mode' => 'individual',
+                'total_points' => 75,
+                'status' => 'published',
+            ]
+        );
+
+        // Create submissions
+        $this->createActivitySubmissions($assignment, $students, $teacher);
+    }
+
+    /**
+     * Create activity submissions for students
+     *
+     * @param Activity $activity
+     * @param \Illuminate\Support\Collection $students
+     * @param User $teacher
+     */
+    private function createActivitySubmissions($activity, $students, $teacher): void
+    {
+        $submissionStatuses = ['not_started', 'in_progress', 'submitted', 'graded'];
+        $contents = [
+            'quiz' => 'Completed multiple choice and short answer questions.',
+            'presentation' => 'Presented slides and delivered oral presentation on the topic.',
+            'project' => 'Compiled research findings into a comprehensive report.',
+            'assignment' => 'Completed all required exercises and problems.',
+            'essay' => 'Analyzed the topic with supporting evidence and proper citations.'
+        ];
+
+        foreach ($students as $index => $studentData) {
+            // Handle both student objects and user/student pairs
+            $student = isset($studentData['student']) ? $studentData['student'] : $studentData;
+
+            // Determine submission status based on index
+            $statusIndex = $index % count($submissionStatuses);
+            $status = $submissionStatuses[$statusIndex];
+
+            // Calculate score and grade for graded submissions
+            $score = null;
+            $finalGrade = null;
+            if ($status === 'graded') {
+                // Create a realistic grade distribution
+                $scorePercentages = [
+                    0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0
+                ];
+                $scorePercentage = $scorePercentages[array_rand($scorePercentages)];
+                // Add some randomness for realism
+                $scorePercentage = max(0, min(1, $scorePercentage + (mt_rand(-5, 5) / 100)));
+
+                $score = round($activity->total_points * $scorePercentage);
+                $finalGrade = ($score / $activity->total_points) * 100;
+            }
+
+            // Get submission content based on activity format or default to empty
+            $content = null;
+            if ($status === 'submitted' || $status === 'graded') {
+                $content = $contents[$activity->format] ?? 'Completed submission for this activity.';
+            }
+
+            // Get feedback for graded submissions
+            $feedback = $status === 'graded' ? $this->getRealisticFeedback($score, $activity->total_points) : null;
+
+            // Create submission record
+            ActivitySubmission::firstOrCreate(
                 [
-                    'team_id' => $team->id,
-                    'title' => 'Science Topic Presentation',
+                    'activity_id' => $activity->id,
+                    'student_id' => $student->id,
                 ],
                 [
-                    'teacher_id' => $teacher->id,
-                    'team_id' => $team->id,
-                    'activity_type_id' => $presentationType->id,
-                    'title' => 'Science Topic Presentation',
-                    'description' => 'Present a science topic to the class',
-                    'instructions' => 'Prepare a 5-minute presentation on a science topic of your choice.',
-                    'format' => 'presentation',
-                    'category' => 'performance',
-                    'mode' => 'individual',
-                    'total_points' => 50,
-                    'status' => 'published',
+                    'content' => $content,
+                    'status' => $status,
+                    'score' => $score,
+                    'final_grade' => $finalGrade,
+                    'feedback' => $feedback,
+                    'submitted_at' => in_array($status, ['submitted', 'graded'])
+                        ? now()->subDays(rand(1, 7))->subHours(rand(1, 23))
+                        : null,
+                    'graded_by' => $status === 'graded' ? $teacher->id : null,
+                    'graded_at' => $status === 'graded'
+                        ? now()->subDays(rand(0, 2))->subHours(rand(1, 23))
+                        : null,
                 ]
             );
-
-            // Create submissions for this activity
-            foreach ($students as $index => $student) {
-                $status = match ($index % 4) {
-                    0 => 'not_started',
-                    1 => 'in_progress',
-                    2 => 'submitted',
-                    3 => 'graded',
-                };
-
-                $score = $status === 'graded' ? rand(0, $presentation->total_points) : null;
-                $finalGrade = $score !== null ? ($score / $presentation->total_points) * 100 : null;
-
-                ActivitySubmission::firstOrCreate(
-                    [
-                        'activity_id' => $presentation->id,
-                        'student_id' => $student->id,
-                    ],
-                    [
-                        'activity_id' => $presentation->id,
-                        'student_id' => $student->id,
-                        'content' => $status === 'submitted' || $status === 'graded' ? 'Presentation on renewable energy sources.' : null,
-                        'status' => $status,
-                        'score' => $score,
-                        'final_grade' => $finalGrade,
-                        'submitted_at' => $status === 'submitted' || $status === 'graded' ? now()->subHours(rand(1, 48)) : null,
-                        'graded_by' => $status === 'graded' ? $teacher->id : null,
-                        'graded_at' => $status === 'graded' ? now()->subHours(rand(1, 24)) : null,
-                    ]
-                );
-            }
-        }
-
-        // Create a group project with roles
-        if ($projectType) {
-            $project = Activity::firstOrCreate(
-                [
-                    'team_id' => $team->id,
-                    'title' => 'History Research Project',
-                ],
-                [
-                    'teacher_id' => $teacher->id,
-                    'team_id' => $team->id,
-                    'activity_type_id' => $projectType->id,
-                    'title' => 'History Research Project',
-                    'description' => 'Research and document a historical event',
-                    'instructions' => 'Work in groups to research a historical event and create a detailed report.',
-                    'format' => 'project',
-                    'category' => 'written',
-                    'mode' => 'group',
-                    'total_points' => 150,
-                    'status' => 'published',
-                ]
-            );
-
-            // Create roles for the project
-            $roles = [
-                ['name' => 'Team Leader', 'description' => 'Coordinates the team and ensures deadlines are met'],
-                ['name' => 'Researcher', 'description' => 'Gathers information from various sources'],
-                ['name' => 'Writer', 'description' => 'Compiles the research into a coherent document'],
-                ['name' => 'Editor', 'description' => 'Reviews and edits the final document'],
-            ];
-
-            foreach ($roles as $roleConfig) {
-                ActivityRole::firstOrCreate(
-                    [
-                        'activity_id' => $project->id,
-                        'name' => $roleConfig['name'],
-                    ],
-                    [
-                        'activity_id' => $project->id,
-                        'name' => $roleConfig['name'],
-                        'description' => $roleConfig['description'],
-                    ]
-                );
-            }
-
-            // Create submissions for this activity (for half the students)
-            foreach ($students->take(10) as $index => $student) {
-                $status = match ($index % 3) {
-                    0 => 'in_progress',
-                    1 => 'submitted',
-                    2 => 'graded',
-                };
-
-                $score = $status === 'graded' ? rand(0, $project->total_points) : null;
-                $finalGrade = $score !== null ? ($score / $project->total_points) * 100 : null;
-
-                ActivitySubmission::firstOrCreate(
-                    [
-                        'activity_id' => $project->id,
-                        'student_id' => $student->id,
-                    ],
-                    [
-                        'activity_id' => $project->id,
-                        'student_id' => $student->id,
-                        'content' => $status === 'submitted' || $status === 'graded' ? 'Research project on World War II.' : null,
-                        'status' => $status,
-                        'score' => $score,
-                        'final_grade' => $finalGrade,
-                        'submitted_at' => $status === 'submitted' || $status === 'graded' ? now()->subHours(rand(1, 48)) : null,
-                        'graded_by' => $status === 'graded' ? $teacher->id : null,
-                        'graded_at' => $status === 'graded' ? now()->subHours(rand(1, 24)) : null,
-                    ]
-                );
-            }
-        }
-
-        // Create a take-home essay with deadline
-        if ($essayType) {
-            $essay = Activity::firstOrCreate(
-                [
-                    'team_id' => $team->id,
-                    'title' => 'Research Essay',
-                ],
-                [
-                    'teacher_id' => $teacher->id,
-                    'team_id' => $team->id,
-                    'activity_type_id' => $essayType->id,
-                    'title' => 'Research Essay',
-                    'description' => 'Write a research essay on a topic of your choice',
-                    'instructions' => 'Write a 1000-word research essay with proper citations. Due in two weeks.',
-                    'format' => 'assignment',
-                    'category' => 'written',
-                    'mode' => 'take_home',
-                    'total_points' => 150,
-                    'status' => 'published',
-                    'deadline' => now()->addDays(14),
-                ]
-            );
-
-            // Create submissions for this activity
-            foreach ($students as $index => $student) {
-                $status = match ($index % 5) {
-                    0 => 'not_started',
-                    1, 2 => 'in_progress',
-                    3 => 'submitted',
-                    4 => 'graded',
-                };
-
-                $score = $status === 'graded' ? rand(0, $essay->total_points) : null;
-                $finalGrade = $score !== null ? ($score / $essay->total_points) * 100 : null;
-                $feedback = $status === 'graded' ? $this->getRandomFeedback() : null;
-
-                ActivitySubmission::firstOrCreate(
-                    [
-                        'activity_id' => $essay->id,
-                        'student_id' => $student->id,
-                    ],
-                    [
-                        'activity_id' => $essay->id,
-                        'student_id' => $student->id,
-                        'content' => $status === 'submitted' || $status === 'graded' ? 'Research essay on climate change impacts.' : null,
-                        'status' => $status,
-                        'score' => $score,
-                        'final_grade' => $finalGrade,
-                        'feedback' => $feedback,
-                        'submitted_at' => $status === 'submitted' || $status === 'graded' ? now()->subHours(rand(1, 48)) : null,
-                        'graded_by' => $status === 'graded' ? $teacher->id : null,
-                        'graded_at' => $status === 'graded' ? now()->subHours(rand(1, 24)) : null,
-                    ]
-                );
-            }
-        }
-
-        // Create an assignment
-        if ($assignmentType) {
-            $assignment = Activity::firstOrCreate(
-                [
-                    'team_id' => $team->id,
-                    'title' => 'English Grammar Assignment',
-                ],
-                [
-                    'teacher_id' => $teacher->id,
-                    'team_id' => $team->id,
-                    'activity_type_id' => $assignmentType->id,
-                    'title' => 'English Grammar Assignment',
-                    'description' => 'An assignment to practice English grammar',
-                    'instructions' => 'Complete all exercises in the worksheet.',
-                    'format' => 'assignment',
-                    'category' => 'written',
-                    'mode' => 'individual',
-                    'total_points' => 100,
-                    'status' => 'published',
-                ]
-            );
-
-            // Create submissions for this activity
-            foreach ($students as $index => $student) {
-                $status = match ($index % 4) {
-                    0 => 'not_started',
-                    1 => 'in_progress',
-                    2 => 'submitted',
-                    3 => 'graded',
-                };
-
-                $score = $status === 'graded' ? rand(0, $assignment->total_points) : null;
-                $finalGrade = $score !== null ? ($score / $assignment->total_points) * 100 : null;
-                $feedback = $status === 'graded' ? $this->getRandomFeedback() : null;
-
-                ActivitySubmission::firstOrCreate(
-                    [
-                        'activity_id' => $assignment->id,
-                        'student_id' => $student->id,
-                    ],
-                    [
-                        'activity_id' => $assignment->id,
-                        'student_id' => $student->id,
-                        'content' => $status === 'submitted' || $status === 'graded' ? 'Completed grammar exercises.' : null,
-                        'status' => $status,
-                        'score' => $score,
-                        'final_grade' => $finalGrade,
-                        'feedback' => $feedback,
-                        'submitted_at' => $status === 'submitted' || $status === 'graded' ? now()->subHours(rand(1, 48)) : null,
-                        'graded_by' => $status === 'graded' ? $teacher->id : null,
-                        'graded_at' => $status === 'graded' ? now()->subHours(rand(1, 24)) : null,
-                    ]
-                );
-            }
         }
     }
 
     /**
-     * Get random feedback for graded submissions
+     * Get a list of realistic student names
+     *
+     * @param int $offset Optional offset to get different names
+     * @return array
      */
-    private function getRandomFeedback(): string
+    private function getRealisticStudentNames(int $offset = 0): array
     {
-        $feedbacks = [
-            "Excellent work! Your understanding of the concepts is clear.",
-            "Good job. There are a few areas that could use improvement.",
-            "Satisfactory work, but please pay more attention to details.",
-            "You've made some good points, but your analysis needs more depth.",
-            "Well-structured and thoughtful. Keep up the good work!",
-            "Your work shows promise, but needs more development in key areas.",
-            "Very thorough analysis. I'm impressed with your attention to detail.",
-            "You've met the basic requirements, but could have expanded more on your ideas.",
-            "Strong start, but your conclusion needs more supporting evidence.",
-            "Outstanding work! Your critical thinking skills are evident throughout."
+        $names = [
+            'Emma Johnson', 'Liam Smith', 'Olivia Williams', 'Noah Brown', 'Ava Jones',
+            'Ethan Miller', 'Sophia Davis', 'Mason Garcia', 'Isabella Rodriguez', 'Logan Martinez',
+            'Charlotte Wilson', 'Jacob Anderson', 'Mia Taylor', 'Jack Thomas', 'Amelia Hernandez',
+            'Benjamin Moore', 'Harper Martin', 'Michael Jackson', 'Evelyn Thompson', 'Alexander White',
+            'Abigail Harris', 'Daniel Clark', 'Emily Lewis', 'Matthew Lee', 'Elizabeth Walker',
+            'Henry Hall', 'Sofia Allen', 'James Young', 'Avery King', 'Samuel Wright',
+            'Scarlett Scott', 'Joseph Green', 'Victoria Baker', 'David Adams', 'Grace Nelson',
+            'Carter Hill', 'Chloe Ramirez', 'Owen Campbell', 'Ella Mitchell', 'Wyatt Roberts',
+            'Riley Carter', 'John Phillips', 'Lillian Evans', 'Gabriel Turner', 'Nora Torres',
+            'Julian Collins', 'Zoey Parker', 'Luke Edwards', 'Hannah Morgan', 'Isaac Murphy'
         ];
 
-        return $feedbacks[array_rand($feedbacks)];
+        // Return 20 names starting from the offset
+        return array_slice($names, $offset, 50);
+    }
+
+    /**
+     * Generate student email from name
+     *
+     * @param string $name
+     * @return string
+     */
+    private function generateStudentEmail(string $name): string
+    {
+        $nameParts = explode(' ', strtolower($name));
+        $firstInitial = substr($nameParts[0], 0, 1);
+        $lastName = end($nameParts);
+
+        // Add some variation to emails
+        $variations = ['', '01', '21', '22', '.edu'];
+        $variation = $variations[array_rand($variations)];
+
+        return $firstInitial . $lastName . $variation . '@student.edu';
+    }
+
+    /**
+     * Get random student note
+     *
+     * @param int $index
+     * @return string|null
+     */
+    private function getRandomStudentNote(int $index): ?string
+    {
+        // Only add notes to some students
+        if ($index % 4 !== 0) {
+            return null;
+        }
+
+        $notes = [
+            'Transfer student from Springfield High',
+            'Plays on the school basketball team',
+            'Participates in debate club',
+            'Has accommodations for extended time on tests',
+            'Excels in mathematics and science subjects',
+            'International exchange student',
+            'Student council representative',
+            'Requires seating at the front of class (vision)',
+            'Active in theater program',
+            'Demonstrated leadership skills in group projects'
+        ];
+
+        return $notes[$index % count($notes)];
+    }
+
+    /**
+     * Get realistic feedback based on score
+     *
+     * @param int|null $score
+     * @param int $totalPoints
+     * @return string
+     */
+    private function getRealisticFeedback(?int $score, int $totalPoints): string
+    {
+        if (!$score) {
+            return 'Please see me during office hours to discuss this submission.';
+        }
+
+        $percentage = ($score / $totalPoints) * 100;
+
+        if ($percentage >= 90) {
+            $feedback = [
+                "Excellent work! Your understanding of the concepts is clear and well-presented.",
+                "Outstanding submission. You've demonstrated a thorough grasp of the material.",
+                "Exceptional work. Your analysis shows depth and critical thinking.",
+                "Very well done! Your submission exceeded expectations in both content and presentation."
+            ];
+        } elseif ($percentage >= 80) {
+            $feedback = [
+                "Good work overall. Your understanding of key concepts is solid.",
+                "Strong submission with thoughtful analysis. A few minor areas could be developed further.",
+                "Well-structured work showing good comprehension. Continue developing your analytical skills.",
+                "Good job. You've addressed the main requirements effectively."
+            ];
+        } elseif ($percentage >= 70) {
+            $feedback = [
+                "Satisfactory work. You've covered the basics, but could explore some concepts in more depth.",
+                "Adequate submission that meets requirements. More detailed analysis would strengthen your work.",
+                "You've demonstrated basic understanding. Consider more specific examples in future work.",
+                "Your work shows promise. Focus on developing more thorough explanations of key concepts."
+            ];
+        } else {
+            $feedback = [
+                "This submission needs improvement. Please review the course materials and consider revising.",
+                "There are several areas that need attention. Let's discuss during office hours.",
+                "Your work shows some understanding, but key concepts are missing or incorrect.",
+                "This submission doesn't fully address the requirements. Please review the instructions carefully."
+            ];
+        }
+
+        return $feedback[array_rand($feedback)];
     }
 }
 

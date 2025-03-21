@@ -10,6 +10,7 @@ use Laravel\Jetstream\Events\TeamDeleted;
 use Laravel\Jetstream\Events\TeamUpdated;
 use Laravel\Jetstream\Team as JetstreamTeam;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Support\Str;
 
 class Team extends JetstreamTeam
 {
@@ -26,6 +27,7 @@ class Team extends JetstreamTeam
         'user_id',
         'name',
         'personal_team',
+        'join_code',
     ];
 
     /**
@@ -49,6 +51,33 @@ class Team extends JetstreamTeam
         return [
             'personal_team' => 'boolean',
         ];
+    }
+
+    /**
+     * Boot the model.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Generate a join code when creating a new team
+        static::creating(function ($team) {
+            if (empty($team->join_code)) {
+                $team->generateJoinCode();
+            }
+        });
+    }
+
+    /**
+     * Generate a unique 6-character join code for the team.
+     */
+    public function generateJoinCode(): void
+    {
+        do {
+            $code = strtoupper(Str::random(6));
+        } while (self::where('join_code', $code)->exists());
+
+        $this->join_code = $code;
     }
 
     /**
@@ -105,11 +134,11 @@ class Team extends JetstreamTeam
     public function hasUserWithRole(User $user, string $role): bool
     {
         $teamMember = $this->users()->where('user_id', $user->id)->first();
-        
+
         if (!$teamMember) {
             return false;
         }
-        
+
         return $teamMember->membership->role === $role;
     }
 }

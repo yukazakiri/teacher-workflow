@@ -11,15 +11,15 @@ class ClassesResources extends Page
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
 
     protected static string $view = 'filament.pages.class-resources';
-    
+
     protected static ?string $navigationGroup = 'Class Resources';
-    
-    protected static ?int $navigationSort = 10;
+
+    // protected static ?int $navigationSort = ;
 
     protected ?string $heading = 'Class Resources Hub';
-    
+
     protected ?string $subheading = 'Access and manage all your classroom resources, organized by type and category.';
-    
+
     protected function getHeaderActions(): array
     {
         return [
@@ -45,22 +45,22 @@ class ClassesResources extends Page
     {
         return 'Classes Resources';
     }
-    
+
     protected function getHeaderWidgets(): array
     {
         return [];
     }
-    
+
     protected function getFooterWidgets(): array
     {
         return [];
     }
-    
+
     public static function getNavigationBadge(): ?string
     {
         return null;
     }
-    
+
     protected function getViewData(): array
     {
         return [
@@ -82,4 +82,4 @@ class ClassesResources extends Page
             ]
         ];
     }
-} 
+}

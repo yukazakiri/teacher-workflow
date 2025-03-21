@@ -17,20 +17,30 @@ use Laravel\Jetstream\Features;
 use App\Filament\Pages\EditTeam;
 use Laravel\Jetstream\Jetstream;
 use App\Filament\Pages\ApiTokens;
+use App\Filament\Pages\ClassesResources;
 use Filament\Navigation\MenuItem;
 use App\Filament\Pages\CreateTeam;
+use App\Filament\Pages\Gradesheet;
 use Filament\Support\Colors\Color;
 use App\Filament\Pages\EditProfile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use SebastianBergmann\Type\FalseType;
+use Filament\Navigation\NavigationItem;
+use App\Filament\Resources\ExamResource;
 use Filament\Navigation\NavigationGroup;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Navigation\NavigationBuilder;
+use App\Filament\Resources\StudentResource;
+use App\Filament\Resources\ActivityResource;
 use Illuminate\Session\Middleware\StartSession;
 use Devonab\FilamentEasyFooter\EasyFooterPlugin;
 use Illuminate\Cookie\Middleware\EncryptCookies;
+use App\Filament\Resources\ClassResourceResource;
+use App\Filament\Pages\Dashboard as PagesDashboard;
+use App\Filament\Resources\ResourceCategoryResource;
+use AssistantEngine\Filament\FilamentAssistantPlugin;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
@@ -41,7 +51,6 @@ use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use TomatoPHP\FilamentSimpleTheme\FilamentSimpleThemePlugin;
 use CodeWithDennis\FilamentThemeInspector\FilamentThemeInspectorPlugin;
 use DutchCodingCompany\FilamentDeveloperLogins\FilamentDeveloperLoginsPlugin;
-use Filament\Navigation\NavigationItem;
 
 class AppPanelProvider extends PanelProvider
 {
@@ -52,10 +61,10 @@ class AppPanelProvider extends PanelProvider
             ->id("app")
             ->path("app")
             ->login()
-            ->spa()
+            // ->spa()
             ->brandName("FilaGrade")
             ->sidebarCollapsibleOnDesktop()
-              // ->topNavigation()
+            // ->topNavigation()
             ->registration()
             ->passwordReset()
             ->emailVerification()
@@ -97,19 +106,20 @@ class AppPanelProvider extends PanelProvider
                 EditProfile::class,
                 ApiTokens::class,
                 \App\Filament\Pages\Gradesheet::class,
-                \App\Filament\Pages\ChatPage::class,
-                // \App\Filament\Pages\ClassResources::class,
+                // \App\Filament\Pages\ChatPage::class,
+                \App\Filament\Pages\ClassesResources::class,
             ])
             ->renderHook(
                 'panels::sidebar.start',
-                fn () => view('filament.sidebar.chat-navigation')
+                fn() => view('filament.sidebar.chat-navigation')
             )
             ->plugins([
                 FilamentDeveloperLoginsPlugin::make()
                     ->enabled()
                     ->users(fn() => User::pluck("email", "name")->toArray()),
-                    EasyFooterPlugin::make()
+                EasyFooterPlugin::make()
                     ->withLoadTime(),
+                FilamentAssistantPlugin::make(),
                 // FilamentSimpleThemePlugin::make(),
                 // FilamentThemeInspectorPlugin::make()
                 //     ->toggle(),
@@ -119,51 +129,29 @@ class AppPanelProvider extends PanelProvider
                 for: "App\\Filament\\Widgets"
             )
             ->navigation(function (NavigationBuilder $builder): NavigationBuilder {
-                $user = Auth::user();
-                
-                if (!$user) {
-                    return $builder;
-                }
-                
-                $chats = \App\Models\Chat::where('user_id', $user->id)
-                    ->where('team_id', $user->currentTeam->id)
-                    ->latest()
-                    ->limit(5)
-                    ->get();
-                
-                $chatItems = [];
-                
-                // Add "All Chats" item
-                $chatItems[] = NavigationItem::make('All Chats')
-                    ->icon('heroicon-o-chat-bubble-bottom-center-text')
-                    ->isActiveWhen(fn(): bool => request()->routeIs('filament.app.pages.dashboard'))
-                    ->url(route('filament.app.pages.dashboard', ['tenant' => $user->currentTeam->id]));
-                
-                // Add "New Chat" item
-                $chatItems[] = NavigationItem::make('New Chat')
-                    ->icon('heroicon-o-plus-circle')
-                    ->isActiveWhen(fn(): bool => request()->routeIs('filament.app.pages.chat') && !request()->route('chat'))
-                    ->url(route('filament.app.pages.chat', ['tenant' => $user->currentTeam->id]));
-                
-                // Add recent chat items
-                foreach ($chats as $chat) {
-                    $chatItems[] = NavigationItem::make($chat->title)
-                        ->icon('heroicon-o-chat-bubble-left-ellipsis')
-                        ->isActiveWhen(fn(): bool => 
-                            request()->routeIs('filament.app.pages.chat') && 
-                            request()->route('chat') == $chat->id
-                        )
-                        ->url(route('filament.app.pages.chat', [
-                            'tenant' => $user->currentTeam->id,
-                            'chat' => $chat->id
-                        ]));
-                }
-                
+
                 return $builder->groups([
-                    NavigationGroup::make('Chat History')
-                        ->items($chatItems),
-                ]);
+                    // NavigationGroup::make('Chat History')
+                    //     ->items($chatItems),
+                ])
+                    ->items([
+                        ...Dashboard::getNavigationItems(),
+                        ...ClassesResources::getNavigationItems(),
+                        ...Gradesheet::getNavigationItems(),
+                        ...ActivityResource::getNavigationItems(),
+                        ...ClassResourceResource::getNavigationItems(),
+                        ...ExamResource::getNavigationItems(),
+                        ...ResourceCategoryResource::getNavigationItems(),
+                        ...StudentResource::getNavigationItems(),
+
+                    ]);
             })
+            ->userMenuItems([
+                MenuItem::make()
+                    ->label('Profile')
+                    ->url(fn(): string => EditProfile::getUrl(['tenant' => auth()->user()->currentTeam->id ?? 1]))
+                    ->icon('heroicon-o-user-circle'),
+            ])
             ->widgets([
                 Widgets\AccountWidget::class,
                 Widgets\FilamentInfoWidget::class,
@@ -229,7 +217,7 @@ class AppPanelProvider extends PanelProvider
          * Listen and switch team if tenant was changed
          */
         Event::listen(TenantSet::class, SwitchTeam::class);
-        
+
         /**
          * Register custom routes for team switching
          */
@@ -242,7 +230,7 @@ class AppPanelProvider extends PanelProvider
             Route::post('/app/team/switch/{team}', function (Team $team) {
                 // This will trigger the TenantSet event which is handled by SwitchTeam listener
                 Filament::setTenant($team);
-                
+
                 return redirect()->route('filament.app.pages.dashboard', ['tenant' => $team->id]);
             })->name('filament.app.team.switch');
         });

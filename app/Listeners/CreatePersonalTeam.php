@@ -24,15 +24,15 @@ class CreatePersonalTeam
         $user = $event->getUser();
 
         if (Features::hasTeamFeatures()) {
-            $team = Team::forceCreate([
-                'user_id' => $user->id,
-                'name' => explode(' ', $user->name, 2)[0] . "'s Team",
-                'personal_team' => true,
-            ]);
+            // $team = Team::forceCreate([
+            //     'user_id' => $user->id,
+            //     'name' => explode(' ', $user->name, 2)[0] . "'s Team",
+            //     'personal_team' => true,
+            // ]);
 
-            $user->ownedTeams()->save($team);
+            // $user->ownedTeams()->save($team);
 
-            $user->switchTeam($team);
+            // $user->switchTeam($team);
         }
     }
 }
