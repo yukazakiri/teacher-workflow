@@ -20,7 +20,7 @@ use App\Http\Controllers\ActivitySubmissionController;
 |
 */
 
-Route::get('/', fn () => view('welcome'));
+Route::get('/', fn () => view('welcome'))->name('welcome');
 
 Route::redirect('/login', '/app/login')->name('login');
 

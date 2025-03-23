@@ -17,7 +17,6 @@ use Laravel\Jetstream\Features;
 use App\Filament\Pages\EditTeam;
 use Laravel\Jetstream\Jetstream;
 use App\Filament\Pages\ApiTokens;
-use App\Filament\Pages\ClassesResources;
 use Filament\Navigation\MenuItem;
 use App\Filament\Pages\CreateTeam;
 use App\Filament\Pages\Gradesheet;
@@ -28,6 +27,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use SebastianBergmann\Type\FalseType;
 use Filament\Navigation\NavigationItem;
+use App\Filament\Pages\ClassesResources;
 use App\Filament\Resources\ExamResource;
 use Filament\Navigation\NavigationGroup;
 use Filament\Http\Middleware\Authenticate;
@@ -42,6 +42,7 @@ use App\Filament\Pages\Dashboard as PagesDashboard;
 use App\Filament\Resources\ResourceCategoryResource;
 use AssistantEngine\Filament\FilamentAssistantPlugin;
 use Illuminate\Routing\Middleware\SubstituteBindings;
+use AssistantEngine\Filament\Chat\Pages\AssistantChat;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -103,6 +104,7 @@ class AppPanelProvider extends PanelProvider
             )
             ->pages([
                 \App\Filament\Pages\Dashboard::class,
+                AssistantChat::class,
                 EditProfile::class,
                 ApiTokens::class,
                 \App\Filament\Pages\Gradesheet::class,
@@ -120,9 +122,7 @@ class AppPanelProvider extends PanelProvider
                 EasyFooterPlugin::make()
                     ->withLoadTime(),
                 FilamentAssistantPlugin::make(),
-                // FilamentSimpleThemePlugin::make(),
-                // FilamentThemeInspectorPlugin::make()
-                //     ->toggle(),
+            
             ])
             ->discoverWidgets(
                 in: app_path("Filament/Widgets"),
@@ -136,6 +136,7 @@ class AppPanelProvider extends PanelProvider
                 ])
                     ->items([
                         ...Dashboard::getNavigationItems(),
+                        // ...AssistantChat::getNavigationItems(),
                         ...ClassesResources::getNavigationItems(),
                         ...Gradesheet::getNavigationItems(),
                         ...ActivityResource::getNavigationItems(),

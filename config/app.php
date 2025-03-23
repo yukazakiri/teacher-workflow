@@ -178,6 +178,7 @@ return [
         App\Providers\FortifyServiceProvider::class,
         App\Providers\FilamentTeamBadgeServiceProvider::class,
         App\Providers\PrismServiceProvider::class,
+        App\Providers\ChatServiceProvider::class,
     ],
 
 ];

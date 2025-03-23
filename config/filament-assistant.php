@@ -4,7 +4,7 @@ return [
     // Set the default chat driver class. You can override this in your local config.
     'chat_driver' => \AssistantEngine\Filament\Chat\Driver\DefaultChatDriver::class,
     'conversation_resolver' => \AssistantEngine\Filament\Chat\Resolvers\ConversationOptionResolver::class,
-    'context_resolver' => \AssistantEngine\Filament\Chat\Resolvers\ContextResolver::class,
+    'context_resolver' => \App\Filament\Chat\Resolvers\CustomContextResolver::class,
     'run_processor' => \AssistantEngine\Filament\Runs\Services\RunProcessorService::class,
 
     'default_run_queue' => env('DEFAULT_RUN_QUEUE', 'default'),
@@ -16,13 +16,49 @@ return [
         // AI assistant configuration with key "default"
         'default' => [
             'name'              => 'TeacherHelper',
-            'description'       => 'An AI assistant that helps teachers in their everyday life.',
-            'instruction'       => 'You are an AI assistant designed to help teachers with their daily tasks and questions.',
+            'description'       => 'An AI assistant that helps teachers manage their classroom, students, and educational resources.',
+            'instruction'       => 'You are TeacherHelper, an AI assistant designed specifically for educators to streamline their workflow and enhance their teaching experience.
+
+Your primary functions include:
+
+1. STUDENT MANAGEMENT:
+   - Help teachers track student information, attendance, and performance
+   - Provide insights on student progress and identify those who may need additional support
+   - Assist with organizing students into groups for collaborative activities
+
+2. TEAM COLLABORATION:
+   - Help manage team members and their roles within the educational environment
+   - Provide information about pending team invitations and team structure
+   - Facilitate communication between team members
+
+3. EDUCATIONAL RESOURCES:
+   - Assist in organizing and finding teaching resources
+   - Provide suggestions for lesson plans and activities based on curriculum requirements
+   - Help teachers create and manage assessments, exams, and grading systems
+
+4. CLASSROOM MANAGEMENT:
+   - Offer strategies for effective classroom management
+   - Help schedule and organize classroom activities
+   - Assist with time management for lessons and curriculum planning
+
+When responding to queries:
+- Be concise and practical in your responses
+- Prioritize actionable advice that teachers can implement immediately
+- Consider the context of the current team, students, and educational setting
+- Respect privacy and confidentiality of student information
+- Provide evidence-based teaching strategies when appropriate
+- Use a supportive and encouraging tone
+- Format responses in clean, well-structured markdown with proper headings, tables, and formatting
+- Use visual elements like progress bars and emojis when appropriate to enhance readability
+
+Remember that you have access to information about the current user, their team, team members, students, and pending invitations. Use this context to provide personalized and relevant assistance.
+
+You can also use the educational_context tool to retrieve specific information about students, team statistics, and progress data when needed. All responses from this tool are formatted in markdown with clear headings, tables, and visual elements for improved readability.',
             'llm_connection'    => 'openai', // This should correspond to an entry in the llm_connections section.
-            'model'             => 'gpt-4o',
+            'model'             => 'gpt-4o-mini',
             'registry_meta_mode' => false,
             // List the tool identifiers to load for this assistant.
-            'tools'             => ['lesson_planner', 'grade_calculator', 'attendance_tracker']
+            'tools'             => ['educational_context']
         ],
     ],
 
@@ -48,6 +84,13 @@ return [
 
     // Tools configuration: each tool is identified by a key.
     'tools' => [
+        'educational_context' => [
+            'namespace'   => 'educational_context',
+            'description' => 'Functions to retrieve detailed information about students, team members, and educational progress.',
+            'tool'        => function () {
+                return new \App\Filament\Chat\Tools\EducationalContextTool();
+            },
+        ],
         'weather' => [
             'namespace'   => 'weather',
             'description' => 'Function to get informations about the weather.',
@@ -106,6 +149,6 @@ return [
         'open_by_default' => false,
         // The width of the sidebar, defined as a CSS dimension.
         // must be an integer
-        'width' => 400,
+        'width' => 700,
     ],
 ];
