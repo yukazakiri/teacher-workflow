@@ -10,6 +10,7 @@
         "assistant-engine/filament-assistant": "^2.1",
         "barryvdh/laravel-dompdf": "^3.1",
         "codewithdennis/filament-theme-inspector": "^0.0.7",
+        "cwsps154/app-settings": "^1.0",
         "devonab/filament-easy-footer": "^1.1",
         "dutchcodingcompany/filament-developer-logins": "^1.8",
         "filament/filament": "^3.3",
