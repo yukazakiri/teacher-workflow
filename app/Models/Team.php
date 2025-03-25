@@ -129,6 +129,14 @@ class Team extends JetstreamTeam
     }
 
     /**
+     * Get the schedules for the team.
+     */
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(Schedule::class);
+    }
+
+    /**
      * Check if the team has a user with a specific role.
      */
     public function hasUserWithRole(User $user, string $role): bool

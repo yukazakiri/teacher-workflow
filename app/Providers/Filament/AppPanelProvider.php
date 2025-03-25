@@ -55,6 +55,7 @@ use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use TomatoPHP\FilamentSimpleTheme\FilamentSimpleThemePlugin;
 use CodeWithDennis\FilamentThemeInspector\FilamentThemeInspectorPlugin;
 use DutchCodingCompany\FilamentDeveloperLogins\FilamentDeveloperLoginsPlugin;
+use App\Filament\Pages\WeeklySchedule;
 
 class AppPanelProvider extends PanelProvider
 {
@@ -119,6 +120,7 @@ class AppPanelProvider extends PanelProvider
                 // \App\Filament\Pages\ChatPage::class,
 
                 \App\Filament\Pages\ClassesResources::class,
+                \App\Filament\Pages\WeeklySchedule::class,
             ])
             ->renderHook(
                 "panels::sidebar.start",
@@ -162,6 +164,7 @@ class AppPanelProvider extends PanelProvider
                         // ...AssistantChat::getNavigationItems(),
                         // ...ClassesResources::getNavigationItems(),
                         ...ClassesResources::getNavigationItems(),
+                        ...WeeklySchedule::getNavigationItems(),
                         ...Gradesheet::getNavigationItems(),
                         ...ActivityResource::getNavigationItems(),
                         ...ClassResource::getNavigationItems(),
