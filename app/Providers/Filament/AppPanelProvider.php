@@ -23,6 +23,7 @@ use App\Filament\Pages\Gradesheet;
 use Filament\Support\Colors\Color;
 use App\Filament\Pages\EditProfile;
 use Illuminate\Support\Facades\Auth;
+use LaraZeus\Boredom\Enums\Variants;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use SebastianBergmann\Type\FalseType;
@@ -30,6 +31,7 @@ use Filament\Navigation\NavigationItem;
 use App\Filament\Pages\ClassesResources;
 use App\Filament\Resources\ExamResource;
 use Filament\Navigation\NavigationGroup;
+use App\Filament\Resources\ClassResource;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Navigation\NavigationBuilder;
 use App\Filament\Resources\StudentResource;
@@ -64,19 +66,20 @@ class AppPanelProvider extends PanelProvider
             ->login()
             // ->spa()
             ->brandName("FilaGrade")
-            ->sidebarCollapsibleOnDesktop()
+            ->sidebarCollapsibleOnDesktop(true)
             // ->topNavigation()
             ->registration()
             ->passwordReset()
             ->emailVerification()
-            ->viteTheme('resources/css/filament/app/theme.css')
+            ->viteTheme("resources/css/filament/app/theme.css")
+            // ->defaultAvatarProvider(\LaraZeus\Boredom\BoringAvatarsProvider::class)
             ->colors([
-                'primary' => Color::hex('#c6a0f6'),
-                'gray' => Color::hex('#7c7f93'),
-                'info' => Color::hex('#7287fd'),
-                'danger' => Color::hex('#e78284'),
-                'success' => Color::hex('#a6d189'),
-                'warning' => Color::hex('#fe640b'),
+                "primary" => Color::hex("#c6a0f6"),
+                "gray" => Color::hex("#7c7f93"),
+                "info" => Color::hex("#7287fd"),
+                "danger" => Color::hex("#e78284"),
+                "success" => Color::hex("#a6d189"),
+                "warning" => Color::hex("#fe640b"),
             ])
             // ->userMenuItems([
             //     MenuItem::make()
@@ -109,49 +112,68 @@ class AppPanelProvider extends PanelProvider
                 ApiTokens::class,
                 \App\Filament\Pages\Gradesheet::class,
                 // \App\Filament\Pages\ChatPage::class,
+
                 \App\Filament\Pages\ClassesResources::class,
             ])
             ->renderHook(
-                'panels::sidebar.start',
-                fn() => view('filament.sidebar.chat-navigation')
+                "panels::sidebar.start",
+                fn() => view("filament.sidebar.chat-navigation")
             )
             ->plugins([
                 FilamentDeveloperLoginsPlugin::make()
                     ->enabled()
                     ->users(fn() => User::pluck("email", "name")->toArray()),
-                EasyFooterPlugin::make()
-                    ->withLoadTime(),
+                EasyFooterPlugin::make()->withLoadTime(),
                 FilamentAssistantPlugin::make(),
-            
+                // FilamentSimpleThemePlugin::make(),
+                \LaraZeus\Boredom\BoringAvatarPlugin::make()
+
+                    ->variant(Variants::MARBLE)
+
+                    ->size(60)
+
+                    ->colors([
+                        "0A0310",
+                        "49007E",
+                        "FF005B",
+                        "FF7D10",
+                        "FFB238",
+                    ]),
             ])
             ->discoverWidgets(
                 in: app_path("Filament/Widgets"),
                 for: "App\\Filament\\Widgets"
             )
-            ->navigation(function (NavigationBuilder $builder): NavigationBuilder {
-
-                return $builder->groups([
-                    // NavigationGroup::make('Chat History')
-                    //     ->items($chatItems),
-                ])
+            ->navigation(function (
+                NavigationBuilder $builder
+            ): NavigationBuilder {
+                return $builder
+                    ->groups([
+                        // NavigationGroup::make('Chat History')
+                        //     ->items($chatItems),
+                    ])
                     ->items([
                         ...Dashboard::getNavigationItems(),
                         // ...AssistantChat::getNavigationItems(),
+                        // ...ClassesResources::getNavigationItems(),
                         ...ClassesResources::getNavigationItems(),
                         ...Gradesheet::getNavigationItems(),
                         ...ActivityResource::getNavigationItems(),
-                        ...ClassResourceResource::getNavigationItems(),
+                        ...ClassResource::getNavigationItems(),
                         ...ExamResource::getNavigationItems(),
                         ...ResourceCategoryResource::getNavigationItems(),
                         ...StudentResource::getNavigationItems(),
-
                     ]);
             })
             ->userMenuItems([
                 MenuItem::make()
-                    ->label('Profile')
-                    ->url(fn(): string => EditProfile::getUrl(['tenant' => auth()->user()->currentTeam->id ?? 1]))
-                    ->icon('heroicon-o-user-circle'),
+                    ->label("Profile")
+                    ->url(
+                        fn(): string => EditProfile::getUrl([
+                            "tenant" => Auth::user()?->currentTeam->id ?? 1,
+                        ])
+                    )
+                    ->icon("heroicon-o-user-circle"),
             ])
             ->widgets([
                 Widgets\AccountWidget::class,
@@ -223,17 +245,19 @@ class AppPanelProvider extends PanelProvider
          * Register custom routes for team switching
          */
         Route::middleware([
-            'web',
-            'auth:sanctum',
-            config('jetstream.auth_session'),
-            'verified',
+            "web",
+            "auth:sanctum",
+            config("jetstream.auth_session"),
+            "verified",
         ])->group(function () {
-            Route::post('/app/team/switch/{team}', function (Team $team) {
+            Route::post("/app/team/switch/{team}", function (Team $team) {
                 // This will trigger the TenantSet event which is handled by SwitchTeam listener
                 Filament::setTenant($team);
 
-                return redirect()->route('filament.app.pages.dashboard', ['tenant' => $team->id]);
-            })->name('filament.app.team.switch');
+                return redirect()->route("filament.app.pages.dashboard", [
+                    "tenant" => $team->id,
+                ]);
+            })->name("filament.app.team.switch");
         });
     }
 

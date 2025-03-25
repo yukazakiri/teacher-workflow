@@ -44,22 +44,7 @@ class Dashboard extends PagesDashboard
     protected static string $view = 'filament.pages.dashboard';
 
     // Add support for quick actions
-    protected function getHeaderActions(): array
-    {
-        return [
-            Action::make('newChat')
-                ->label('New Chat')
-                ->icon('heroicon-o-chat-bubble-left-right')
-                ->color('gray')
-                ->url(route('filament.admin.pages.dashboard')),
-                
-            Action::make('help')
-                ->label('Help')
-                ->icon('heroicon-o-question-mark-circle')
-                ->color('gray')
-                ->url('#'),
-        ];
-    }
+   
 
     public static function getNavigationIcon(): string | Htmlable | null
     {
@@ -105,6 +90,32 @@ class Dashboard extends PagesDashboard
     {
         // Personalized title
         return 'Welcome, ' . auth()->user()->name;
+    }
+
+    /**
+     * Check if the current team has any students.
+     */
+    public function hasStudents(): bool
+    {
+        if (!Auth::user()->currentTeam) {
+            return false;
+        }
+
+        return Student::where('team_id', Auth::user()->currentTeam->id)->exists();
+    }
+
+    /**
+     * Check if the user needs onboarding.
+     */
+    public function needsOnboarding(): bool
+    {
+        // If the team was recently created (within the last hour) and has no students
+        if (Auth::user()->currentTeam) {
+            $teamCreatedRecently = Auth::user()->currentTeam->created_at->diffInHours(now()) < 1;
+            return $teamCreatedRecently && !$this->hasStudents();
+        }
+        
+        return false;
     }
 
     /**
@@ -195,6 +206,8 @@ class Dashboard extends PagesDashboard
             'quickActions' => $this->getQuickActions(),
             'recentChats' => $this->getRecentChats(),
             'conversationId' => request()->get('conversation_id'),
+            'needsOnboarding' => $this->needsOnboarding(),
+            'studentResourceUrl' => route('filament.app.resources.students.create', ['tenant' => Auth::user()->currentTeam]),
         ];
     }
 }

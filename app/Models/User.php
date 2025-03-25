@@ -2,26 +2,28 @@
 
 namespace App\Models;
 
+use Filament\Panel;
+use Laravel\Jetstream\HasTeams;
+use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Support\Collection;
+use Laravel\Jetstream\HasProfilePhoto;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Notifiable;
+use Filament\Models\Contracts\HasTenants;
+use Filament\Models\Contracts\FilamentUser;
+use Laravel\Fortify\TwoFactorAuthenticatable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use LaraZeus\Boredom\Concerns\HasBoringAvatar;
+use Livewire\Features\SupportAttributes\Attribute;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Laravel\Fortify\TwoFactorAuthenticatable;
-use Laravel\Jetstream\HasProfilePhoto;
-use Laravel\Jetstream\HasTeams;
-use Filament\Panel;
-use Filament\Models\Contracts\FilamentUser;
-use Illuminate\Support\Collection;
-use Illuminate\Database\Eloquent\Model;
-use Filament\Models\Contracts\HasTenants;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable implements HasTenants, FilamentUser
 {
     use HasApiTokens;
-
+    // use HasBoringAvatar;
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory;
     use HasProfilePhoto;
@@ -60,13 +62,14 @@ class User extends Authenticatable implements HasTenants, FilamentUser
      */
     protected $appends = [
         'profile_photo_url',
+
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * Get the attributes that should be cast.`
      *
      * @return array<string, string>
-     */
+    */
     protected function casts(): array
     {
         return [
@@ -96,5 +99,10 @@ class User extends Authenticatable implements HasTenants, FilamentUser
     public function canAccessTenant(Model $tenant): bool
     {
         return $this->belongsToTeam($tenant);
+    }
+
+    public function getFilamentAvatarUrl(): ?string
+    {
+        return $this->profile_photo_url;
     }
 }

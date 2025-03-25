@@ -29,6 +29,7 @@ class Student extends Model
         'birth_date',
         'notes',
         'status',
+        'phone',
     ];
 
     /**

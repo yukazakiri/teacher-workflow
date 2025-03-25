@@ -287,7 +287,7 @@ class Chat extends Component
     /**
      * Handle errors that occur during AI processing.
      */
-    private function handleError(\Exception $e): void
+    public function handleError(\Exception $e): void
     {
         Log::error('Chat error: ' . $e->getMessage(), [
             'conversation_id' => $this->conversation?->id,

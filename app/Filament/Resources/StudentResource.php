@@ -34,6 +34,7 @@ use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\Grid;
 use Filament\Tables\View\TablesRenderHook;
 use Symfony\Component\Console\Helper\TableStyle;
+use Ysfkaya\FilamentPhoneInput\Forms\PhoneInput;
 
 class StudentResource extends Resource
 {
@@ -96,7 +97,7 @@ class StudentResource extends Resource
                         TextInput::make('student_id')
                             ->label('Student ID')
                             ->maxLength(255)
-                            ->helperText('School-assigned student ID'),
+                            ->helperText('School-assigned student ID ( if available )'),
 
                         Select::make('gender')
                             ->options([
@@ -105,10 +106,16 @@ class StudentResource extends Resource
                                 'other' => 'Other',
                                 'prefer_not_to_say' => 'Prefer not to say',
                             ]),
-
-                        DatePicker::make('birth_date')
-                            ->label('Birth Date'),
-
+                        PhoneInput::make('phone')
+                            ->label('Phone Number')
+                            // ->maxLength(255)
+                            ->onlyCountries(['ph'])
+                            ->showFlags(false)
+                            ->disallowDropdown()
+                            ->helperText('student phone number ( if available )'),
+                        // DatePicker::make('birth_date')
+                        //     ->label('Birth Date'),
+                        
                         Select::make('status')
                             ->options([
                                 'active' => 'Active',

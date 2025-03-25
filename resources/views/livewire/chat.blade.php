@@ -318,7 +318,7 @@
                                         class="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 256 256" class="text-gray-500 dark:text-gray-400">
-                                            <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path>
+                                            <path d="M205.66,194.34l-128,128a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path>
                                         </svg>
                                     </button>
                                 </div>
@@ -335,7 +335,7 @@
                 <div class="col-span-3 text-center py-8">
                     <div class="text-gray-400 dark:text-gray-500 mb-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256" class="mx-auto">
-                            <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80a8,8,0,0,1,8-8H120a8,8,0,0,1,0-16h16A8,8,0,0,1,144,176Zm32-48c0,17.65-16.42,32-36.57,32H116.57C96.42,160,80,145.65,80,128s16.42-32,36.57-32h22.86C159.58,96,176,110.35,176,128Z"></path>
+                            <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,0,128,216Zm-8-80a8,8,0,0,1,8-8H120a8,8,0,0,1,0-16h16A8,8,0,0,1,144,176Zm32-48c0,17.65-16.42,32-36.57,32H116.57C96.42,160,80,145.65,80,128s16.42-32,36.57-32h22.86C159.58,96,176,110.35,176,128Z"></path>
                         </svg>
                     </div>
                     <p class="text-sm text-gray-600 dark:text-gray-400">No recent chats found. Start a new conversation!</p>
@@ -346,7 +346,7 @@
         @endif
         <!-- Chat messages display area -->
         @if($conversation)
-        <div class="w-full max-w-3xl mt-4" 
+        <div class="w-full max-w-3xl mt-4 pb-24" 
              x-data="{ 
                  scrollToBottom() {
                      const container = this.$refs.messagesContainer;
@@ -378,7 +378,7 @@
                                         class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 256 256" class="text-gray-500 dark:text-gray-400">
-                                            <path d="M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.68,147.31,64l24-24L216,84.68Z"></path>
+                                            <path d="M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63Zm32-48c0,17.65-16.42,32-36.57,32H116.57C96.42,160,80,145.65,80,128s16.42-32,36.57-32h22.86C159.58,96,176,110.35,176,128Z"></path>
                                         </svg>
                                     </button>
                                     <span class="inline-flex items-center rounded-md bg-primary-50 dark:bg-primary-900/20 px-2 py-1 text-xs font-medium text-primary-700 dark:text-primary-400">
@@ -397,7 +397,7 @@
                                     />
                                     <button type="submit" class="text-primary-600 dark:text-primary-400">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256">
-                                            <path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"></path>
+                                            <path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,11.32L96,188.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"></path>
                                         </svg>
                                     </button>
                                 </form>
@@ -413,7 +413,7 @@
                                 aria-label="Regenerate last response"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 256 256" class="text-gray-500 dark:text-gray-400">
-                                    <path d="M197.66,186.34a8,8,0,0,1,0,11.32C196.58,198.73,170.82,224,128,224c-23.36,0-46.13-9.1-66.28-26.41L45.66,213.66A8,8,0,0,1,32,208V160a8,8,0,0,1,8-8H88a8,8,0,0,1,5.66,13.66L73.08,186.24C86.08,197.15,104.83,208,128,208c36.27,0,56.67-20.53,56.82-20.71A8,8,0,0,1,197.66,186.34Zm26.34-90.34H176a8,8,0,0,0-5.66,13.66l20.58,20.58C177.92,141.15,159.17,152,136,152c-36.27,0-56.67-20.53-56.82-20.71a8,8,0,0,0-11.32,11.32C68.94,143.68,94.7,168.9,136,168.9c23.36,0,46.13-9.1,66.28-26.41l16.06,16.07A8,8,0,0,0,232,152V104A8,8,0,0,0,224,96Z"></path>
+                                    <path d="M197.66,186.34a8,8,0,0,1,0,11.32C196.58,198.73,170.82,224,128,224c-23.36,0-46.13-9.1-66.28-26.41L45.66,213.66A8,8,0,0,1,32,208V160a8,8,0,0,1,8-8H88a8,8,0,0,1,5.66,13.66L73.08,186.24C86.08,197.15,104.83,208,128,208c36.27,0,56.67-20.53,56.82-20.71A8,8,0,0,1,197.66,186.34Zm26.34-90.34H176a8,8,0,0,0-5.66,13.66l20.58,20.58C177.92,141.15,159.17,152,136,152c-36.27,0-56.67-20.53-56.82-20.71a8,8,0,0,1-11.32,11.32C68.94,143.68,94.7,168.9,136,168.9c23.36,0,46.13-9.1,66.28-26.41l16.06,16.07A8,8,0,0,0,232,152V104A8,8,0,0,0,224,96Z"></path>
                                 </svg>
                                 <span>Regenerate</span>
                             </button>
@@ -453,7 +453,7 @@
                                 class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 flex items-center gap-1"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 256 256" class="inline">
-                                    <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"></path>
+                                    <path d="M205.66,194.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"></path>
                                 </svg>
                                 <span x-text="searchVisible ? 'Hide search' : 'Search in conversation'"></span>
                             </button>
@@ -476,7 +476,7 @@
                                     class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 256 256" class="text-gray-500 dark:text-gray-400">
-                                        <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path>
+                                        <path d="M205.66,194.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"></path>
                                     </svg>
                                 </button>
                             </div>
@@ -509,13 +509,13 @@
                                         >
                                             <span x-show="!showCopied">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 256 256" class="inline">
-                                                    <path d="M216,32H88a8,8,0,0,0-8,8V80H40a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H168a8,8,0,0,0,8-8V176h40a8,8,0,0,0,8-8V40A8,8,0,0,0,216,32Zm-8,80H120a8,8,0,0,0,0-16h16A8,8,0,0,0,208,112Zm32-48c0,17.65-16.42,32-36.57,32H116.57C96.42,160,80,145.65,80,128s16.42-32,36.57-32h22.86C159.58,96,176,110.35,176,128Z"></path>
+                                                    <path d="M216,32H88a8,8,0,0,0-8,8V80H40a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H168a8,8,0,0,0,8-8V176h40a8,8,0,0,0,8-8V32a8,8,0,0,0-8-8H216Zm0,192a8,8,0,0,1-8-8H128V80h88a8,8,0,0,1,8,8Z"></path>
                                                 </svg>
                                                 Copy
                                             </span>
                                             <span x-show="showCopied" class="text-green-500">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 256 256" class="inline">
-                                                    <path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"></path>
+                                                    <path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,11.32L96,188.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"></path>
                                                 </svg>
                                                 Copied!
                                             </span>
@@ -538,8 +538,8 @@
                     </div>
                 </div>
             </div>
-            <form wire:submit.prevent="sendMessage" class="w-[50em] absolute ">
-                <div class="w-full rounded-t-xl bg-gray-100 dark:bg-gray-800 shadow-sm transition-all duration-200 hover:shadow-md focus-within:shadow-md">
+            <form wire:submit.prevent="sendMessage" class="w-full max-w-3xl fixed bottom-0 left-0 right-0 mx-auto mb-4 z-50">
+                <div class="w-full rounded-xl bg-gray-100 dark:bg-gray-800 shadow-sm transition-all duration-200 hover:shadow-md focus-within:shadow-md">
                     <!-- Message input area -->
                     <div class="flex p-3 gap-2">
                         <div class="w-full min-h-[4.5rem]">
@@ -674,7 +674,7 @@
         @else
 
         <div class="flex flex-col h-full">
-            <div x-data="{ showWelcome: {{ $conversation ? 'false' : 'true' }} }" 
+            <div x-data="{ showWelcome: {{ $conversation ? 'false' : 'true' }} }"
                  x-show="showWelcome" 
                  x-transition:enter="transition ease-out duration-300"
                  x-transition:enter-start="opacity-0 transform scale-95"
@@ -688,7 +688,7 @@
                 <div class="max-w-2xl w-full mx-auto bg-app rounded-xl border border-gray-200 dark:border-gray-700 p-8">
                     <div class="text-primary-600 dark:text-primary-400 mb-4">
                         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" viewBox="0 0 256 256" class="mx-auto">
-                            <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8H120a8,8,0,0,1,0-16h16A8,8,0,0,1,144,176Zm32-48c0,17.65-16.42,32-36.57,32H116.57C96.42,160,80,145.65,80,128s16.42-32,36.57-32h22.86C159.58,96,176,110.35,176,128Z"></path>
+                            <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80a8,8,0,0,1,8-8H120a8,8,0,0,1,0-16h16A8,8,0,0,1,144,176Zm32-48c0,17.65-16.42,32-36.57,32H116.57C96.42,160,80,145.65,80,128s16.42-32,36.57-32h22.86C159.58,96,176,110.35,176,128Z"></path>
                         </svg>
                     </div>
                     <h2 class="text-xl font-medium text-gray-950 dark:text-white mb-2">Welcome to Teacher Assistant</h2>

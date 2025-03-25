@@ -10,5 +10,9 @@ export default {
         './app/Filament/**/*.php',
         './resources/views/filament/**/*.blade.php',
         './vendor/filament/**/*.blade.php',
+        './vendor/assistant-engine/filament-assistant/resources/**/*.blade.php'
+    ],
+    plugins: [
+        require('tailwind-scrollbar'),
     ],
 };

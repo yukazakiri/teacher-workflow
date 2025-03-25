@@ -1,2 +1,5 @@
-<x-filament-panels::page>
-</x-filament-panels::page>
+
+    <div class="border-none">
+        {{ $this->form }}
+    </div>
+

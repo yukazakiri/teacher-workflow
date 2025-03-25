@@ -8,4 +8,7 @@ export default {
         './vendor/filament/**/*.blade.php',
         './vendor/assistant-engine/filament-assistant/resources/**/*.blade.php'
     ],
+    plugins: [
+        require('tailwind-scrollbar'),
+    ],
 }

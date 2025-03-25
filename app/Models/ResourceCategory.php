@@ -68,4 +68,15 @@ class ResourceCategory extends Model
     {
         return $this->type === 'student_resource';
     }
+    
+    /**
+     * Get the default category for a team.
+     */
+    public static function getDefault(string $teamId, string $type = 'student_resource'): ?self
+    {
+        return static::where('team_id', $teamId)
+            ->where('type', $type)
+            ->where('is_default', true)
+            ->first();
+    }
 } 
