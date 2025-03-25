@@ -24,6 +24,7 @@ use Filament\Support\Colors\Color;
 use App\Filament\Pages\EditProfile;
 use Illuminate\Support\Facades\Auth;
 use LaraZeus\Boredom\Enums\Variants;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use SebastianBergmann\Type\FalseType;
@@ -81,6 +82,10 @@ class AppPanelProvider extends PanelProvider
                 "success" => Color::hex("#a6d189"),
                 "warning" => Color::hex("#fe640b"),
             ])
+            ->renderHook(
+                "panels::sidebar.nav.start",
+                fn (): string => Blade::render('<livewire:action-shortcuts />'),
+            )
             // ->userMenuItems([
             //     MenuItem::make()
             //         ->label('Profile')
