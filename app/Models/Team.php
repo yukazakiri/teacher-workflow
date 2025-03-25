@@ -141,4 +141,9 @@ class Team extends JetstreamTeam
 
         return $teamMember->membership->role === $role;
     }
+
+    public function userIsOwner(User $user): bool
+    {
+        return $this->owner->is($user);
+    }
 }

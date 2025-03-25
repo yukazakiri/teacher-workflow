@@ -65,7 +65,7 @@ class AppPanelProvider extends PanelProvider
             ->id("app")
             ->path("app")
             ->login()
-            // ->spa()
+            ->spa()
             ->brandName("FilaGrade")
             ->sidebarCollapsibleOnDesktop(true)
             // ->topNavigation()

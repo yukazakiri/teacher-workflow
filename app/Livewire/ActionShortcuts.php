@@ -13,15 +13,16 @@ class ActionShortcuts extends Component implements HasForms, HasActions
     use InteractsWithActions;
     use InteractsWithForms;
  
-    public function meetNow(): Action
-    {
-        return Action::make('addStudent')
-            ->color('info')
-            ->label('Add Student')
-            ->keyBindings(['command+a', 'ctrl+a'])
-            ->extraAttributes(['class' => 'w-full'])
-            ->url(route('filament.app.resources.students.create', ['tenant' => auth()->user()->currentTeam->id]));
-    }
+        public function addStudent(): Action
+        {
+            return Action::make('addStudent')
+                ->color('info')
+                ->label('Add Student')
+                ->keyBindings(['command+a', 'ctrl+a'])
+                ->extraAttributes(['class' => 'w-full'])
+                ->visible(fn () => auth()->user()->currentTeam->userIsOwner(auth()->user()))
+                ->url(route('filament.app.resources.students.create', ['tenant' => auth()->user()->currentTeam->id]));
+        }
     public function schedule(): Action
     {
         return Action::make('schedule')
@@ -36,7 +37,7 @@ class ActionShortcuts extends Component implements HasForms, HasActions
     {
         return <<<'HTML'
             <div class="space-y-2">
-                {{ $this->meetNow }}
+                {{ $this->addStudent }}
  
                 {{ $this->schedule }}
             </div>
