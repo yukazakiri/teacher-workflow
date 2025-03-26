@@ -171,7 +171,7 @@ class AppPanelProvider extends PanelProvider
                         ...WeeklySchedule::getNavigationItems(),
                         ...Gradesheet::getNavigationItems(),
                         ...ActivityResource::getNavigationItems(),
-                        ...ClassResource::getNavigationItems(),
+                        // ...ClassResource::getNavigationItems(),
                         ...ExamResource::getNavigationItems(),
                         ...ResourceCategoryResource::getNavigationItems(),
                         ...StudentResource::getNavigationItems(),

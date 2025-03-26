@@ -1,4 +1,10 @@
+<?php 
+
+use Illuminate\Support\Facades\Auth;
+    
+?>
 <x-filament-panels::page>
+    
     <div class="space-y-6">
         {{-- Header Section --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">

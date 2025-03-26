@@ -43,13 +43,13 @@ class WeeklySchedule extends Page implements HasTable
         'Saturday',
         'Sunday',
     ];
-    
+
     public function mount(): void
     {
         $user = Auth::user();
         $this->teamId = $user->currentTeam->id;
-    }
-    
+    } 
+  
     public function table(Table $table): Table
     {
         return $table
@@ -80,8 +80,14 @@ class WeeklySchedule extends Page implements HasTable
             ])
             ->actions([
                 EditAction::make()
-                    ->form($this->getScheduleItemForm()),
-                DeleteAction::make(),
+                    ->form($this->getScheduleItemForm())
+                    ->visible(fn (ScheduleItem $record): bool => 
+                        Auth::user()->can('update', $record)
+                    ),
+                DeleteAction::make()
+                    ->visible(fn (ScheduleItem $record): bool => 
+                        Auth::user()->can('delete', $record)
+                    ),
             ])
             ->headerActions([
                 CreateAction::make()
@@ -89,7 +95,10 @@ class WeeklySchedule extends Page implements HasTable
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['team_id'] = $this->teamId;
                         return $data;
-                    }),
+                    })
+                    ->visible(fn (): bool => 
+                        Auth::user()->can('create', ScheduleItem::class)
+                    ),
             ]);
     }
     
@@ -156,5 +165,11 @@ class WeeklySchedule extends Page implements HasTable
         }
         
         return route('filament.app.pages.weekly-schedule', ['tenant' => $teamId]);
+    }
+    
+    public static function shouldRegisterNavigation(): bool
+    {
+        // Only show for team members
+        return Auth::user()?->currentTeam !== null;
     }
 } 

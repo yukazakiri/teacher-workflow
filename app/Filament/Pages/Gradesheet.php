@@ -24,6 +24,8 @@ use Filament\Support\Enums\ActionSize;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\HtmlString;
 use Filament\Notifications\Notification;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Redirect;
 
 class Gradesheet extends Page
 {
@@ -42,14 +44,70 @@ class Gradesheet extends Page
     // Store activity scores
     public array $activityScores = [];
 
+    /**
+     * Check if the current user can access this page
+     * Only team owners should be able to access the gradesheet
+     */
+    public static function canAccess(): bool
+    {
+        $user = Auth::user();
+        $team = $user?->currentTeam;
+        
+        if (!$team) {
+            return false;
+        }
+        
+        return $team->userIsOwner($user);
+    }
+
+    /**
+     * Determine if this page's navigation item should be displayed.
+     * Only show it for team owners.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess();
+    }
+
+    /**
+     * Get the navigation items for this page.
+     * Only team owners should see these navigation items.
+     * 
+     * @return array
+     */
+    public static function getNavigationItems(): array
+    {
+        if (!static::canAccess()) {
+            return [];
+        }
+        
+        return parent::getNavigationItems();
+    }
+
     public function mount(): void
     {
         $user = Auth::user();
         $this->teamId = $user->currentTeam->id;  // Directly use the current team
+        
+        // Check if user is the team owner
+        $team = Team::find($this->teamId);
+        
+        if (!$team || !$team->userIsOwner($user)) {
+            Notification::make()
+                ->title('Access Denied')
+                ->body('Only team owners can access the gradesheet.')
+                ->danger()
+                ->send();
+                
+            redirect()->route('filament.app.pages.dashboard', ['tenant' => $this->teamId])->send();
+            exit;
+        }
 
         $this->form->fill();
         $this->loadActivityScores();
     }
+
+    
 
     protected function loadActivityScores(): void
     {

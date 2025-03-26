@@ -9,10 +9,30 @@ use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Filament\Notifications\Notification;
 
 class CreateExam extends CreateRecord
 {
     protected static string $resource = ExamResource::class;
+
+    public function mount(): void
+    {
+        $user = Auth::user();
+        $team = $user?->currentTeam;
+        
+        if (!$team || !$team->userIsOwner($user)) {
+            Notification::make()
+                ->title('Access Denied')
+                ->body('Only team owners can create exams.')
+                ->danger()
+                ->send();
+                
+            redirect()->route('filament.app.pages.dashboard', ['tenant' => $team->id ?? 1])->send();
+            exit;
+        }
+        
+        parent::mount();
+    }
 
     protected function handleRecordCreation(array $data): Model
     {

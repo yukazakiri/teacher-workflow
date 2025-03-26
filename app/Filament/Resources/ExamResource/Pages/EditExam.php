@@ -9,10 +9,30 @@ use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Filament\Notifications\Notification;
 
 class EditExam extends EditRecord
 {
     protected static string $resource = ExamResource::class;
+
+    public function mount($record): void
+    {
+        $user = Auth::user();
+        $team = $user?->currentTeam;
+        
+        if (!$team || !$team->userIsOwner($user)) {
+            Notification::make()
+                ->title('Access Denied')
+                ->body('Only team owners can edit exams.')
+                ->danger()
+                ->send();
+                
+            redirect()->route('filament.app.pages.dashboard', ['tenant' => $team->id ?? 1])->send();
+            exit;
+        }
+        
+        parent::mount($record);
+    }
 
     protected function getHeaderActions(): array
     {

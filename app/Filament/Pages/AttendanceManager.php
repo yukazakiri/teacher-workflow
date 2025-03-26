@@ -60,6 +60,42 @@ class AttendanceManager extends Page implements HasForms
         $this->checkActiveQrCode();
     }
     
+    public static function canAccess(): bool
+    {
+        $user = Auth::user();
+        $team = $user?->currentTeam;
+        
+        if (!$team) {
+            return false;
+        }
+        
+        return $team->userIsOwner($user);
+    }
+    
+    /**
+     * Determine if this resource's navigation item should be displayed.
+     * Only show it for team owners.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess();
+    }
+    
+    /**
+     * Get the navigation items for this resource.
+     * Only team owners should see these navigation items.
+     * 
+     * @return array
+     */
+    public static function getNavigationItems(): array
+    {
+        if (!static::canAccess()) {
+            return [];
+        }
+        
+        return parent::getNavigationItems();
+    }
+
     public function loadStudents(): void
     {
         $this->students = $this->team->students()
@@ -363,17 +399,7 @@ class AttendanceManager extends Page implements HasForms
         }
     }
     
-    public static function getNavigationItems(): array
-    {
-        return [
-            \Filament\Navigation\NavigationItem::make(static::getNavigationLabel())
-                ->group(static::getNavigationGroup())
-                ->icon(static::getNavigationIcon())
-                ->isActiveWhen(fn (): bool => request()->routeIs('filament.app.pages.attendance-manager'))
-                ->sort(static::getNavigationSort())
-                ->url(static::getNavigationUrl()),
-        ];
-    }
+
     
     public static function getNavigationUrl(): string
     {

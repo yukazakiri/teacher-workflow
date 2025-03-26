@@ -30,7 +30,7 @@ class ActionShortcuts extends Component implements HasForms, HasActions
             ->color('gray')
             ->label('Class Schedule')
             ->extraAttributes(['class' => 'w-full'])
-            ->action(fn () => dd('schedule'));
+            ->url(route('filament.app.pages.weekly-schedule', ['tenant' => auth()->user()->currentTeam->id]));
     }
  
     public function render(): string

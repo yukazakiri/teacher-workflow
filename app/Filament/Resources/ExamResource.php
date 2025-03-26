@@ -39,9 +39,50 @@ use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Illuminate\Support\Facades\DB;
+use Filament\Notifications\Notification;
 
 class ExamResource extends Resource
 {
+    /**
+     * Check if the current user can access this resource
+     * Only team owners should be able to access the exams
+     */
+    public static function canAccess(): bool
+    {
+        $user = Auth::user();
+        $team = $user?->currentTeam;
+        
+        if (!$team) {
+            return false;
+        }
+        
+        return $team->userIsOwner($user);
+    }
+    
+    /**
+     * Determine if this resource's navigation item should be displayed.
+     * Only show it for team owners.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess();
+    }
+    
+    /**
+     * Get the navigation items for this resource.
+     * Only team owners should see these navigation items.
+     * 
+     * @return array
+     */
+    public static function getNavigationItems(): array
+    {
+        if (!static::canAccess()) {
+            return [];
+        }
+        
+        return parent::getNavigationItems();
+    }
+
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()

@@ -234,7 +234,10 @@ class StudentResource extends Resource
                                 ->send();
                         }
                     })
-                    ->visible(fn (Student $record) => $record->user_id === null),
+                    ->visible(fn (Student $record) => 
+                        $record->user_id === null && 
+                        Auth::user()->can('manageUserLinks', $record)
+                    ),
 
                 Tables\Actions\Action::make('unlink_user')
                     ->label('Unlink User')
@@ -252,7 +255,10 @@ class StudentResource extends Resource
                             ->success()
                             ->send();
                     })
-                    ->visible(fn (Student $record) => $record->user_id !== null),
+                    ->visible(fn (Student $record) => 
+                        $record->user_id !== null && 
+                        Auth::user()->can('manageUserLinks', $record)
+                    ),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

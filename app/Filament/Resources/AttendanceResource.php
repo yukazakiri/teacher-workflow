@@ -176,11 +176,13 @@ class AttendanceResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn (Attendance $record) => Auth::user()->can('delete', $record)),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->visible(fn () => Auth::user()->ownsTeam(Auth::user()->currentTeam)),
                     Tables\Actions\BulkAction::make('updateStatus')
                         ->label('Update Status')
                         ->icon('heroicon-o-clipboard-document-check')
@@ -199,7 +201,8 @@ class AttendanceResource extends Resource
                             foreach ($records as $record) {
                                 $record->update(['status' => $data['status']]);
                             }
-                        }),
+                        })
+                        ->visible(fn () => Auth::user()->hasTeamRole(Auth::user()->currentTeam, 'teacher')),
                 ]),
             ]);
     }
@@ -222,9 +225,36 @@ class AttendanceResource extends Resource
     
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
-            ->whereHas('team', function (Builder $query) {
+        $query = parent::getEloquentQuery();
+        
+        // Filter by team
+        if (Auth::user()->currentTeam) {
+            $query->whereHas('team', function (Builder $query) {
                 $query->where('id', Auth::user()->currentTeam->id);
             });
+        }
+        
+        // For students, only show their own attendance records
+        if (Auth::user()->hasTeamRole(Auth::user()->currentTeam, 'student')) {
+            $query->whereHas('student', function (Builder $query) {
+                $query->where('user_id', Auth::user()->id);
+            });
+        }
+        
+        return $query;
+    }
+    
+    public static function canCreate(): bool
+    {
+        return Auth::user()->hasTeamRole(Auth::user()->currentTeam, 'teacher');
+    }
+    
+    public static function canEdit(mixed $record): bool
+    {
+        if (!$record instanceof Attendance) {
+            return false;
+        }
+        
+        return Auth::user()->hasTeamRole($record->team, 'teacher');
     }
 }
