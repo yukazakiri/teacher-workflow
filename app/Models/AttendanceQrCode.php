@@ -79,7 +79,19 @@ class AttendanceQrCode extends Model
     public static function generateUniqueCode(): string
     {
         do {
-            $code = Str::random(32);
+            // Generate 32 bytes (256 bits) of random data for strong entropy
+            $randomData = random_bytes(32);
+            
+            // Convert to URL-safe base64 without padding (remove = chars)
+            $code = rtrim(strtr(base64_encode($randomData), '+/', '-_'), '=');
+            
+            // Ensure we only keep URL-safe characters (extra precaution)
+            $code = preg_replace('/[^a-zA-Z0-9_-]/', '', $code);
+            
+            // Make sure we still have enough characters (at least 40) for uniqueness
+            if (strlen($code) < 40) {
+                continue;
+            }
         } while (self::where('code', $code)->exists());
 
         return $code;

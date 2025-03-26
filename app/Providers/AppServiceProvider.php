@@ -13,6 +13,7 @@ use Prism\Prism\Text\PendingRequest;
 use App\Providers\EventServiceProvider;
 use Illuminate\Support\ServiceProvider;
 use App\Providers\FilamentTeamBadgeServiceProvider;
+use Illuminate\Support\Facades\Blade;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -33,6 +34,12 @@ class AppServiceProvider extends ServiceProvider
         Team::observe(TeamObserver::class);
         Livewire::component('chat-interface', ChatInterface::class);
         $this->configurePrisms();
+
+        // Register the SafeQrCode component
+        Blade::component('safe-qr-code', \App\View\Components\SafeQrCode::class);
+        
+        // We're going to use our helper directly instead of directives
+        // to avoid any closure/stringable issues
     }
     private function configurePrisms(): void
     {

@@ -120,20 +120,9 @@
                                 <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
                                     <div class="text-center mb-2 font-medium">Scan code or share link:</div>
                                     <div class="mb-4">
-                                        @if(class_exists('LaravelQRCode\Facades\QRCode'))
-                                            <div class="flex justify-center">
-                                                <img src="data:image/png;base64,{{ base64_encode(QRCode::text(route('attendance.scan', ['code' => $activeQrCode->code]))->setOutfile(false)->setSize(8)->setMargin(2)->png()) }}" alt="QR Code" class="w-48 h-48">
-                                            </div>
-                                        @elseif(class_exists('SimpleSoftwareIO\QrCode\Facades\QrCode'))
-                                            <div class="flex justify-center">
-                                                {!! QrCode::size(200)->generate(route('attendance.scan', ['code' => $activeQrCode->code])) !!}
-                                            </div>
-                                        @else
-                                            <div class="bg-gray-100 dark:bg-gray-600 p-4 text-center rounded-lg">
-                                                QR Code would display here<br>
-                                                <span class="text-xs text-gray-500 dark:text-gray-400">Install a QR code package to display QR codes</span>
-                                            </div>
-                                        @endif
+                                        <div class="flex justify-center">
+                                            <x-safe-qr-code :url="route('attendance.scan', ['code' => $activeQrCode->code])" :size="200" />
+                                        </div>
                                     </div>
                                     <div class="text-center text-sm truncate max-w-xs p-2 bg-gray-50 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600">
                                         {{ route('attendance.scan', ['code' => $activeQrCode->code]) }}

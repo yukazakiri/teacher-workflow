@@ -247,6 +247,33 @@ class AttendanceManager extends Component
         }
     }
 
+    /**
+     * Safely generate a QR code using available packages
+     */
+    public function safeGenerateQrCode(string $url): string
+    {
+        try {
+            // First sanitize the URL to ensure proper UTF-8 encoding
+            $sanitizedUrl = preg_replace('/[\x00-\x1F\x7F]/u', '', $url);
+            $cleanUrl = mb_convert_encoding($sanitizedUrl, 'UTF-8', 'UTF-8');
+            
+            // Use BaconQrCode directly as it's more reliable with special characters
+            return \App\Helpers\QrCodeHelper::generateSvg($cleanUrl, 200);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('QR code generation failed: ' . $e->getMessage());
+            
+            // Return a fallback message when generation fails
+            return '<div class="flex items-center justify-center w-48 h-48 bg-gray-100 rounded-lg">
+                <div class="text-center p-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <p class="mt-2 text-sm">QR Code Generation Failed</p>
+                </div>
+            </div>';
+        }
+    }
+
     public function resetForm()
     {
         $this->reset(['notes', 'selectedStatus']);
