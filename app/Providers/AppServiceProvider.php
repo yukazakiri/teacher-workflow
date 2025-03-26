@@ -8,12 +8,15 @@ use Prism\Prism\Prism;
 use App\Livewire\ChatInterface;
 use App\Observers\TeamObserver;
 use Prism\Prism\Enums\Provider;
+use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Vite;
 use Prism\Prism\Facades\PrismServer;
 use Prism\Prism\Text\PendingRequest;
+use Illuminate\Support\Facades\Blade;
 use App\Providers\EventServiceProvider;
 use Illuminate\Support\ServiceProvider;
 use App\Providers\FilamentTeamBadgeServiceProvider;
-use Illuminate\Support\Facades\Blade;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -37,7 +40,8 @@ class AppServiceProvider extends ServiceProvider
 
         // Register the SafeQrCode component
         Blade::component('safe-qr-code', \App\View\Components\SafeQrCode::class);
-        
+        $this->configureUrl();
+        $this->configureVite();
         // We're going to use our helper directly instead of directives
         // to avoid any closure/stringable issues
     }
@@ -65,5 +69,13 @@ class AppServiceProvider extends ServiceProvider
                 ->withSystemPrompt(view('prompts.system')->render())
                  ->withMaxTokens(2500)
         );
+    }
+    private function configureUrl(): void
+    {
+        URL::forceHttps(App::isProduction());
+    }
+    private function configureVite(): void
+    {
+        Vite::useAggressivePrefetching();
     }
 }
