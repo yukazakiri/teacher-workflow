@@ -37,6 +37,8 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Navigation\NavigationBuilder;
 use App\Filament\Resources\StudentResource;
 use App\Filament\Resources\ActivityResource;
+use App\Filament\Resources\AttendanceResource;
+use App\Filament\Resources\AttendanceQrCodeResource;
 use Illuminate\Session\Middleware\StartSession;
 use Devonab\FilamentEasyFooter\EasyFooterPlugin;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -56,6 +58,7 @@ use TomatoPHP\FilamentSimpleTheme\FilamentSimpleThemePlugin;
 use CodeWithDennis\FilamentThemeInspector\FilamentThemeInspectorPlugin;
 use DutchCodingCompany\FilamentDeveloperLogins\FilamentDeveloperLoginsPlugin;
 use App\Filament\Pages\WeeklySchedule;
+use App\Filament\Pages\AttendanceManager;
 
 class AppPanelProvider extends PanelProvider
 {
@@ -121,6 +124,7 @@ class AppPanelProvider extends PanelProvider
 
                 \App\Filament\Pages\ClassesResources::class,
                 \App\Filament\Pages\WeeklySchedule::class,
+                \App\Filament\Pages\AttendanceManager::class,
             ])
             ->renderHook(
                 "panels::sidebar.start",
@@ -171,6 +175,15 @@ class AppPanelProvider extends PanelProvider
                         ...ExamResource::getNavigationItems(),
                         ...ResourceCategoryResource::getNavigationItems(),
                         ...StudentResource::getNavigationItems(),
+                        ...AttendanceManager::getNavigationItems(),
+                        ...AttendanceResource::getNavigationItems(),
+                        ...AttendanceQrCodeResource::getNavigationItems(),
+                        // Navigation item no longer needed as we're using the Filament page
+                        // NavigationItem::make('Attendance Manager')
+                        //     ->url('/team/attendance')
+                        //     ->icon('heroicon-o-clipboard-document-check')
+                        //     ->group('Class Management')
+                        //     ->sort(5),
                     ]);
             })
             ->userMenuItems([

@@ -164,6 +164,7 @@ return [
         /*
          * Package Service Providers...
          */
+        LaravelQRCode\Providers\QRCodeServiceProvider::class,
         
         /*
          * Application Service Providers...
@@ -179,6 +180,11 @@ return [
         App\Providers\FilamentTeamBadgeServiceProvider::class,
         App\Providers\PrismServiceProvider::class,
         App\Providers\ChatServiceProvider::class,
+    ],
+
+    'aliases' => [
+        'PrismMarkdown' => App\Facades\PrismMarkdown::class,
+        'QRCode' => LaravelQRCode\Facades\QRCode::class,
     ],
 
 ];

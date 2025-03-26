@@ -8,6 +8,8 @@ use Laravel\Jetstream\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\ExamController;
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\ActivitySubmissionController;
+use App\Http\Controllers\AttendanceController;
+use App\Livewire\TeamAttendance;
 
 /*
 |--------------------------------------------------------------------------
@@ -123,4 +125,42 @@ Route::middleware([
         ActivitySubmissionController::class,
         "deleteAttachment",
     ])->name("submissions.attachments.delete");
+});
+
+// Attendance routes
+Route::middleware([
+    "auth:sanctum",
+    config("jetstream.auth_session"),
+    "verified",
+])->group(function () {
+    // Team attendance page - replaced by Filament page
+    // Route::get('/team/attendance', TeamAttendance::class)->name('team.attendance');
+    
+    // QR code scanning
+    Route::get("/attendance/scan/{code}", [
+        AttendanceController::class,
+        "showScanPage",
+    ])->name("attendance.scan");
+    
+    Route::post("/attendance/scan/{code}", [
+        AttendanceController::class,
+        "scanQr",
+    ])->name("attendance.scan.process");
+    
+    // Attendance management
+    Route::post("/teams/{team}/attendance", [
+        AttendanceController::class,
+        "markAttendance",
+    ])->name("attendance.mark");
+    
+    Route::post("/teams/{team}/students/{student}/timeout", [
+        AttendanceController::class,
+        "markTimeOut",
+    ])->name("attendance.timeout");
+    
+    // Attendance statistics
+    Route::get("/teams/{team}/attendance/stats/{date?}", [
+        AttendanceController::class,
+        "getTeamStats",
+    ])->name("attendance.stats");
 });

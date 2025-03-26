@@ -16,6 +16,9 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // First, ensure UUID extension is installed
+        DB::statement('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+        
         // First, drop any foreign keys referencing schedules.id
         Schema::table('schedule_items', function (Blueprint $table) {
             $table->dropForeign(['schedule_id']);

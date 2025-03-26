@@ -15,6 +15,7 @@
         "dutchcodingcompany/filament-developer-logins": "^1.8",
         "filament/filament": "^3.3",
         "filament/spatie-laravel-media-library-plugin": "^3.2",
+        "giauphan/laravel-qr-code": "v1.0.3",
         "illuminate/support": "*",
         "lara-zeus/boredom": "*",
         "laravel/framework": "^12.0",

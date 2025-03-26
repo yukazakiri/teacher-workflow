@@ -137,6 +137,22 @@ class Team extends JetstreamTeam
     }
 
     /**
+     * Get the attendances for the team.
+     */
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(Attendance::class);
+    }
+
+    /**
+     * Get the attendance QR codes for the team.
+     */
+    public function attendanceQrCodes(): HasMany
+    {
+        return $this->hasMany(AttendanceQrCode::class);
+    }
+
+    /**
      * Check if the team has a user with a specific role.
      */
     public function hasUserWithRole(User $user, string $role): bool

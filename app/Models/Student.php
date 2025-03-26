@@ -90,6 +90,14 @@ class Student extends Model
     }
 
     /**
+     * Get the attendance records for the student.
+     */
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(Attendance::class);
+    }
+
+    /**
      * Determine if the student is active.
      */
     public function isActive(): bool
