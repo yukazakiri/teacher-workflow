@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('title');
             $table->text('description')->nullable();
             $table->enum('access_level', ['all', 'teacher', 'owner'])->default('all');
+            $table->boolean('is_pinned')->default(false);
             $table->timestamps();
 
             $table->foreign('team_id')

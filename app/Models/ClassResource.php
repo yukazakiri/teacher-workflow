@@ -28,7 +28,16 @@ class ClassResource extends Model implements HasMedia
         'description',
         'access_level', // 'all', 'teacher', 'owner'
         'created_by',
+        'is_pinned',
+        'file',
     ];
+
+    /**
+     * The relationships that should always be loaded.
+     *
+     * @var array
+     */
+    protected $with = ['category'];
 
     /**
      * The "booted" method of the model.
@@ -155,8 +164,22 @@ class ClassResource extends Model implements HasMedia
      */
     public function registerMediaCollections(): void
     {
-        $this->addMediaCollection('resources')
-            ->useDisk('class_resources');
+        $this
+            ->addMediaCollection('resources')
+            ->useDisk('public')
+            ->acceptsMimeTypes([
+                'application/pdf',
+                'image/jpeg',
+                'image/png',
+                'image/gif',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/vnd.ms-powerpoint',
+                'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                'text/plain'
+            ]);
     }
 
     /**
@@ -168,15 +191,13 @@ class ClassResource extends Model implements HasMedia
             ->width(200)
             ->height(200)
             ->fit('crop', 200, 200)
-            ->nonQueued()
-            ->performOnCollections('resources');
+            ->nonQueued();
 
         $this->addMediaConversion('preview')
             ->width(400)
             ->height(400)
             ->fit('contain', 400, 400)
-            ->nonQueued()
-            ->performOnCollections('resources');
+            ->nonQueued();
     }
 
     /**

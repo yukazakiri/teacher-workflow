@@ -10,6 +10,8 @@ use App\Policies\ActivityPolicy;
 use App\Policies\AttendancePolicy;
 use App\Policies\ScheduleItemPolicy;
 use App\Policies\StudentPolicy;
+use App\Policies\ClassResourcePolicy;
+use App\Models\ClassResource;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 
@@ -25,6 +27,7 @@ class AuthServiceProvider extends ServiceProvider
         Student::class => StudentPolicy::class,
         Attendance::class => AttendancePolicy::class,
         ScheduleItem::class => ScheduleItemPolicy::class,
+        ClassResource::class => ClassResourcePolicy::class,
     ];
 
     /**

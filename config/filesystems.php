@@ -62,9 +62,9 @@ return [
 
         'class_resources' => [
             'driver' => 'local',
-            'root' => storage_path('app/class_resources'),
-            'url' => env('APP_URL').'/class-resources',
-            'visibility' => 'private',
+            'root' => storage_path('app/public/class-resources'),
+            'url' => env('APP_URL').'/storage/class-resources',
+            'visibility' => 'public',
             'throw' => false,
             'report' => false,
         ],
