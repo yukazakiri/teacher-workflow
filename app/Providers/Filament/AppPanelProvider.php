@@ -131,9 +131,9 @@ class AppPanelProvider extends PanelProvider
                 fn() => view("filament.sidebar.chat-navigation")
             )
             ->plugins([
-                FilamentDeveloperLoginsPlugin::make()
-                    ->enabled()
-                    ->users(fn() => User::pluck("email", "name")->toArray()),
+                // FilamentDeveloperLoginsPlugin::make()
+                //     ->enabled()
+                //     ->users(fn() => User::pluck("email", "name")->toArray()),
                 EasyFooterPlugin::make()->withLoadTime(),
                 FilamentAssistantPlugin::make(),
                 // FilamentSimpleThemePlugin::make(),
