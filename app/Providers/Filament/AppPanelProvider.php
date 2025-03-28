@@ -78,7 +78,6 @@ class AppPanelProvider extends PanelProvider
             ->passwordReset()
             ->emailVerification()
             ->viteTheme("resources/css/filament/app/theme.css")
-            // ->defaultAvatarProvider(\LaraZeus\Boredom\BoringAvatarsProvider::class)
             ->colors([
                 "primary" => Color::hex("#c6a0f6"),
                 "gray" => Color::hex("#7c7f93"),
@@ -87,7 +86,6 @@ class AppPanelProvider extends PanelProvider
                 "success" => Color::hex("#a6d189"),
                 "warning" => Color::hex("#fe640b"),
             ])
-
             // ->userMenuItems([
             //     MenuItem::make()
             //         ->label('Profile')
@@ -128,6 +126,7 @@ class AppPanelProvider extends PanelProvider
             ->plugins([
                 FilamentDeveloperLoginsPlugin::make()
                     ->enabled(app()->environment("local"))
+                    ->switchable(false)
                     ->users(fn() => User::pluck("email", "name")->toArray()),
                 EasyFooterPlugin::make()->withLoadTime(),
                 FilamentAssistantPlugin::make(),
@@ -160,25 +159,16 @@ class AppPanelProvider extends PanelProvider
                     ])
                     ->items([
                         ...Dashboard::getNavigationItems(),
-                        // ...AssistantChat::getNavigationItems(),
-                        // ...ClassesResources::getNavigationItems(),
                         ...ClassesResources::getNavigationItems(),
                         ...WeeklySchedule::getNavigationItems(),
                         ...Gradesheet::getNavigationItems(),
                         ...ActivityResource::getNavigationItems(),
-                        // ...ClassResource::getNavigationItems(),
                         ...ExamResource::getNavigationItems(),
                         ...ResourceCategoryResource::getNavigationItems(),
                         ...StudentResource::getNavigationItems(),
                         ...AttendanceManager::getNavigationItems(),
                         ...AttendanceResource::getNavigationItems(),
                         ...AttendanceQrCodeResource::getNavigationItems(),
-                        // Navigation item no longer needed as we're using the Filament page
-                        // NavigationItem::make('Attendance Manager')
-                        //     ->url('/team/attendance')
-                        //     ->icon('heroicon-o-clipboard-document-check')
-                        //     ->group('Class Management')
-                        //     ->sort(5),
                     ]);
             })
             ->userMenuItems([

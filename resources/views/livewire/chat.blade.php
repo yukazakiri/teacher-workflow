@@ -2,10 +2,10 @@
     use Illuminate\Support\Str;
 @endphp
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900" x-data="{ sidebarOpen: false }">
+<div class="min-h-screen bg-background" x-data="{ sidebarOpen: false }">
 
     {{-- Right Sidebar (Hidden by default) --}}
-    <div 
+    <div
         x-show="sidebarOpen"
         x-transition:enter="transform transition ease-in-out duration-300 sm:duration-500"
         x-transition:enter-start="translate-x-full"
@@ -20,8 +20,8 @@
         {{-- Sidebar Header --}}
         <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
             <h2 class="text-lg font-medium text-gray-900 dark:text-white">Chat History</h2>
-            <button 
-                @click="sidebarOpen = false" 
+            <button
+                @click="sidebarOpen = false"
                 class="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
             >
                 <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -33,7 +33,7 @@
         {{-- Sidebar Content (Chat List) --}}
         <div class="flex-1 overflow-y-auto p-4 space-y-2">
             @forelse($this->getAllChats() as $chatItem) {{-- Assuming you have a method `getAllChats()` in your component --}}
-            <div 
+            <div
                 wire:click="loadConversation({{ $chatItem['id'] }})"
                 @click="sidebarOpen = false" {{-- Close sidebar when a chat is loaded --}}
                 class="cursor-pointer rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all group relative"
@@ -51,7 +51,7 @@
                         </div>
                     </div>
                 </div>
-                <button 
+                <button
                     wire:click.stop="deleteConversation({{ $chatItem['id'] }})"
                     wire:confirm="Are you sure you want to delete this chat?"
                     class="absolute top-2 right-2 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -70,7 +70,7 @@
 
         {{-- Sidebar Footer --}}
         <div class="p-4 border-t border-gray-200 dark:border-gray-700">
-             <button 
+             <button
                 wire:click="newConversation"
                 @click="sidebarOpen = false"
                 class="w-full flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
@@ -88,14 +88,14 @@
 
     {{-- Main Content Area --}}
     <div class="flex flex-col min-h-screen">
-        
+
         {{-- Header --}}
         @if ($conversation)
             {{-- Conversation Header --}}
             <div class="flex items-center justify-between mb-4 px-1">
                 <div class="flex items-center gap-2 min-w-0">
                     {{-- Back Button (New) --}}
-                    <button 
+                    <button
                         wire:click="newConversation"
                         class="text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors mr-1"
                         title="Back to home"
@@ -104,19 +104,19 @@
                             <path fill-rule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clip-rule="evenodd" />
                         </svg>
                     </button>
-                    
+
                     <div x-data="{ isRenaming: false, newTitle: @js($conversation->title) }">
                         {{-- Rest of the conversation header --}}
                         <template x-if="!isRenaming">
                             <div class="flex items-center gap-2 min-w-0">
-                                <h2 
-                                    class="text-lg font-semibold text-gray-900 dark:text-white truncate cursor-pointer hover:text-primary-600 dark:hover:text-primary-400" 
+                                <h2
+                                    class="text-lg font-semibold text-gray-900 dark:text-white truncate cursor-pointer hover:text-primary-600 dark:hover:text-primary-400"
                                     @click="isRenaming = true; $nextTick(() => $refs.titleInput.focus())"
                                     title="Rename conversation"
                                 >
                                     {{ $conversation->title }}
                                 </h2>
-                                <button 
+                                <button
                                     @click="isRenaming = true; $nextTick(() => $refs.titleInput.focus())"
                                     class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
                                     aria-label="Rename conversation"
@@ -129,9 +129,9 @@
                         </template>
                         <template x-if="isRenaming">
                             <form @submit.prevent="isRenaming = false; if(newTitle.trim()) $wire.renameConversation(newTitle)" class="flex items-center gap-2 min-w-0">
-                                <input 
+                                <input
                                     x-ref="titleInput"
-                                    x-model="newTitle" 
+                                    x-model="newTitle"
                                     class="text-lg font-semibold text-gray-900 dark:text-white bg-transparent border-b border-gray-300 dark:border-gray-600 focus:border-primary-500 dark:focus:border-primary-500 focus:ring-0 px-1 py-0 leading-tight w-full"
                                     @keydown.escape="isRenaming = false"
                                     @blur="isRenaming = false; if(newTitle.trim()) $wire.renameConversation(newTitle)"
@@ -147,7 +147,7 @@
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <button 
+                    <button
                         wire:click="regenerateLastMessage"
                         wire:loading.attr="disabled"
                         wire:target="regenerateLastMessage"
@@ -160,7 +160,7 @@
                         </svg>
                         <span>Regenerate</span>
                     </button>
-                    <button 
+                    <button
                         wire:click="newConversation"
                         class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium p-1 rounded hover:bg-primary-50 dark:hover:bg-primary-900/20"
                     >
@@ -175,10 +175,10 @@
                     <h1 class="text-xl font-semibold text-gray-900 dark:text-white">Teacher Assistant</h1>
                     <span class="text-sm px-2 py-0.5 bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 rounded-full">Home</span>
                 </div>
-                
+
                 {{-- Optionally add other controls like settings, help, etc. here --}}
                 <div>
-                    <button 
+                    <button
                         @click="sidebarOpen = !sidebarOpen"
                         class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 rounded-full"
                         title="View chat history"
@@ -211,31 +211,31 @@
 
                         {{-- Suggestion Buttons --}}
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left max-w-lg mx-auto mb-8">
-                             <button 
+                             <button
                                 wire:click="setPrompt('Help me create a lesson plan for a high school English class on Shakespeare.')"
                                 class="rounded-lg border border-gray-300 dark:border-gray-700 p-3 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-left transition-colors shadow-sm"
                             >
                                 <div class="text-sm font-medium text-gray-900 dark:text-white">Create a lesson plan</div>
                                 <div class="text-xs text-gray-500 dark:text-gray-400">For a high school English class</div>
                             </button>
-                            
-                            <button 
+
+                            <button
                                 wire:click="setPrompt('Generate 5 discussion questions about climate change for a middle school science class.')"
                                 class="rounded-lg border border-gray-300 dark:border-gray-700 p-3 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-left transition-colors shadow-sm"
                             >
                                 <div class="text-sm font-medium text-gray-900 dark:text-white">Generate discussion questions</div>
                                 <div class="text-xs text-gray-500 dark:text-gray-400">About climate change for middle school</div>
                             </button>
-                            
-                            <button 
+
+                            <button
                                 wire:click="setPrompt('Help me draft a parent-teacher conference email template.')"
                                 class="rounded-lg border border-gray-300 dark:border-gray-700 p-3 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-left transition-colors shadow-sm"
                             >
                                 <div class="text-sm font-medium text-gray-900 dark:text-white">Draft an email template</div>
                                 <div class="text-xs text-gray-500 dark:text-gray-400">For parent-teacher conferences</div>
                             </button>
-                            
-                            <button 
+
+                            <button
                                 wire:click="setPrompt('Suggest activities for a virtual classroom to increase student engagement.')"
                                 class="rounded-lg border border-gray-300 dark:border-gray-700 p-3 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-left transition-colors shadow-sm"
                             >
@@ -250,9 +250,9 @@
                         <div class="relative rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg transition-all duration-200 focus-within:ring-2 focus-within:ring-primary-500">
                             {{-- Message input area --}}
                             <div class="flex p-3 gap-3 items-start">
-                            <textarea 
-                                wire:model.live="message" 
-                                    placeholder="Start typing your message here..." 
+                            <textarea
+                                wire:model.live="message"
+                                    placeholder="Start typing your message here..."
                                     class="flex-1 min-h-[3.5rem] max-h-60 resize-none border-0 bg-transparent p-0 focus:ring-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm"
                                 wire:keydown.enter.prevent="sendMessage"
                                 aria-label="Message input"
@@ -265,8 +265,8 @@
                                 x-init="resize()"
                                 @input="resize()"
                             ></textarea>
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                                     class="self-end rounded-lg bg-primary-600 p-2 text-white transition-colors hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                             wire:loading.attr="disabled"
                             wire:target="sendMessage"
@@ -278,7 +278,7 @@
                                     <span class="sr-only">Send message</span>
                                 </button>
                             </div>
-                            
+
                             {{-- Bottom toolbar --}}
                             <div class="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 p-2">
                                 <div class="flex items-center gap-2">
@@ -303,7 +303,7 @@
                                             @endforeach
                                         </x-filament::dropdown.list>
                                     </x-filament::dropdown>
-                                    
+
                                     {{-- Style selector --}}
                                      <x-filament::dropdown placement="top-start">
                                         <x-slot name="trigger">
@@ -326,14 +326,14 @@
                                         </x-filament::dropdown.list>
                                     </x-filament::dropdown>
                         </div>
-                        
+
                         <div class="flex items-center">
                                     {{-- Character count --}}
                                     <div class="text-xs text-gray-400 dark:text-gray-500 mr-3" x-data x-text="$wire.message.length + ' chars'"></div>
-                                    
+
                                     {{-- New Chat Button --}}
-                            <button 
-                                type="button" 
+                            <button
+                                type="button"
                                 wire:click="newConversation"
                                         class="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium p-1 rounded hover:bg-primary-50 dark:hover:bg-primary-900/20"
                             >
@@ -358,7 +358,7 @@
                 </h2>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 @forelse($recentChats as $chat)
-                <div 
+                <div
                     wire:click="loadConversation({{ $chat['id'] }})"
                                 class="cursor-pointer rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all group relative"
                 >
@@ -375,7 +375,7 @@
                             </div>
                         </div>
                     </div>
-                                <button 
+                                <button
                                     wire:click.stop="deleteConversation({{ $chat['id'] }})"
                                     wire:confirm="Are you sure you want to delete this chat?"
                                     class="absolute top-2 right-2 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -405,17 +405,17 @@
             @else
                 {{-- Active Conversation State: Messages + Fixed Input --}}
                 <div class="flex-1 flex flex-col min-h-0 pb-32"> {{-- Added padding-bottom for fixed input --}}
-                    
+
                     {{-- Messages Container --}}
-                    <div 
-                        class="flex-1 overflow-y-auto space-y-4 px-1 scroll-smooth" 
+                    <div
+                        class="flex-1 overflow-y-auto space-y-4 px-1 scroll-smooth"
                         x-ref="messagesContainer"
                         x-init="
                             $watch('$wire.conversation.messages.length', () => $nextTick(() => scrollToBottom()));
                             $nextTick(() => scrollToBottom());
                         "
                         @refreshChat.window="$nextTick(() => scrollToBottom())"
-                        x-data="{ 
+                        x-data="{
                              scrollToBottom() {
                                  // Only scroll if already near the bottom or if it's a new message stream
                                  const el = $refs.messagesContainer;
@@ -428,12 +428,12 @@
                     >
                         @foreach($conversation->messages as $index => $message)
                         <div class="flex {{ $message->role === 'user' ? 'justify-end' : 'justify-start' }}">
-                            <div class="max-w-[85%] group relative {{ $message->role === 'user' ? 'bg-primary-500 text-white' : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600' }} rounded-lg p-3 shadow-sm">
-                                <div class="text-xs {{ $message->role === 'user' ? 'text-primary-200' : 'text-gray-500 dark:text-gray-400' }} mb-1 flex justify-between items-center">
+                            <div class="max-w-[85%] group relative {{ $message->role === 'user' ? 'bg-primary-900 dark:bg-primary-500/50 text-gray-900 dark:text-white ' : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600' }} rounded-xl p-3 shadow-sm">
+                                <div class="text-xs {{ $message->role === 'user' ? 'text-primary-100' : 'text-gray-500 dark:text-gray-400' }} mb-1 flex justify-between items-center">
                                     <span>{{ $message->role === 'user' ? 'You' : $conversation->model }}</span>
                                     <span class="text-xs {{ $message->role === 'user' ? 'text-primary-200' : 'text-gray-400 dark:text-gray-500' }}">{{ $message->created_at->format('g:i A') }}</span>
                                 </div>
-                                <div class="prose prose-sm {{ $message->role === 'user' ? 'prose-invert' : 'dark:prose-invert' }} max-w-none message-content" 
+                                <div class="prose prose-sm {{ $message->role === 'user' ? 'prose-invert' : 'dark:prose-invert' }} max-w-none message-content"
                                      x-data="{ showCopied: false }"
                                      data-original-content="{!! Str::markdown($message->content) !!}" {{-- Store original for search --}}
                                 >
@@ -441,21 +441,17 @@
                                     </div>
                                 {{-- Copy Button --}}
                                 <div class="absolute -top-2 {{ $message->role === 'user' ? 'left-2' : 'right-2' }} opacity-0 group-hover:opacity-100 transition-opacity" x-data="{ showCopied: false }">
-                                        <button 
+                                    <button
                                         @click="navigator.clipboard.writeText($el.closest('.group').querySelector('.message-content').innerText); showCopied = true; setTimeout(() => showCopied = false, 2000);"
                                         class="p-1 rounded bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-500 hover:text-gray-700 dark:hover:text-gray-100"
                                         :class="{ 'bg-green-100 dark:bg-green-700 text-green-600 dark:text-green-300': showCopied }"
                                         aria-label="Copy message"
                                     >
-                                        <svg x-show="!showCopied" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                                          <path d="M13.808 3.182a1 1 0 00-2.121 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 008 16.171V11.5a1 1 0 011-1h2a1 1 0 011 1v4.671a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-                                                </svg>
-                                        <svg x-show="showCopied" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                                                    <path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,11.32L96,188.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"></path>
-                                                </svg>
-                                        </button>
+                                        <x-heroicon-o-clipboard x-show="!showCopied" class="w-4 h-4" />
+                                        <x-heroicon-s-check x-show="showCopied" style="display: none;" class="w-4 h-4" />
+                                    </button>
                                 </div>
-                                
+
                                 {{-- Streaming Indicator --}}
                                 @if($message->is_streaming ?? false) {{-- Check if property exists --}}
                                 <div class="mt-2 flex items-center gap-2">
@@ -468,7 +464,7 @@
                             </div>
                         </div>
                         @endforeach
-                        
+
                         {{-- Loading indicator for regeneration --}}
                         <div wire:loading wire:target="regenerateLastMessage" class="flex justify-center py-4">
                             <div class="inline-flex items-center px-4 py-2 bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 rounded-md text-sm font-medium">
@@ -488,9 +484,9 @@
                         <div class="relative rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg transition-all duration-200 focus-within:ring-2 focus-within:ring-primary-500">
                             {{-- Message input area --}}
                             <div class="flex p-3 gap-3 items-start">
-                            <textarea 
-                                wire:model.live="message" 
-                                    placeholder="Send a message..." 
+                            <textarea
+                                wire:model.live="message"
+                                    placeholder="Send a message..."
                                     class="flex-1 min-h-[3.5rem] max-h-60 resize-none border-0 bg-transparent p-0 focus:ring-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm"
                                 wire:keydown.enter.prevent="sendMessage"
                                 aria-label="Message input"
@@ -503,8 +499,8 @@
                                 x-init="resize()"
                                 @input="resize()"
                             ></textarea>
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                                     class="self-end rounded-lg bg-primary-600 p-2 text-white transition-colors hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                             wire:loading.attr="disabled"
                             wire:target="sendMessage"
@@ -516,7 +512,7 @@
                                     <span class="sr-only">Send message</span>
                                 </button>
                             </div>
-                            
+
                             {{-- Bottom toolbar (Re-added selectors and buttons) --}}
                             <div class="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 p-2">
                                 <div class="flex items-center gap-2">
@@ -541,7 +537,7 @@
                                             @endforeach
                                         </x-filament::dropdown.list>
                                     </x-filament::dropdown>
-                                    
+
                                     {{-- Style selector --}}
                                      <x-filament::dropdown placement="top-start">
                                         <x-slot name="trigger">
@@ -564,14 +560,14 @@
                                         </x-filament::dropdown.list>
                                     </x-filament::dropdown>
                                 </div>
-                                
+
                                 <div class="flex items-center gap-2">
                                     {{-- Character count --}}
                                     <div class="text-xs text-gray-400 dark:text-gray-500" x-data x-text="$wire.message.length + ' chars'"></div>
-                                    
+
                                     {{-- New Chat Button --}}
-                            <button 
-                                type="button" 
+                            <button
+                                type="button"
                                 wire:click="newConversation"
                                         class="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium p-1 rounded hover:bg-primary-50 dark:hover:bg-primary-900/20"
                             >
