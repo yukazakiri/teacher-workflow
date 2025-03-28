@@ -57,6 +57,7 @@ class Team extends JetstreamTeam
         "college_prelim_weight", // Added
         "college_midterm_weight", // Added
         "college_final_weight", // Added
+        "onboarding_step",
     ];
 
     /**

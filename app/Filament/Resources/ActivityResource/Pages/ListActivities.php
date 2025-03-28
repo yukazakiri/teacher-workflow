@@ -12,8 +12,17 @@ class ListActivities extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [
-            Actions\CreateAction::make(),
-        ];
+        return [Actions\CreateAction::make()];
+    }
+
+    // Optional: Default sort
+    protected function getDefaultTableSortColumn(): ?string
+    {
+        return "created_at";
+    }
+
+    protected function getDefaultTableSortDirection(): ?string
+    {
+        return "desc";
     }
 }
