@@ -122,6 +122,7 @@ class AppPanelProvider extends PanelProvider
                 \App\Filament\Pages\WeeklySchedule::class,
                 \App\Filament\Pages\AttendanceManager::class,
             ])
+            ->globalSearch(false)
 
             ->plugins([
                 FilamentDeveloperLoginsPlugin::make()

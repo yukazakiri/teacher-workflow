@@ -13,7 +13,7 @@ use Prism\Prism\Facades\PrismServer;
 use Prism\Prism\ValueObjects\Messages\UserMessage;
 use Prism\Prism\ValueObjects\Messages\SystemMessage;
 use Prism\Prism\ValueObjects\Messages\AssistantMessage;
-
+use Illuminate\Support\Collection;
 class PrismChatService
 {
     /**
@@ -25,16 +25,21 @@ class PrismChatService
      */
     public function sendMessage(
         Conversation $conversation,
-        string $content
+        string $userMessageContent
     ): ChatMessage {
         // Create user message
         $userMessage = ChatMessage::create([
             "conversation_id" => $conversation->id,
-            "role" => "user",
-            "content" => $content,
             "user_id" => Auth::id(),
+            "role" => "user",
+            "content" => $userMessageContent,
         ]);
-
+        $conversation->updateLastActivity();
+        $history = $conversation
+            ->messages()
+            ->orderBy("created_at", "asc") // Ensure correct order
+            ->get(); // Or apply limits ->limit(20)->get();
+        $this->generateResponseFromHistory($conversation, $history);
         try {
             $messages = $this->buildMessageHistory($conversation);
             [$provider, $model] = $this->mapModelToProviderAndModel(
@@ -159,6 +164,88 @@ class PrismChatService
                 ]);
             }
             return $assistantMessage; // Return the message (even if it contains an error)
+        }
+    }
+    /**
+     * Sends a specific message history to the AI and saves the response.
+     * Used for regeneration after edits or standard regeneration.
+     *
+     * @param Conversation $conversation
+     * @param Collection $history A collection of ChatMessage objects or arrays representing the history.
+     * @return ChatMessage The newly created assistant message.
+     */
+    public function generateResponseFromHistory(
+        Conversation $conversation,
+        Collection $history
+    ): ChatMessage {
+        // 1. Format the history collection for your AI API
+        $formattedHistory = $history
+            ->map(function ($msg) {
+                // Adjust based on your AI API's expected format
+                return ["role" => $msg->role, "content" => $msg->content];
+            })
+            ->toArray();
+
+        // Add system prompt / style if applicable based on $conversation->style
+        $systemPrompt = $this->getSystemPromptForStyle($conversation->style);
+        if ($systemPrompt) {
+            array_unshift($formattedHistory, [
+                "role" => "system",
+                "content" => $systemPrompt,
+            ]);
+        }
+
+        // Create a temporary streaming message placeholder
+        $assistantMessage = ChatMessage::create([
+            "conversation_id" => $conversation->id,
+            "role" => "assistant",
+            "content" => "", // Start empty
+            "is_streaming" => true, // Indicate streaming
+            "user_id" => null, // Assistant messages don't have a user_id
+        ]);
+        $conversation->updateLastActivity(); // Update timestamp
+
+        try {
+            // 2. Call your AI API (e.g., OpenAI, Gemini) with $formattedHistory
+            // Example (modify for your actual implementation):
+            $stream = $this->yourAiClient->chat()->createStreamed([
+                "model" => $conversation->model,
+                "messages" => $formattedHistory,
+            ]);
+
+            $fullResponse = "";
+            foreach ($stream as $responseChunk) {
+                $contentChunk = $responseChunk->choices[0]->delta->content;
+                if (!is_null($contentChunk)) {
+                    $fullResponse .= $contentChunk;
+                    // Update the message content incrementally
+                    $assistantMessage->update(["content" => $fullResponse]);
+                    // You might want to broadcast this update via websockets if you need real-time UI updates
+                    // broadcast(new ChatMessageUpdated($assistantMessage))->toOthers();
+                    usleep(50000); // Small delay to simulate streaming visually if not using websockets
+                }
+            }
+
+            // Finalize the message
+            $assistantMessage->update([
+                "content" => $fullResponse,
+                "is_streaming" => false, // Mark streaming as complete
+            ]);
+
+            return $assistantMessage;
+        } catch (\Exception $e) {
+            // Handle API error, update the placeholder message with error info
+            $errorMessage =
+                "Sorry, I encountered an error while generating the response: " .
+                $e->getMessage();
+            $assistantMessage->update([
+                "content" => $errorMessage,
+                "is_streaming" => false,
+            ]);
+            Log::error("AI Generation Error: " . $e->getMessage(), [
+                "history" => $formattedHistory,
+            ]);
+            throw $e; // Re-throw if needed for higher-level handling
         }
     }
 

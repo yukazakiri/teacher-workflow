@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 use Livewire\Attributes\On;
-
+use Illuminate\Database\Eloquent\Collection;
 class Chat extends Component
 {
     public ?Conversation $conversation = null;
@@ -21,7 +21,7 @@ class Chat extends Component
     public array $availableStyles = [];
     public array $quickActions = [];
     public array $recentChats = [];
-
+    public bool $isStreaming = false;
     /**
      * Mount the component.
      */
@@ -133,44 +133,136 @@ class Chat extends Component
             })
             ->toArray();
     }
+    /**
+     * Save an edited user message and regenerate the following response.
+     */
+    public function saveEditedMessage(int $messageId, string $newContent)
+    {
+        $newContent = trim($newContent);
+        if (empty($newContent)) {
+            // Optionally add validation feedback
+            $this->dispatch("show-alert", [
+                "type" => "error",
+                "message" => "Message cannot be empty.",
+            ]);
+            return;
+        }
 
+        $message = ChatMessage::findOrFail($messageId);
+
+        // Authorization: Ensure it's the user's own message and it's a 'user' role
+        if (
+            $message->user_id !== Auth::id() ||
+            $message->role !== "user" ||
+            !$this->conversation ||
+            $message->conversation_id !== $this->conversation->id
+        ) {
+            $this->dispatch("show-alert", [
+                "type" => "error",
+                "message" => "Unauthorized action.",
+            ]);
+            return;
+        }
+
+        // Check if content actually changed
+        if ($message->content === $newContent) {
+            return; // No changes, do nothing
+        }
+
+        $this->isProcessing = true;
+        $this->isStreaming = true;
+
+        try {
+            // 1. Update the message content
+            $message->update(["content" => $newContent]);
+            $message->conversation->updateLastActivity(); // Update conversation timestamp
+
+            // 2. Delete all subsequent messages
+            ChatMessage::where("conversation_id", $message->conversation_id)
+                ->where("created_at", ">", $message->created_at)
+                ->delete();
+
+            // 3. Refresh the conversation model to get the current state of messages
+            $this->conversation->refresh();
+
+            // 4. Get the history up to the edited message
+            $history = $this->conversation
+                ->messages()
+                ->where("created_at", "<=", $message->created_at) // Use the timestamp of the *updated* message
+                ->orderBy("created_at", "asc")
+                ->get();
+
+            // 5. Trigger regeneration from the service
+            $chatService = app(PrismChatService::class);
+            $chatService->generateResponseFromHistory(
+                $this->conversation,
+                $history
+            );
+
+            // 6. Refresh again to include the new response (placeholder)
+            $this->conversation->refresh();
+            $this->dispatch("refreshChat"); // Tell Alpine to scroll
+        } catch (\Exception $e) {
+            $this->handleError($e);
+        } finally {
+            $this->checkStreamingState();
+            $this->isProcessing = false;
+        }
+    }
     /**
      * Send a message to the AI.
      */
     public function sendMessage()
     {
-        if (empty($this->message)) {
+        $trimmedMessage = trim($this->message);
+        if (empty($trimmedMessage)) {
             return;
         }
 
         $this->isProcessing = true;
+        $this->isStreaming = true; // Expecting a stream
 
         // Create a new conversation if one doesn't exist
+        $isNewConversation = false;
         if (!$this->conversation) {
             $chatService = app(PrismChatService::class);
             $title =
-                strlen($this->message) > 50
-                    ? substr($this->message, 0, 47) . "..."
-                    : $this->message;
+                strlen($trimmedMessage) > 50
+                    ? substr($trimmedMessage, 0, 47) . "..."
+                    : $trimmedMessage;
             $this->conversation = $chatService->createConversation(
                 $title,
                 $this->selectedModel,
                 $this->selectedStyle
             );
+            $isNewConversation = true;
         }
 
-        try {
-            // Send the message
-            $chatService = app(PrismChatService::class);
-            $chatService->sendMessage($this->conversation, $this->message);
+        // Store the message temporarily before clearing the input
+        $messageToSend = $trimmedMessage;
+        $this->message = ""; // Clear input immediately
 
-            // Clear the message input and refresh the component
-            $this->message = "";
-            $this->isProcessing = false;
-            $this->loadRecentChats();
+        try {
+            $chatService = app(PrismChatService::class);
+            // Pass the actual message content
+            $chatService->sendMessage($this->conversation, $messageToSend);
+
+            // Refresh necessary data
+            $this->conversation->refresh(); // Reload messages relation
+            if ($isNewConversation) {
+                $this->loadRecentChats();
+            }
+
+            // Dispatch event AFTER processing potentially starts
+            // The UI update for streaming will happen via service/model events if implemented
+            // Or simply rely on the next full refresh after streaming stops
             $this->dispatch("refreshChat");
         } catch (\Exception $e) {
             $this->handleError($e);
+        } finally {
+            // We set isStreaming based on ChatMessage state now
+            $this->checkStreamingState();
+            $this->isProcessing = false; // General processing ends, but streaming might continue
         }
     }
 
@@ -233,11 +325,18 @@ class Chat extends Component
      */
     public function loadConversation(int $conversationId): void
     {
-        $this->conversation = Conversation::with("messages")->findOrFail(
-            $conversationId
-        );
+        // Use findOrFail which eager loads messages or use load() after finding
+        $this->conversation = Conversation::with([
+            "messages" => function ($query) {
+                $query->orderBy("created_at", "asc"); // Ensure messages are ordered correctly
+            },
+        ])->findOrFail($conversationId);
+
         $this->selectedModel = $this->conversation->model;
         $this->selectedStyle = $this->conversation->style;
+        $this->message = ""; // Clear input when loading
+        $this->checkStreamingState(); // Check if the loaded convo has a streaming message
+        $this->dispatch("refreshChat"); // Ensure scroll happens on load
     }
 
     /**
@@ -285,7 +384,7 @@ class Chat extends Component
     }
 
     /**
-     * Regenerate the last assistant message.
+     * Regenerate the last assistant message based on the preceding user message.
      */
     public function regenerateLastMessage(): void
     {
@@ -293,34 +392,65 @@ class Chat extends Component
             return;
         }
 
-        // Get the last user message
-        $lastUserMessage = $this->conversation
-            ->messages()
-            ->where("role", "user")
-            ->orderBy("created_at", "desc")
-            ->first();
-
-        if (!$lastUserMessage) {
-            return;
-        }
-
-        // Delete the last assistant message
-        $this->conversation
-            ->messages()
-            ->where("role", "assistant")
-            ->orderBy("created_at", "desc")
-            ->first()
-            ?->delete();
-
-        // Re-send the user message
         $this->isProcessing = true;
-        $chatService = app(PrismChatService::class);
-        $chatService->sendMessage(
-            $this->conversation,
-            $lastUserMessage->content
-        );
-        $this->isProcessing = false;
-        $this->dispatch("refreshChat");
+        $this->isStreaming = true; // Expecting a stream
+
+        try {
+            // Get messages ordered by creation time descending
+            $messages = $this->conversation
+                ->messages()
+                ->latest()
+                ->take(2)
+                ->get();
+
+            $lastMessage = $messages->first(); // Potentially the assistant message
+            $secondLastMessage = $messages->get(1); // Potentially the user message
+
+            // Validate: Need at least two messages, last is assistant, second last is user
+            if (
+                !$lastMessage ||
+                $lastMessage->role !== "assistant" ||
+                !$secondLastMessage ||
+                $secondLastMessage->role !== "user"
+            ) {
+                $this->dispatch("show-alert", [
+                    "type" => "warning",
+                    "message" => "Cannot regenerate response.",
+                ]);
+                $this->isProcessing = false;
+                $this->isStreaming = false;
+                return;
+            }
+
+            // 1. Delete the last assistant message
+            $lastMessage->delete();
+
+            // 2. Refresh the conversation model to reflect the deletion
+            $this->conversation->refresh();
+
+            // 3. Get the history *up to the user message*
+            $history = $this->conversation
+                ->messages()
+                ->where("created_at", "<=", $secondLastMessage->created_at) // <= user message time
+                ->orderBy("created_at", "asc")
+                ->get();
+
+            // 4. Trigger regeneration from the service
+            $chatService = app(PrismChatService::class);
+            $chatService->generateResponseFromHistory(
+                $this->conversation,
+                $history
+            );
+
+            // 5. Refresh again to include the new response (placeholder)
+            $this->conversation->refresh();
+            $this->dispatch("refreshChat");
+        } catch (\Exception $e) {
+            $this->handleError($e);
+        } finally {
+            $this->checkStreamingState();
+            $this->isProcessing = false;
+        }
     }
 
     /**
@@ -328,15 +458,18 @@ class Chat extends Component
      */
     public function renameConversation(string $newTitle): void
     {
-        if (!$this->conversation) {
+        $newTitle = trim($newTitle);
+        if (
+            !$this->conversation ||
+            empty($newTitle) ||
+            $this->conversation->title === $newTitle
+        ) {
             return;
         }
 
-        $this->conversation->update([
-            "title" => $newTitle,
-        ]);
-
-        $this->loadRecentChats();
+        $this->conversation->update(["title" => $newTitle]);
+        $this->loadRecentChats(); // Refresh recent chats list
+        // The getAllChats() method will fetch the updated title for the sidebar automatically on next render
     }
 
     /**
@@ -364,12 +497,50 @@ class Chat extends Component
         $this->isProcessing = false;
         $this->dispatch("refreshChat");
     }
+    /**
+     * Check if the last message is currently streaming and update the component state.
+     */
+    protected function checkStreamingState(): void
+    {
+        if ($this->conversation) {
+            $lastMessage = $this->conversation->messages()->latest()->first();
+            $this->isStreaming =
+                $lastMessage &&
+                $lastMessage->role === "assistant" &&
+                ($lastMessage->is_streaming ?? false);
+        } else {
+            $this->isStreaming = false;
+        }
+    }
 
+    /**
+     * Periodically check streaming state if a stream is active.
+     * Use wire:poll for this.
+     */
+    public function pollStreamingState()
+    {
+        if ($this->isStreaming) {
+            $this->conversation->refresh(); // Reload messages
+            $this->checkStreamingState();
+            if (!$this->isStreaming) {
+                $this->dispatch("refreshChat"); // One last scroll after streaming finishes
+            }
+        }
+    }
     /**
      * Render the component.
      */
     public function render()
     {
-        return view("livewire.chat");
+        // Check streaming state on every render cycle as a fallback
+        $this->checkStreamingState();
+
+        // Conditionally add polling if streaming is active
+        $view = view("livewire.chat");`
+        if ($this->isStreaming) {
+            // Poll every 500ms while streaming
+            $view->with(["pollingInterval" => "500ms"]);
+        }
+        return $view;
     }
 }
