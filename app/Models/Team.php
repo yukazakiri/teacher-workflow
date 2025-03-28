@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,6 +18,26 @@ class Team extends JetstreamTeam
     /** @use HasFactory<\Database\Factories\TeamFactory> */
     use HasFactory;
     use HasUuids;
+    public const GRADING_SYSTEM_SHS = "shs";
+    public const GRADING_SYSTEM_COLLEGE = "college";
+    public const COLLEGE_SCALE_GWA_5_POINT = "gwa_5_point";
+    public const COLLEGE_SCALE_GWA_4_POINT = "gwa_4_point";
+    public const COLLEGE_SCALE_GWA_PERCENTAGE = "gwa_percentage";
+    public const COLLEGE_SCALE_TERM_5_POINT = "term_5_point"; // Term Based + 5 Point Scale
+    public const COLLEGE_SCALE_TERM_4_POINT = "term_4_point"; // Term Based + 4 Point Scale
+    public const COLLEGE_SCALE_TERM_PERCENTAGE = "term_percentage"; // Term Based + Percentage Scale
+
+    // Map for easier checking
+    public const COLLEGE_TERM_SCALES = [
+        self::COLLEGE_SCALE_TERM_5_POINT,
+        self::COLLEGE_SCALE_TERM_4_POINT,
+        self::COLLEGE_SCALE_TERM_PERCENTAGE,
+    ];
+    public const COLLEGE_GWA_SCALES = [
+        self::COLLEGE_SCALE_GWA_5_POINT,
+        self::COLLEGE_SCALE_GWA_4_POINT,
+        self::COLLEGE_SCALE_GWA_PERCENTAGE,
+    ];
 
     /**
      * The attributes that are mass assignable.
@@ -24,10 +45,18 @@ class Team extends JetstreamTeam
      * @var array<int, string>
      */
     protected $fillable = [
-        'user_id',
-        'name',
-        'personal_team',
-        'join_code',
+        "user_id",
+        "name",
+        "personal_team",
+        "join_code",
+        "grading_system_type",
+        "college_grading_scale", // Now includes GWA/Term distinction
+        "shs_ww_weight",
+        "shs_pt_weight",
+        "shs_qa_weight",
+        "college_prelim_weight", // Added
+        "college_midterm_weight", // Added
+        "college_final_weight", // Added
     ];
 
     /**
@@ -36,9 +65,9 @@ class Team extends JetstreamTeam
      * @var array<string, class-string>
      */
     protected $dispatchesEvents = [
-        'created' => TeamCreated::class,
-        'updated' => TeamUpdated::class,
-        'deleted' => TeamDeleted::class,
+        "created" => TeamCreated::class,
+        "updated" => TeamUpdated::class,
+        "deleted" => TeamDeleted::class,
     ];
 
     /**
@@ -49,7 +78,7 @@ class Team extends JetstreamTeam
     protected function casts(): array
     {
         return [
-            'personal_team' => 'boolean',
+            "personal_team" => "boolean",
         ];
     }
 
@@ -75,7 +104,7 @@ class Team extends JetstreamTeam
     {
         do {
             $code = strtoupper(Str::random(6));
-        } while (self::where('join_code', $code)->exists());
+        } while (self::where("join_code", $code)->exists());
 
         $this->join_code = $code;
     }
@@ -109,7 +138,7 @@ class Team extends JetstreamTeam
      */
     public function owner(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, "user_id");
     }
 
     /**
@@ -157,7 +186,7 @@ class Team extends JetstreamTeam
      */
     public function hasUserWithRole(User $user, string $role): bool
     {
-        $teamMember = $this->users()->where('user_id', $user->id)->first();
+        $teamMember = $this->users()->where("user_id", $user->id)->first();
 
         if (!$teamMember) {
             return false;
@@ -169,5 +198,83 @@ class Team extends JetstreamTeam
     public function userIsOwner(User $user): bool
     {
         return $this->owner->is($user);
+    }
+    public function usesShsGrading(): bool
+    {
+        return $this->grading_system_type === self::GRADING_SYSTEM_SHS;
+    }
+
+    /**
+     * Check if the team uses the College grading system.
+     */
+    public function usesCollegeGrading(): bool
+    {
+        return $this->grading_system_type === self::GRADING_SYSTEM_COLLEGE;
+    }
+    public function usesCollegeTermGrading(): bool
+    {
+        return $this->usesCollegeGrading() &&
+            in_array($this->college_grading_scale, self::COLLEGE_TERM_SCALES);
+    }
+    /**
+     * Get the underlying numeric scale (5_point, 4_point, percentage) for college, regardless of GWA/Term.
+     */
+    public function getCollegeNumericScale(): ?string
+    {
+        if (!$this->usesCollegeGrading()) {
+            return null;
+        }
+        return match ($this->college_grading_scale) {
+            self::COLLEGE_SCALE_GWA_5_POINT,
+            self::COLLEGE_SCALE_TERM_5_POINT
+                => "5_point",
+            self::COLLEGE_SCALE_GWA_4_POINT,
+            self::COLLEGE_SCALE_TERM_4_POINT
+                => "4_point",
+            self::COLLEGE_SCALE_GWA_PERCENTAGE,
+            self::COLLEGE_SCALE_TERM_PERCENTAGE
+                => "percentage",
+            default => null,
+        };
+    }
+
+    public function usesCollegeGwaGrading(): bool
+    {
+        return $this->usesCollegeGrading() &&
+            in_array($this->college_grading_scale, self::COLLEGE_GWA_SCALES);
+    }
+    /**
+     * Get the team's grading system description.
+     */
+    public function gradingSystemDescription(): Attribute
+    {
+        return Attribute::make(
+            get: function () {
+                if ($this->usesShsGrading()) {
+                    return "K-12 SHS (Component Weighted)";
+                }
+                if ($this->usesCollegeGrading()) {
+                    $desc = "College/University";
+                    $scale_part = match ($this->getCollegeNumericScale()) {
+                        "5_point" => "5-Point",
+                        "4_point" => "4-Point",
+                        "percentage" => "Percentage",
+                        default => "Scale Not Set",
+                    };
+                    if ($this->usesCollegeTermGrading()) {
+                        $desc .=
+                            " (Term-Based: Prelim, Midterm, Final / " .
+                            $scale_part .
+                            ")";
+                    } elseif ($this->usesCollegeGwaGrading()) {
+                        $desc .= " (GWA Based / " . $scale_part . ")";
+                    } else {
+                        $desc .= " (Configuration Incomplete)";
+                    }
+                    return $desc;
+                }
+                return "Not Configured";
+            }
+        );
     }
 }
