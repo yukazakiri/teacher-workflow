@@ -71,7 +71,8 @@ class AppPanelProvider extends PanelProvider
             ->login()
             ->spa()
             ->brandName("FilaGrade")
-            ->sidebarCollapsibleOnDesktop(true)
+            // ->sidebarCollapsibleOnDesktop(true)
+            ->sidebarFullyCollapsibleOnDesktop()
             // ->topNavigation()
             ->registration()
             ->passwordReset()
@@ -131,9 +132,9 @@ class AppPanelProvider extends PanelProvider
                 fn() => view("filament.sidebar.chat-navigation")
             )
             ->plugins([
-                // FilamentDeveloperLoginsPlugin::make()
-                //     ->enabled()
-                //     ->users(fn() => User::pluck("email", "name")->toArray()),
+                FilamentDeveloperLoginsPlugin::make()
+                    ->enabled(app()->environment('local'))
+                    ->users(fn() => User::pluck("email", "name")->toArray()),
                 EasyFooterPlugin::make()->withLoadTime(),
                 FilamentAssistantPlugin::make(),
                 // FilamentSimpleThemePlugin::make(),

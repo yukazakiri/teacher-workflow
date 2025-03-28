@@ -97,6 +97,25 @@ class Chat extends Component
     }
 
     /**
+     * Get all chats for the user, ordered by last activity.
+     */
+    public function getAllChats(): array
+    {
+        return Conversation::where('user_id', Auth::id())
+            ->orderBy('last_activity_at', 'desc')
+            ->get()
+            ->map(function ($chat) {
+                return [
+                    'id' => $chat->id,
+                    'title' => $chat->title,
+                    'model' => $chat->model,
+                    'last_activity' => $chat->last_activity_at->diffForHumans(),
+                ];
+            })
+            ->toArray();
+    }
+
+    /**
      * Send a message to the AI.
      */
     public function sendMessage()

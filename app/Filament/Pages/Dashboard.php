@@ -119,11 +119,6 @@ class Dashboard extends PagesDashboard
     }
 
     /**
-     * Get the available AI models.
-     */
-   
-
-    /**
      * Get the available chat styles.
      */
     public function getAvailableStyles(): array

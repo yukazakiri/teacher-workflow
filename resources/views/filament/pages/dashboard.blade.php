@@ -1,8 +1,8 @@
 <x-filament-panels::page>
-    <div class="">
+
   
         @livewire('chat', ['conversationId' => $conversationId ?? null])
-    </div>
+
 
     @if($needsOnboarding)
     <div
