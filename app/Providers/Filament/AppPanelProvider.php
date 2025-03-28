@@ -87,10 +87,7 @@ class AppPanelProvider extends PanelProvider
                 "success" => Color::hex("#a6d189"),
                 "warning" => Color::hex("#fe640b"),
             ])
-            ->renderHook(
-                "panels::sidebar.nav.start",
-                fn (): string => Blade::render('<livewire:action-shortcuts />'),
-            )
+
             // ->userMenuItems([
             //     MenuItem::make()
             //         ->label('Profile')
@@ -127,13 +124,10 @@ class AppPanelProvider extends PanelProvider
                 \App\Filament\Pages\WeeklySchedule::class,
                 \App\Filament\Pages\AttendanceManager::class,
             ])
-            ->renderHook(
-                "panels::sidebar.start",
-                fn() => view("filament.sidebar.chat-navigation")
-            )
+
             ->plugins([
                 FilamentDeveloperLoginsPlugin::make()
-                    ->enabled(app()->environment('local'))
+                    ->enabled(app()->environment("local"))
                     ->users(fn() => User::pluck("email", "name")->toArray()),
                 EasyFooterPlugin::make()->withLoadTime(),
                 FilamentAssistantPlugin::make(),

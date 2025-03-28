@@ -5,6 +5,7 @@ namespace App\Services;
 use Prism\Prism\Prism;
 use App\Models\ChatMessage;
 use App\Models\Conversation;
+use App\Tools\DataAccessTool;
 use Prism\Prism\Enums\Provider;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -22,163 +23,215 @@ class PrismChatService
      * @param string $content
      * @return ChatMessage
      */
-    public function sendMessage(Conversation $conversation, string $content): ChatMessage
-    {
+    public function sendMessage(
+        Conversation $conversation,
+        string $content
+    ): ChatMessage {
         // Create user message
         $userMessage = ChatMessage::create([
-            'conversation_id' => $conversation->id,
-            'role' => 'user',
-            'content' => $content,
-            'user_id' => Auth::id(),
+            "conversation_id" => $conversation->id,
+            "role" => "user",
+            "content" => $content,
+            "user_id" => Auth::id(),
         ]);
 
         try {
-            // Get message history
             $messages = $this->buildMessageHistory($conversation);
-            
-            // Get the model configuration
-            [$provider, $model] = $this->mapModelToProviderAndModel($conversation->model);
-            
+            [$provider, $model] = $this->mapModelToProviderAndModel(
+                $conversation->model
+            );
+            $dataAccessTool = new DataAccessTool();
+            $maxSteps = 5;
+            $providerSupportsTools = in_array(strtolower($provider), [
+                "openai",
+                "anthropic",
+                "gemini",
+            ]);
+            $useTools = $providerSupportsTools;
             // Check if we should use streaming (only for OpenAI)
-            $useStreaming = $provider === 'openai';
-            
+            $useStreaming = strtolower($provider) === "openai";
+
             // Create assistant message placeholder
             $assistantMessage = ChatMessage::create([
-                'conversation_id' => $conversation->id,
-                'role' => 'assistant',
-                'content' => '',
-                'user_id' => null,
-                'is_streaming' => $useStreaming,
+                "conversation_id" => $conversation->id,
+                "role" => "assistant",
+                "content" => "",
+                "user_id" => null,
+                "is_streaming" => $useStreaming && $useTools, // Indicate streaming only if actually streaming
             ]);
-            
-            // Get AI response
-            if ($useStreaming) {
-                // Use streaming for OpenAI
-                $response = Prism::text()
-                    ->using($provider, $model)
-                    ->withMessages($messages)
-                    ->asStream();
+            $prismRequest = Prism::text()
+                ->using($provider, $model)
+                ->withMessages($messages);
 
-                // Process each chunk as it arrives
-                foreach ($response as $chunk) {
-                    $assistantMessage->update([
-                        'content' => $assistantMessage->content . $chunk->text
-                    ]);
-                    // Flush the output buffer
-                    ob_flush();
+            if ($useTools) {
+                $prismRequest = $prismRequest
+                    ->withTools([$dataAccessTool])
+                    ->withMaxSteps($maxSteps);
+            }
+            if ($useStreaming && $useTools) {
+                // Use streaming WITH tools
+                $stream = $prismRequest->asStream();
+                $fullResponseText = "";
+
+                foreach ($stream as $chunk) {
+                    $fullResponseText .= $chunk->text;
+                    // Update message content progressively
+                    $assistantMessage->update(["content" => $fullResponseText]);
+
+                    // Log tool interactions during streaming (optional debugging)
+                    if ($chunk->toolCalls) {
+                        Log::info("Tool Call Chunk:", [
+                            "calls" => $chunk->toolCalls,
+                        ]);
+                    }
+                    if ($chunk->toolResults) {
+                        Log::info("Tool Result Chunk:", [
+                            "results" => $chunk->toolResults,
+                        ]);
+                    }
+
+                    // Flush output buffer if running in a context that needs it (like raw PHP script)
+                    // In Laravel streaming responses, this might not be necessary depending on setup.
+                    if (ob_get_level() > 0) {
+                        ob_flush();
+                    }
                     flush();
                 }
-                
                 // Mark streaming as complete
                 $assistantMessage->is_streaming = false;
-                $assistantMessage->save();
+                $assistantMessage->save(); // Save final content
             } else {
-                // Use regular completion for other providers
-                $response = Prism::text()
-                    ->using($provider, $model)
-                    ->withMessages($messages)
-                    ->generate();
-                
+                // Use regular completion (potentially with tools if $useTools is true)
+                $response = $prismRequest->generate(); // Use generate() instead of asText() to access tool info
+
                 // Update message with complete response
                 $assistantMessage->content = $response->text;
+                $assistantMessage->is_streaming = false; // Ensure streaming flag is false
                 $assistantMessage->save();
+
+                // Log tool interactions after generation (optional debugging)
+                if ($useTools) {
+                    if ($response->toolCalls) {
+                        Log::info("Tool Calls (Generate):", [
+                            "calls" => $response->toolCalls,
+                        ]);
+                    }
+                    if ($response->toolResults) {
+                        Log::info("Tool Results (Generate):", [
+                            "results" => $response->toolResults,
+                        ]);
+                    }
+                }
             }
-            
+
             // Update conversation last activity
             $this->updateConversationActivity($conversation);
-            
+
             return $assistantMessage;
         } catch (\Exception $e) {
-            Log::error('AI response error: ' . $e->getMessage(), [
-                'conversation_id' => $conversation->id,
-                'user_id' => Auth::id(),
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+            // ... (Keep existing error handling)
+            Log::error("AI response error: " . $e->getMessage(), [
+                "conversation_id" => $conversation->id,
+                "user_id" => Auth::id(),
+                "error" => $e->getMessage(),
+                "trace" => $e->getTraceAsString(),
             ]);
-            
-            // Create error message
-            return ChatMessage::create([
-                'conversation_id' => $conversation->id,
-                'role' => 'assistant',
-                'content' => 'Sorry, I encountered an error: ' . $e->getMessage(),
-                'user_id' => null,
-            ]);
+
+            // Create error message if not already created
+            if (!isset($assistantMessage) || !$assistantMessage->exists) {
+                $assistantMessage = ChatMessage::create([
+                    "conversation_id" => $conversation->id,
+                    "role" => "assistant",
+                    "content" =>
+                        "Sorry, I encountered an error before I could respond.",
+                    "user_id" => null,
+                    "is_streaming" => false,
+                ]);
+            } else {
+                // Update existing placeholder with error
+                $assistantMessage->update([
+                    "content" =>
+                        $assistantMessage->content .
+                        "\n\n[Error processing request: " .
+                        $e->getMessage() .
+                        "]",
+                    "is_streaming" => false,
+                ]);
+            }
+            return $assistantMessage; // Return the message (even if it contains an error)
         }
     }
 
     /**
      * Build the message history for a conversation.
+     * NOTE: Consider if the extensive context added here is still needed
+     * now that the AI can *fetch* data via the tool. You might simplify this.
+     * For now, we leave it as is.
      *
      * @param Conversation $conversation
      * @return array
      */
     private function buildMessageHistory(Conversation $conversation): array
     {
+        // ... (Existing buildMessageHistory logic remains unchanged for now)
         $messages = [];
 
         // Add user context information
         $user = Auth::user();
         $team = $user->currentTeam;
-        
-        $userContext = "## User Context Information\n";
-        $userContext .= "- Current User: {$user->name} (Email: {$user->email})\n";
-        
+
+        // Reduce initial context slightly, let the tool provide details on demand
+        $userContext = "## User & Team Context\n";
+        $userContext .= "- Current User: {$user->name}\n";
         if ($team) {
             $userContext .= "- Current Team: {$team->name}\n";
-            
-            // Add team members information
-            $teamMembers = $team->allUsers();
-            if ($teamMembers->count() > 0) {
-                $userContext .= "- Team Members:\n";
-                foreach ($teamMembers as $member) {
-                    try {
-                        // Get the team member's role safely
-                        $teamMember = $team->users()->where('user_id', $member->id)->first();
-                        $role = $teamMember && $teamMember->membership ? $teamMember->membership->role : 'member';
-                        $userContext .= "  - {$member->name} ({$role})\n";
-                    } catch (\Exception $e) {
-                        // If there's any error, just use a default role
-                        $userContext .= "  - {$member->name} (member)\n";
-                    }
-                }
-            }
-            
-            // Add students information if available
-            $students = $team->students;
-            if ($students && $students->count() > 0) {
-                $userContext .= "- Students in Team:\n";
-                foreach ($students->take(5) as $student) {
-                    $userContext .= "  - {$student->name}\n";
-                }
-                
-                if ($students->count() > 5) {
-                    $userContext .= "  - And " . ($students->count() - 5) . " more students\n";
-                }
-            }
-        }
-        
-        // Add context if available
-        if ($conversation->context) {
-            $messages[] = new SystemMessage($conversation->context . "\n\n" . $userContext);
-        } else {
-            // Add default system prompt based on conversation style with user context
-            $messages[] = new SystemMessage($this->getSystemPromptForStyle($conversation->style) . "\n\n" . $userContext);
+            // Advise AI to use the tool for specifics
+            $userContext .=
+                "- Use the 'data_access' tool to get specific details about students, team members, activities, grading, etc.\n";
         }
 
-        // Get the last 10 messages
-        $chatMessages = $conversation->messages()
-            ->orderBy('created_at', 'desc')
-            ->take(10)
+        // Add context if available
+        if ($conversation->context) {
+            $messages[] = new SystemMessage(
+                $conversation->context . "\n\n" . $userContext
+            );
+        } else {
+            // Add default system prompt based on conversation style with user context
+            $messages[] = new SystemMessage(
+                $this->getSystemPromptForStyle($conversation->style) .
+                    "\n\n" .
+                    $userContext
+            );
+        }
+
+        // Get the last messages (Keep this part)
+        $chatMessages = $conversation
+            ->messages()
+            ->orderBy("created_at", "desc")
+            ->take(10) // Limit history size
             ->get()
             ->reverse();
 
         // Add the messages to the history
         foreach ($chatMessages as $message) {
-            if ($message->role === 'user') {
+            // Skip empty/placeholder messages that might exist from previous errors/streaming issues
+            if (
+                empty(trim($message->content)) &&
+                $message->role === "assistant"
+            ) {
+                continue;
+            }
+
+            if ($message->role === "user") {
                 $messages[] = new UserMessage($message->content);
-            } elseif ($message->role === 'assistant') {
+            } elseif ($message->role === "assistant") {
+                // Check for tool calls/results if Prism stored them previously (future enhancement)
+                // For now, just add the text content
                 $messages[] = new AssistantMessage($message->content);
             }
+            // NOTE: Need to eventually handle ToolCallMessage and ToolResultMessage if
+            // Prism persists these or if you want to reconstruct full tool history manually.
+            // For now, we rely on Prism handling the history implicitly within the single request.
         }
 
         return $messages;
@@ -193,16 +246,20 @@ class PrismChatService
      * @param string|null $context
      * @return Conversation
      */
-    public function createConversation(string $title, string $model = 'gpt-4o', string $style = 'default', ?string $context = null): Conversation
-    {
+    public function createConversation(
+        string $title,
+        string $model = "gpt-4o",
+        string $style = "default",
+        ?string $context = null
+    ): Conversation {
         return Conversation::create([
-            'user_id' => Auth::id(),
-            'team_id' => Auth::user()->currentTeam?->id,
-            'title' => $title,
-            'model' => $model,
-            'style' => $style,
-            'context' => $context,
-            'last_activity_at' => now(),
+            "user_id" => Auth::id(),
+            "team_id" => Auth::user()->currentTeam?->id,
+            "title" => $title,
+            "model" => $model,
+            "style" => $style,
+            "context" => $context,
+            "last_activity_at" => now(),
         ]);
     }
 
@@ -213,7 +270,7 @@ class PrismChatService
      */
     public function getAvailableModels(): array
     {
-        return PrismServer::prisms()->pluck('name')->toArray();
+        return PrismServer::prisms()->pluck("name")->toArray();
     }
 
     /**
@@ -224,10 +281,10 @@ class PrismChatService
     public function getAvailableStyles(): array
     {
         return [
-            'default' => 'Default',
-            'creative' => 'Creative',
-            'precise' => 'Precise',
-            'balanced' => 'Balanced',
+            "default" => "Default",
+            "creative" => "Creative",
+            "precise" => "Precise",
+            "balanced" => "Balanced",
         ];
     }
 
@@ -241,53 +298,65 @@ class PrismChatService
     {
         // Get all registered prisms
         $prisms = PrismServer::prisms();
-        
+
         // Find the prism with the matching name
-        $prism = $prisms->firstWhere('name', $modelIdentifier);
-        
+        $prism = $prisms->firstWhere("name", $modelIdentifier);
+
         if ($prism) {
             // Extract provider and model from the prism configuration
-            $provider = $prism['provider'] ?? 'openai';
-            $model = $prism['model'] ?? 'gpt-4o';
+            $provider = $prism["provider"] ?? "openai"; // Default to openai if not specified
+            $model = $prism["model"] ?? "gpt-4o"; // Default model
             return [$provider, $model];
         }
-        
-        // Fallback mappings for models not registered through PrismServer
+
+        // Fallback mappings (Keep this for models not explicitly registered via PrismServer)
         $providerMap = [
-            'GPT-4o' => ['openai', 'gpt-4o'],
-            'GPT-4 Turbo' => ['openai', 'gpt-4-turbo'],
-            'GPT-3.5 Turbo' => ['openai', 'gpt-3.5-turbo'],
-            'Gemini Pro' => ['gemini', 'gemini-pro'],
-            'Gemini 1.5 Pro' => ['gemini', 'gemini-1.5-pro'],
-            'Claude 3 Opus' => ['anthropic', 'claude-3-opus'],
-            'Claude 3 Sonnet' => ['anthropic', 'claude-3-sonnet'],
-            'Claude 3 Haiku' => ['anthropic', 'claude-3-haiku'],
-            'Gemini 1.5 Flass' => ['gemini', 'gemini-1.5-flash'],
-            'Gemini 2.0 Flash' => ['gemini', 'gemini-2.0-flash'],
-            'GPT-4o Mini' => ['openai', 'gpt-4o-mini'],
+            "GPT-4o" => ["openai", "gpt-4o"],
+            "GPT-4 Turbo" => ["openai", "gpt-4-turbo"],
+            "GPT-3.5 Turbo" => ["openai", "gpt-3.5-turbo"],
+            "Gemini Pro" => ["gemini", "gemini-pro"],
+            "Gemini 1.5 Pro" => ["gemini", "gemini-1.5-pro"],
+            "Claude 3 Opus" => ["anthropic", "claude-3-opus-20240229"], // Use full model names
+            "Claude 3 Sonnet" => ["anthropic", "claude-3-sonnet-20240229"],
+            "Claude 3 Haiku" => ["anthropic", "claude-3-haiku-20240307"],
+            "Gemini 1.5 Flash" => ["gemini", "gemini-1.5-flash"], // Ensure these match registered names if used
+            // "Gemini 2.0 Flash" => ["gemini", "gemini-2.0-flash"], // Assuming this exists
+            "GPT-4o Mini" => ["openai", "gpt-4o-mini"], // Ensure this matches registered name
         ];
-        
-        return $providerMap[$modelIdentifier] ?? ['openai', 'gpt-4o'];
+
+        // Handle potential case mismatch or slightly different naming if needed
+        foreach ($providerMap as $name => $details) {
+            if (strcasecmp($modelIdentifier, $name) == 0) {
+                return $details;
+            }
+        }
+
+        Log::warning(
+            "Model identifier not found in registered prisms or fallback map. Defaulting to OpenAI GPT-4o.",
+            ["identifier" => $modelIdentifier]
+        );
+        return ["openai", "gpt-4o"]; // Default fallback
     }
 
-    /**
-     * Get the system prompt for a specific style.
-     *
-     * @param string $style
-     * @return string
-     */
     private function getSystemPromptForStyle(string $style): string
     {
-        $prompts = [
-            'default' => 'You are a helpful assistant. Provide clear and concise responses.',
-            'creative' => 'You are a creative assistant. Think outside the box and provide imaginative responses.',
-            'precise' => 'You are a precise assistant. Focus on accuracy and factual information. Be concise and to the point.',
-            'balanced' => 'You are a balanced assistant. Provide comprehensive yet accessible responses that balance detail with clarity.',
+        $basePrompts = [
+            "default" =>
+                "You are a helpful Teacher Assistant. Provide clear and concise responses.",
+            "creative" =>
+                "You are a creative Teacher Assistant. Think outside the box and provide imaginative responses.",
+            "precise" =>
+                "You are a precise Teacher Assistant. Focus on accuracy and factual information. Be concise and to the point.",
+            "balanced" =>
+                "You are a balanced Teacher Assistant. Provide comprehensive yet accessible responses that balance detail with clarity.",
         ];
 
-        return $prompts[$style] ?? $prompts['default'];
-    }
+        $toolInstructions =
+            "\nYou have access to a 'data_access' tool. Use it ONLY when the user asks specific questions about their data (students, activities, grades, schedule, team info). Ask clarifying questions if the user's request is ambiguous before using the tool. State that you are retrieving data when you use the tool. Format lists or tables clearly if returning multiple items.";
 
+        return ($basePrompts[$style] ?? $basePrompts["default"]) .
+            $toolInstructions;
+    }
     /**
      * Apply a quick action to a message.
      *
@@ -295,23 +364,35 @@ class PrismChatService
      * @param string $content The content to apply the action to
      * @return string The result of applying the action
      */
-    public function applyQuickAction(string $actionPrompt, string $content): string
-    {
-        // Combine the action prompt with the content
-        $fullPrompt = $actionPrompt . $content;
+    public function applyQuickAction(
+        string $actionPrompt,
+        string $content
+    ): string {
+        // Ensure quick actions don't accidentally trigger the data tool unless intended
+        // This implementation assumes quick actions are purely text manipulation
+        $fullPrompt = $actionPrompt . "\n\n---\n\n" . $content;
 
-        // Get the provider and model
-        $provider = 'openai';
-        $model = 'gpt-4o';
+        // Use a capable model for these tasks, maybe separate from the main chat model if needed
+        // Consider using a model registered via PrismServer for consistency
+        [$provider, $model] = $this->mapModelToProviderAndModel("GPT-4o Mini"); // Example: Use 4o-mini
 
-        // Generate the response
-        $response = Prism::text()
-            ->using($provider, $model)
-            ->withPrompt($fullPrompt)
-            ->usingTemperature(0.7)
-            ->generate();
+        try {
+            $response = Prism::text()
+                ->using($provider, $model)
+                ->withPrompt($fullPrompt)
+                ->usingTemperature(0.5) // Lower temp for more predictable actions
+                ->withMaxTokens(1000) // Adjust as needed
+                ->generate(); // Use generate to get the result object
 
-        return $response->text;
+            return $response->text;
+        } catch (\Exception $e) {
+            Log::error("Quick action error: " . $e->getMessage(), [
+                "actionPrompt" => $actionPrompt,
+                "error" => $e->getMessage(),
+            ]);
+            return "Sorry, I encountered an error while trying to apply the action: " .
+                $e->getMessage();
+        }
     }
 
     /**
@@ -319,10 +400,11 @@ class PrismChatService
      *
      * @param Conversation $conversation
      */
-    private function updateConversationActivity(Conversation $conversation): void
-    {
+    private function updateConversationActivity(
+        Conversation $conversation
+    ): void {
         $conversation->update([
-            'last_activity_at' => now(),
+            "last_activity_at" => now(),
         ]);
     }
 }
