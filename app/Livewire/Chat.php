@@ -14,7 +14,7 @@ class Chat extends Component
 {
     public ?Conversation $conversation = null;
     public string $message = "";
-    public string $selectedModel = "Gemini-2.0";
+    public string $selectedModel = "Gemini 2.0 Flash";
     public string $selectedStyle = "default";
     public bool $isProcessing = false;
     public array $availableModels = [];
@@ -536,7 +536,7 @@ class Chat extends Component
         $this->checkStreamingState();
 
         // Conditionally add polling if streaming is active
-        $view = view("livewire.chat");`
+        $view = view("livewire.chat");
         if ($this->isStreaming) {
             // Poll every 500ms while streaming
             $view->with(["pollingInterval" => "500ms"]);

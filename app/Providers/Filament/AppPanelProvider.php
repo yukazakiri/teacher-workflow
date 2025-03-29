@@ -128,7 +128,10 @@ class AppPanelProvider extends PanelProvider
                 FilamentDeveloperLoginsPlugin::make()
                     ->enabled(app()->environment("local"))
                     ->switchable(false)
-                    ->users(fn() => User::pluck("email", "name")->toArray()),
+                    ->users([
+                        "test User" => "test@example.com",
+                        "student" => "ejohnson.edu@student.edu",
+                    ]),
                 EasyFooterPlugin::make()->withLoadTime(),
                 FilamentAssistantPlugin::make(),
                 // FilamentSimpleThemePlugin::make(),

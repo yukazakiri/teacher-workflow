@@ -1,1 +1,8 @@
 @import "../../../../vendor/filament/filament/resources/css/theme.css";
+.fi-simple-main {
+    /* Redesigned light mode for better readability/visuality, includes padding */
+    @apply p-6 bg-gray-50 border border-gray-200 dark:bg-gray-900 rounded-3xl shadow-xl dark:border dark:border-gray-700;
+}
+.fi-body {
+    @apply p-6 bg-gray-300/60 border border-gray-200 dark:bg-gray-900 rounded-lg shadow-xl dark:border dark:border-gray-700;
+}

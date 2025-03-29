@@ -161,7 +161,21 @@ class DatabaseSeeder extends Seeder
                 ] /* ... user details ... */
             );
             if (!$studentUser->belongsToTeam($classroom)) {
-                /* ... add user to team ... */
+                // Add the student user to the classroom team.
+                // Assuming 'student' is the desired role key in the pivot table.
+                // Adjust 'student' if your application uses a different role key.
+                $classroom
+                    ->users()
+                    ->attach($studentUser, ["role" => "student"]);
+
+                // Optionally, set the user's current team if this is their first team
+                if (is_null($studentUser->current_team_id)) {
+                    $studentUser
+                        ->forceFill([
+                            "current_team_id" => $classroom->id,
+                        ])
+                        ->save();
+                }
             }
 
             // Create linked student record

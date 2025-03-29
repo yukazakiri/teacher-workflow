@@ -35,11 +35,7 @@ class PrismChatService
             "content" => $userMessageContent,
         ]);
         $conversation->updateLastActivity();
-        $history = $conversation
-            ->messages()
-            ->orderBy("created_at", "asc") // Ensure correct order
-            ->get(); // Or apply limits ->limit(20)->get();
-        $this->generateResponseFromHistory($conversation, $history);
+
         try {
             $messages = $this->buildMessageHistory($conversation);
             [$provider, $model] = $this->mapModelToProviderAndModel(
@@ -157,12 +153,13 @@ class PrismChatService
                 $assistantMessage->update([
                     "content" =>
                         $assistantMessage->content .
-                        "\n\n[Error processing request: " .
+                        "\n\n[Error: " .
                         $e->getMessage() .
                         "]",
                     "is_streaming" => false,
                 ]);
             }
+            $this->updateConversationActivity($conversation);
             return $assistantMessage; // Return the message (even if it contains an error)
         }
     }
@@ -178,15 +175,14 @@ class PrismChatService
         Conversation $conversation,
         Collection $history
     ): ChatMessage {
-        // 1. Format the history collection for your AI API
+        // 1. Format the history collection (Keep this part)
         $formattedHistory = $history
             ->map(function ($msg) {
-                // Adjust based on your AI API's expected format
                 return ["role" => $msg->role, "content" => $msg->content];
             })
             ->toArray();
 
-        // Add system prompt / style if applicable based on $conversation->style
+        // Add system prompt / style (Keep this part)
         $systemPrompt = $this->getSystemPromptForStyle($conversation->style);
         if ($systemPrompt) {
             array_unshift($formattedHistory, [
@@ -195,7 +191,7 @@ class PrismChatService
             ]);
         }
 
-        // Create a temporary streaming message placeholder
+        // Create a temporary streaming message placeholder (Keep this part)
         $assistantMessage = ChatMessage::create([
             "conversation_id" => $conversation->id,
             "role" => "assistant",
@@ -205,32 +201,113 @@ class PrismChatService
         ]);
         $conversation->updateLastActivity(); // Update timestamp
 
+        // --- START REPLACEMENT ---
         try {
-            // 2. Call your AI API (e.g., OpenAI, Gemini) with $formattedHistory
-            // Example (modify for your actual implementation):
-            $stream = $this->yourAiClient->chat()->createStreamed([
-                "model" => $conversation->model,
-                "messages" => $formattedHistory,
-            ]);
+            // Map model identifier to provider and model name
+            [$provider, $model] = $this->mapModelToProviderAndModel(
+                $conversation->model
+            );
 
-            $fullResponse = "";
-            foreach ($stream as $responseChunk) {
-                $contentChunk = $responseChunk->choices[0]->delta->content;
-                if (!is_null($contentChunk)) {
-                    $fullResponse .= $contentChunk;
-                    // Update the message content incrementally
-                    $assistantMessage->update(["content" => $fullResponse]);
-                    // You might want to broadcast this update via websockets if you need real-time UI updates
-                    // broadcast(new ChatMessageUpdated($assistantMessage))->toOthers();
-                    usleep(50000); // Small delay to simulate streaming visually if not using websockets
+            // Convert the formatted history array back to Prism Message objects
+            $prismMessages = collect($formattedHistory)
+                ->map(function ($msg) {
+                    return match ($msg["role"]) {
+                        "system" => new SystemMessage($msg["content"]),
+                        "user" => new UserMessage($msg["content"]),
+                        "assistant" => new AssistantMessage($msg["content"]),
+                        default
+                            => null, // Handle potential unknown roles if necessary
+                    };
+                })
+                ->filter()
+                ->values()
+                ->all(); // Remove nulls and re-index
+
+            // Check if the provider supports streaming (like OpenAI)
+            $useStreaming = strtolower($provider) === "openai";
+            // Decide if tools should be used during regeneration (optional, keeping it simple for now)
+            $useTools = false; // Set to true if you want tools active here
+            $dataAccessTool = null;
+            if ($useTools) {
+                // Ensure provider supports tools
+                $providerSupportsTools = in_array(strtolower($provider), [
+                    "openai",
+                    "anthropic",
+                    "gemini",
+                ]);
+                $useTools = $providerSupportsTools;
+                if ($useTools) {
+                    $dataAccessTool = new DataAccessTool();
                 }
             }
 
-            // Finalize the message
-            $assistantMessage->update([
-                "content" => $fullResponse,
-                "is_streaming" => false, // Mark streaming as complete
-            ]);
+            $prismRequest = Prism::text()
+                ->using($provider, $model)
+                ->withMessages($prismMessages);
+
+            // Add tools if needed for regeneration
+            if ($useTools && $dataAccessTool) {
+                $prismRequest = $prismRequest
+                    ->withTools([$dataAccessTool])
+                    ->withMaxSteps(5); // Or your desired max steps
+            }
+
+            if ($useStreaming) {
+                // Use streaming if supported (adjust condition if other providers add streaming)
+                // Ensure the placeholder reflects streaming status correctly
+                $assistantMessage->update(["is_streaming" => true]);
+
+                $stream = $prismRequest->asStream();
+                $fullResponse = "";
+
+                foreach ($stream as $responseChunk) {
+                    $contentChunk = $responseChunk->text; // Assuming text chunk property
+                    if (!is_null($contentChunk)) {
+                        $fullResponse .= $contentChunk;
+                        // Update the message content incrementally
+                        $assistantMessage->update(["content" => $fullResponse]);
+                        // Optional: Broadcast update for real-time UI
+                        // broadcast(new ChatMessageUpdated($assistantMessage))->toOthers();
+                        usleep(50000); // Simulate delay if not using websockets
+                    }
+                    // Log tool info if needed during stream
+                    if (
+                        $useTools &&
+                        ($responseChunk->toolCalls ||
+                            $responseChunk->toolResults)
+                    ) {
+                        Log::info("Regen Tool Chunk:", [
+                            "calls" => $responseChunk->toolCalls,
+                            "results" => $responseChunk->toolResults,
+                        ]);
+                    }
+                }
+                // Finalize the message
+                $assistantMessage->update([
+                    "content" => $fullResponse,
+                    "is_streaming" => false, // Mark streaming as complete
+                ]);
+            } else {
+                // Use non-streaming generation
+                // Ensure the placeholder reflects streaming status correctly
+                $assistantMessage->update(["is_streaming" => false]); // Not streaming
+
+                $response = $prismRequest->generate(); // Use generate()
+                $assistantMessage->update([
+                    "content" => $response->text, // Get text content
+                    "is_streaming" => false,
+                ]);
+                // Log tool info if needed after generation
+                if (
+                    $useTools &&
+                    ($response->toolCalls || $response->toolResults)
+                ) {
+                    Log::info("Regen Tool Generate:", [
+                        "calls" => $response->toolCalls,
+                        "results" => $response->toolResults,
+                    ]);
+                }
+            }
 
             return $assistantMessage;
         } catch (\Exception $e) {
@@ -242,11 +319,16 @@ class PrismChatService
                 "content" => $errorMessage,
                 "is_streaming" => false,
             ]);
-            Log::error("AI Generation Error: " . $e->getMessage(), [
-                "history" => $formattedHistory,
+            Log::error("AI Generation Error (History): " . $e->getMessage(), [
+                "conversation_id" => $conversation->id,
+                "error" => $e->getMessage(),
+                "trace" => $e->getTraceAsString(), // Include trace for debugging
             ]);
-            throw $e; // Re-throw if needed for higher-level handling
+            // Decide if you want to re-throw the exception or just return the error message
+            // throw $e; // Uncomment if you want the Livewire component to catch it via handleError
+            return $assistantMessage; // Return the message containing the error
         }
+        // --- END REPLACEMENT ---
     }
 
     /**
