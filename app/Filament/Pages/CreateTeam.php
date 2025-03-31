@@ -26,7 +26,7 @@ use Filament\Pages\Tenancy\RegisterTenant;
 use Illuminate\Validation\ValidationException;
 use Filament\Navigation\NavigationItem;
 use Illuminate\Support\Facades\Redirect;
-
+use App\Filament\Pages\Dashboard;
 class CreateTeam extends RegisterTenant
 {
     public $activeOption = "create";
@@ -245,8 +245,9 @@ class CreateTeam extends RegisterTenant
     /**
      * Handle joining an existing team
      */
-    protected function joinExistingTeam(array $data): Model
-    {
+    protected function joinExistingTeam(
+        array $data
+    ): \Illuminate\Http\RedirectResponse {
         if (empty($data["join_code"])) {
             throw ValidationException::withMessages([
                 "join_code" => "Please enter a valid class code.",
@@ -272,33 +273,51 @@ class CreateTeam extends RegisterTenant
             ]);
         }
 
+        $user = Auth::user(); // Get the authenticated user
+
         // Check if user is already a member of this team
-        if (Auth::user()->belongsToTeam($team)) {
-            throw ValidationException::withMessages([
-                "join_code" => "You are already a member of this class.",
-            ]);
+        if ($user->belongsToTeam($team)) {
+            // Optionally switch to the team if already a member but not current
+            if ($user->currentTeam?->id !== $team->id) {
+                $user->switchTeam($team);
+                Notification::make()
+                    ->info()
+                    ->title("Switched Class")
+                    ->body(
+                        "You are already a member of {$team->name}. Switched to this class."
+                    )
+                    ->send();
+
+                // Redirect to the dashboard of the joined team
+                return redirect(Dashboard::getUrl(["tenant" => $team])); // <-- Use Dashboard::getUrl()
+            } else {
+                // Already a member and it's the current team
+                throw ValidationException::withMessages([
+                    "join_code" =>
+                        "You are already a member of this class and it's your current class.",
+                ]);
+            }
         }
 
         // Add current user to the team using membership model
         try {
             \Illuminate\Support\Facades\Log::debug(
-                "Attempting to add user to team"
+                "Attempting to add user to team",
+                ["team_id" => $team->id, "user_id" => $user->id]
             );
             DB::table("team_user")->insert([
                 "team_id" => $team->id,
-                "user_id" => Auth::id(),
-                "role" => "student",
+                "user_id" => $user->id,
+                "role" => "student", // Default role when joining via code
                 "created_at" => now(),
                 "updated_at" => now(),
             ]);
-
             \Illuminate\Support\Facades\Log::debug(
                 "User successfully added to team"
             );
 
             // Switch the current team for the user
-            Auth::user()->switchTeam($team);
-
+            $user->switchTeam($team);
             \Illuminate\Support\Facades\Log::debug("Switched user's team");
 
             Notification::make()
@@ -307,10 +326,8 @@ class CreateTeam extends RegisterTenant
                 ->body("You have been added to {$team->name}")
                 ->send();
 
-            // Redirect to the dashboard
-            redirect()->to("/app")->send();
-
-            return $team;
+            // Redirect to the dashboard of the joined team
+            return redirect(Dashboard::getUrl(["tenant" => $team])); // <-- Use Dashboard::getUrl()
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error(
                 "Error adding user to team",
@@ -335,11 +352,19 @@ class CreateTeam extends RegisterTenant
     /**
      * Handle creating a new team
      */
-    protected function createNewTeam(array $data): Model
-    {
+    protected function createNewTeam(
+        array $data
+    ): \Illuminate\Http\RedirectResponse {
         // We should be in create mode to use this
         if ($this->activeOption !== "create") {
-            $this->activeOption = "create"; // Force it to create mode
+            // This shouldn't happen if validation/visibility works, but as a safeguard
+            Notification::make()
+                ->warning()
+                ->title("Incorrect Mode")
+                ->body("Attempted to create class while in join mode.")
+                ->send();
+            // Optionally redirect back or throw an error
+            return redirect()->back();
         }
 
         // Validate name field
@@ -350,17 +375,40 @@ class CreateTeam extends RegisterTenant
         }
 
         try {
+            $user = Auth::user();
             \Illuminate\Support\Facades\Log::debug(
                 "Creating new team with name",
                 [
                     "name" => $data["name"],
-                    "user_id" => Auth::id(),
+                    "user_id" => $user->id,
                 ]
             );
 
+            // handleRegistration creates the team and associates the user
             $team = $this->handleRegistration([
                 "name" => $data["name"],
             ]);
+
+            // Ensure the team was created and the user is switched
+            if (!$user->fresh()->belongsToTeam($team)) {
+                // This indicates a problem with Jetstream's team creation/association
+                \Illuminate\Support\Facades\Log::error(
+                    "User was not associated with the newly created team.",
+                    ["user_id" => $user->id, "team_id" => $team->id]
+                );
+                throw new \Exception(
+                    "Failed to associate user with the new class."
+                );
+            }
+
+            // Jetstream's CreateTeam action should handle switching the team automatically.
+            // If not, uncomment the line below:
+            // $user->switchTeam($team);
+
+            \Illuminate\Support\Facades\Log::info(
+                "New team created successfully",
+                ["team_id" => $team->id, "team_name" => $team->name]
+            );
 
             // Show success notification
             Notification::make()
@@ -369,14 +417,11 @@ class CreateTeam extends RegisterTenant
                 ->body(
                     "Your class '{$data["name"]}' has been created successfully."
                 )
-                ->send();
+                ->sendToDatabase($user) // Optional: Send to DB for persistence
+                ->broadcast($user); // Optional: Broadcast if using real-time features
 
-            // Redirect to the dashboard
-            redirect()
-                ->to("/app/dashboard", ["tenant" => $team->id])
-                ->send();
-
-            return $team;
+            // Redirect to the dashboard of the newly created team
+            return redirect(Dashboard::getUrl(["tenant" => $team])); // <-- Use Dashboard::getUrl()
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Error creating team", [
                 "error" => $e->getMessage(),
@@ -385,21 +430,29 @@ class CreateTeam extends RegisterTenant
 
             Notification::make()
                 ->danger()
-                ->title("Error")
-                ->body("Unable to create class. Please try again later.")
+                ->title("Error Creating Class")
+                ->body("Unable to create class: " . $e->getMessage()) // Provide more context if safe
                 ->send();
 
+            // Re-throw or handle specifically
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+
             throw ValidationException::withMessages([
-                "name" => "Unable to create class. Please try again later.",
+                "name" =>
+                    "Unable to create class due to an internal error. Please try again later.",
             ]);
         }
     }
 
     /**
      * The original form submit handler (used only for creating new teams)
+     * This method is called by createNewTeam.
      */
     protected function handleRegistration(array $data): Model
     {
+        // This action should create the team, add the user as owner, and switch the user's current team.
         return app(\App\Actions\Jetstream\CreateTeam::class)->create(
             Auth::user(),
             $data

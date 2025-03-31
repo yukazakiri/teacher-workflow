@@ -4,12 +4,19 @@ declare(strict_types=1);
 
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
 use Laravel\Jetstream\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\ExamController;
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\ActivitySubmissionController;
 use App\Http\Controllers\AttendanceController;
-use App\Livewire\TeamAttendance;
+use App\Livewire\TeamAttendance; // Keep this line, even if unused for now, as it might be used elsewhere or intended for future use.
+use Laravel\WorkOS\Http\Middleware\ValidateSessionWithWorkOS;
+use Laravel\WorkOS\Http\Requests\AuthKitAuthenticationRequest as RequestsAuthKitAuthenticationRequest;
+use Laravel\WorkOS\Http\Requests\AuthKitLoginRequest as RequestsAuthKitLoginRequest;
+use Laravel\WorkOS\Http\Requests\AuthKitLogoutRequest as RequestsAuthKitLogoutRequest;
+use App\Providers\Filament\AppPanelProvider; // Import the AppPanelProvider if needed for URL generation, though direct path is often fine.
 
 /*
 |--------------------------------------------------------------------------
@@ -22,29 +29,84 @@ use App\Livewire\TeamAttendance;
 |
 */
 
-Route::get("/", fn() => redirect("/login"))->name("welcome");
+// Determine the appropriate session authentication middleware
+$authSessionMiddleware = config("app.use_workos", false)
+    ? ValidateSessionWithWorkOS::class
+    : AuthenticateSession::class; // Or config('jetstream.auth_session') if Jetstream's default is preferred
 
-Route::redirect("/login", "/app/login")->name("login");
+// Route::get("/", fn() => redirect("/login"))->name("welcome");
+Route::get("/", function () {
+    if (Auth::check()) {
+        // Redirect authenticated users to the Filament App Panel dashboard
+        // Assuming the panel ID is 'app' and its path is '/app' based on other routes
+        // For a more robust way, use Filament's helper if available and configured:
+        // return redirect(AppPanelProvider::getUrl());
+        return redirect("/app");
+    }
+    // Redirect guests to the login page
+    return redirect("/login");
+})->name("welcome");
 
-Route::redirect("/register", "/app/register")->name("register");
+if (config("app.use_workos", true)) {
+    // WorkOS Authentication Routes
+    Route::get("login", function (RequestsAuthKitLoginRequest $request) {
+        return $request->redirect();
+    })
+        ->middleware(["guest"])
+        ->name("login");
 
-Route::redirect("/dashboard", "/app")->name("dashboard");
+    Route::get("authenticate", function (
+        RequestsAuthKitAuthenticationRequest $request
+    ) {
+        // Ensure the intended redirect goes to the application's dashboard path
+        return tap(
+            redirect()->intended("/app"),
+            fn() => $request->authenticate()
+        );
+    })->middleware(["guest"]);
+
+    Route::post("logout", function (RequestsAuthKitLogoutRequest $request) {
+        Auth::guard("web")->logout();
+
+        Session::invalidate();
+        Session::regenerateToken();
+        // The $request->logout() handles redirecting to WorkOS for logout
+        return $request->logout();
+    })
+        ->middleware(["auth"])
+        ->name("logout");
+
+    // Redirect dashboard to the application root under WorkOS context if needed
+    Route::redirect("/dashboard", "/app")->name("dashboard");
+
+    // Disable standard registration if using WorkOS for authentication
+    // Route::redirect("/register", "/app/register")->name("register"); // Or handle differently
+} else {
+    // Standard Authentication Routes (Redirects to Jetstream/Filament)
+    // Note: The root route '/' now handles the initial redirect based on auth status.
+    // These redirects might still be useful for direct access attempts or consistency.
+    Route::redirect("/login", "/app/login")->name("login");
+    Route::redirect("/register", "/app/register")->name("register");
+    Route::redirect("/dashboard", "/app")->name("dashboard");
+}
 
 Route::get("/team-invitations/{invitation}", [
     TeamInvitationController::class,
     "accept",
 ])
-    ->middleware(["signed", "verified", "auth", AuthenticateSession::class])
+    // Use the determined auth session middleware
+    ->middleware(["signed", "verified", "auth", $authSessionMiddleware])
     ->name("team-invitations.accept");
 
 Route::delete("/team-invitations/{invitation}", [
     TeamInvitationController::class,
     "destroy",
 ])
-    ->middleware(["auth", AuthenticateSession::class])
+    // Use the determined auth session middleware
+    ->middleware(["auth", $authSessionMiddleware])
     ->name("team-invitations.destroy");
 
-// Exam routes
+// Exam routes - Typically require authentication but maybe not the specific session middleware
 Route::middleware(["auth:sanctum", "verified"])->group(function () {
     Route::get("/exams/{exam}/export", [ExamController::class, "export"])->name(
         "exams.export"
@@ -57,9 +119,10 @@ Route::middleware(["auth:sanctum", "verified"])->group(function () {
 
 // Activity routes
 Route::middleware([
-    "auth:sanctum",
-    config("jetstream.auth_session"),
-    "verified",
+    "auth:sanctum", // API/token auth if applicable
+    "auth", // Standard web auth guard check
+    $authSessionMiddleware, // Use determined session middleware
+    "verified", // Email verification etc.
 ])->group(function () {
     // Activity progress and reporting
     Route::get("/activities/{activity}/progress", function (
@@ -129,35 +192,36 @@ Route::middleware([
 
 // Attendance routes
 Route::middleware([
-    "auth:sanctum",
-    config("jetstream.auth_session"),
-    "verified",
+    "auth:sanctum", // API/token auth if applicable
+    "auth", // Standard web auth guard check
+    $authSessionMiddleware, // Use determined session middleware
+    "verified", // Email verification etc.
 ])->group(function () {
     // Team attendance page - replaced by Filament page
     // Route::get('/team/attendance', TeamAttendance::class)->name('team.attendance');
-    
+
     // QR code scanning
     Route::get("/attendance/scan/{code}", [
         AttendanceController::class,
         "showScanPage",
     ])->name("attendance.scan");
-    
+
     Route::post("/attendance/scan/{code}", [
         AttendanceController::class,
         "scanQr",
     ])->name("attendance.scan.process");
-    
+
     // Attendance management
     Route::post("/teams/{team}/attendance", [
         AttendanceController::class,
         "markAttendance",
     ])->name("attendance.mark");
-    
+
     Route::post("/teams/{team}/students/{student}/timeout", [
         AttendanceController::class,
         "markTimeOut",
     ])->name("attendance.timeout");
-    
+
     // Attendance statistics
     Route::get("/teams/{team}/attendance/stats/{date?}", [
         AttendanceController::class,

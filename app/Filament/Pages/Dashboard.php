@@ -111,7 +111,7 @@ class Dashboard extends PagesDashboard
     public function getOnboardingState(): int
     {
         $user = Auth::user();
-        $team = $user->currentTeam;
+        $team = $user?->currentTeam()->first();
 
         if (!$team) {
             return 0; // No team context
@@ -124,7 +124,7 @@ class Dashboard extends PagesDashboard
         // Only show if they haven't dismissed step 1 yet (step is 0)
         $teamCreatedRecently =
             $team->created_at->diffInMinutes(now()) < 60 * 24; // Expand to 24 hours for flexibility
-        $studentCount = Student::where("team_id", $team->id)->count();
+        $studentCount = $team->students()->count();
 
         if ($currentStep === 0 && $teamCreatedRecently && $studentCount === 0) {
             return 1;
@@ -149,16 +149,42 @@ class Dashboard extends PagesDashboard
     /**
      * Livewire action to mark an onboarding step as seen/completed.
      */
-    public function markOnboardingStepComplete(int $step): void
+    public function markOnboardingStepComplete(int $stepJustCompleted): void
     {
-        $team = Auth::user()->currentTeam;
+        $user = Auth::user();
+        $team = $user?->currentTeam()->first();
 
-        if ($team && $step > $team->onboarding_step) {
-            $team->update(["onboarding_step" => $step]);
-            // Optionally force a refresh or re-render if needed, but closing the modal is usually enough.
-            // $this->js('window.location.reload()'); // Force reload if state isn't updating visually
+        if ($team) {
+            // Ensure we only move forward, don't accidentally revert
+            if ($stepJustCompleted > (int) $team->onboarding_step) {
+                \Illuminate\Support\Facades\Log::info(
+                    "Marking onboarding step complete",
+                    [
+                        "team_id" => $team->id,
+                        "user_id" => $user->id,
+                        "step" => $stepJustCompleted,
+                    ]
+                );
+                $team->update(["onboarding_step" => $stepJustCompleted]);
+                // No need to force refresh usually, Alpine handles UI closure.
+                // $this->dispatch('refresh-dashboard'); // Example if you needed related components to update
+            } else {
+                \Illuminate\Support\Facades\Log::info(
+                    "Skipping onboarding step update",
+                    [
+                        "team_id" => $team->id,
+                        "user_id" => $user->id,
+                        "step" => $stepJustCompleted,
+                        "current_step" => $team->onboarding_step,
+                    ]
+                );
+            }
+        } else {
+            \Illuminate\Support\Facades\Log::warning(
+                "Could not mark onboarding step: No current team found.",
+                ["user_id" => $user->id]
+            );
         }
-
         // We don't necessarily need to close the modal here via Livewire
         // as the Alpine @click='open = false' will handle the UI closure.
         // The next time the page loads, getOnboardingState() will return the updated state.
@@ -234,11 +260,13 @@ class Dashboard extends PagesDashboard
      */
     protected function getViewData(): array
     {
+        $user = Auth::user();
+        $currentTeam = $user?->currentTeam()->first(); // Fetch the team instance
         $onboardingState = $this->getOnboardingState();
-        $currentTeam = Auth::user()->currentTeam;
 
         return [
             "heading" => $this->getHeading(),
+            "subheading" => $this->getSubheading(),
             "availableModels" => PrismServer::prisms()->pluck("name"),
             "availableStyles" => $this->getAvailableStyles(),
             "quickActions" => $this->getQuickActions(),
