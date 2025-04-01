@@ -29,6 +29,7 @@ class ClassResource extends Model implements HasMedia
         'access_level', // 'all', 'teacher', 'owner'
         'created_by',
         'is_pinned',
+        'is_archived',
         'file',
     ];
 
@@ -46,35 +47,53 @@ class ClassResource extends Model implements HasMedia
     {
         parent::boot();
 
-        // Handle media registration
+        // Handle media processing after resource creation
         static::created(function ($resource) {
-            // Process uploaded files after resource creation
-            $resource->registerMediaCollections();
+            if (!empty($resource->file) && file_exists($resource->file)) {
+                try {
+                    $fileName = pathinfo($resource->file, PATHINFO_BASENAME);
+                    $fileNameWithoutExtension = pathinfo($resource->file, PATHINFO_FILENAME);
+                    
+                    $media = $resource->addMedia($resource->file)
+                        ->usingName($fileNameWithoutExtension)
+                        ->withCustomProperties([
+                            'original_filename' => $fileName,
+                            'team_id' => $resource->team_id
+                        ])
+                        ->toMediaCollection('resources');
+
+                    // Ensure the media is using the public disk
+                    if ($media->disk !== 'public') {
+                        $media->disk = 'public';
+                        $media->save();
+                    }
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Failed to add media in boot: ' . $e->getMessage());
+                }
+            }
         });
 
         // Extract metadata when media is added
-        static::created(function ($resource) {
-            $resource->getMedia('resources')->each(function ($media) {
-                // Process file metadata
+        static::updated(function ($resource) {
+            // Process metadata from media files
+            $resource->getMedia('resources')->each(function ($media) use ($resource) {
+                // Process file metadata if description is empty or processing
+                if (empty($resource->description) || $resource->description === 'Processing...') {
+                    // Extract metadata from file
                 $fileName = $media->file_name;
                 $fileExtension = pathinfo($fileName, PATHINFO_EXTENSION);
                 $fileNameWithoutExtension = pathinfo($fileName, PATHINFO_FILENAME);
                 
-                // Generate title from filename
+                    // Generate title from filename if not set
+                    if (empty($resource->title)) {
                 $title = str_replace(['-', '_'], ' ', $fileNameWithoutExtension);
-                $title = ucwords($title);
-                
-                // Get the resource
-                $resource = $media->model;
-                
-                // Set title if not already set
-                if (empty($resource->title)) {
-                    $resource->title = $title;
-                }
+                        $resource->title = ucwords($title);
+                    }
+                    
+                    // Default description
+                    $description = "Document: " . $resource->title;
                 
                 // For PDF files, try to extract more metadata
-                $description = "Document: $title";
-                
                 if (strtolower($fileExtension) === 'pdf') {
                     try {
                         // Get the file path
@@ -120,17 +139,17 @@ class ClassResource extends Model implements HasMedia
                         }
                     } catch (\Exception $e) {
                         // If PDF parsing fails, just use the filename
-                        $description = "Document: $title";
-                    }
+                            \Illuminate\Support\Facades\Log::error('PDF parsing error: ' . $e->getMessage());
+                            $description = "Document: " . $resource->title;
+                        }
                 }
                 
-                // Set description if not already set
-                if (empty($resource->description)) {
+                    // Set description
                     $resource->description = $description;
+                    
+                    // Save without triggering events to avoid recursion
+                    $resource->saveQuietly();
                 }
-                
-                // Save the resource
-                $resource->save();
             });
         });
     }
@@ -167,6 +186,7 @@ class ClassResource extends Model implements HasMedia
         $this
             ->addMediaCollection('resources')
             ->useDisk('public')
+            ->singleFile()
             ->acceptsMimeTypes([
                 'application/pdf',
                 'image/jpeg',
@@ -198,6 +218,33 @@ class ClassResource extends Model implements HasMedia
             ->height(400)
             ->fit('contain', 400, 400)
             ->nonQueued();
+    }
+
+    /**
+     * Get the path generator class.
+     */
+    public function getPathGenerator(): string
+    {
+        return \App\Support\MediaLibrary\CustomPathGenerator::class;
+    }
+
+    /**
+     * Get the URL of the media file.
+     */
+    public function getMediaUrl(): ?string
+    {
+        $media = $this->getFirstMedia('resources');
+        if (!$media) {
+            return null;
+        }
+
+        // Ensure we're using the correct disk
+        if ($media->disk !== 'public') {
+            $media->disk = 'public';
+            $media->save();
+        }
+
+        return $media->getUrl();
     }
 
     /**

@@ -5,17 +5,15 @@ namespace App\Filament\Resources\ClassResource\Pages;
 use App\Filament\Resources\ClassResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
-use Filament\Infolists;
-use Filament\Infolists\Infolist;
 use Illuminate\Support\Facades\Storage;
-use Filament\Infolists\Components\Section;
-use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Components\Grid;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 
 class ViewClass extends ViewRecord
 {
     protected static string $resource = ClassResource::class;
+    
+    protected static string $view = 'filament.resources.class-resource.pages.view-class-resource';
     
     protected function getHeaderActions(): array
     {
@@ -24,109 +22,50 @@ class ViewClass extends ViewRecord
             Actions\DeleteAction::make(),
         ];
     }
-    
-    public function infolist(Infolist $infolist): Infolist
+
+    public function getMediaDetails(): ?object
     {
-        return $infolist
-            ->schema([
-                Section::make('Resource Details')
-                    ->schema([
-                        Grid::make(2)
-                            ->schema([
-                                TextEntry::make('title')
-                                    ->label('Title')
-                                    ->weight('bold')
-                                    ->size('text-xl'),
-                                
-                                TextEntry::make('category.name')
-                                    ->label('Category'),
-                                
-                                TextEntry::make('access_level')
-                                    ->label('Access Level')
-                                    ->badge()
-                                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                                        'all' => 'All Members',
-                                        'teacher' => 'Teachers Only',
-                                        'owner' => 'Owner Only',
-                                        default => $state,
-                                    })
-                                    ->color(fn (string $state): string => match ($state) {
-                                        'all' => 'success',
-                                        'teacher' => 'warning',
-                                        'owner' => 'danger',
-                                        default => 'gray',
-                                    }),
-                                
-                                TextEntry::make('creator.name')
-                                    ->label('Created By'),
-                                
-                                TextEntry::make('created_at')
-                                    ->label('Created At')
-                                    ->dateTime(),
-                                
-                                TextEntry::make('updated_at')
-                                    ->label('Last Updated')
-                                    ->dateTime(),
-                            ]),
-                        
-                        TextEntry::make('description')
-                            ->label('Description')
-                            ->columnSpanFull()
-                            ->markdown(),
-                    ]),
-                
-                Section::make('File Preview')
-                    ->schema([
-                        TextEntry::make('media')
-                            ->label('')
-                            ->columnSpanFull()
-                            ->formatStateUsing(function ($record) {
-                                $media = $record->getMedia('resources')->first();
-                                
-                                if (!$media) {
-                                    return new HtmlString('<div class="text-gray-500">No file attached</div>');
-                                }
-                                
-                                $fileUrl = $media->getUrl();
-                                $fileName = $media->file_name;
-                                $fileSize = $media->human_readable_size;
-                                $fileType = $media->mime_type;
-                                
-                                $preview = '';
-                                
-                                // PDF preview
-                                if (str_contains($fileType, 'pdf')) {
-                                    $preview = <<<HTML
-                                    <div class="mb-4">
-                                        <iframe src="{$fileUrl}" class="w-full h-96 border border-gray-200 rounded-lg"></iframe>
-                                    </div>
-                                    HTML;
-                                }
-                                // Image preview
-                                elseif (str_contains($fileType, 'image')) {
-                                    $preview = <<<HTML
-                                    <div class="mb-4">
-                                        <img src="{$fileUrl}" class="max-w-full max-h-96 border border-gray-200 rounded-lg" alt="{$fileName}">
-                                    </div>
-                                    HTML;
-                                }
-                                
-                                // File info and download button
-                                $fileInfo = <<<HTML
-                                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                    <div>
-                                        <p class="font-medium">{$fileName}</p>
-                                        <p class="text-sm text-gray-500">{$fileType} • {$fileSize}</p>
-                                    </div>
-                                    <a href="{$fileUrl}" download class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-                                        Download
-                                    </a>
-                                </div>
-                                HTML;
-                                
-                                return new HtmlString($preview . $fileInfo);
-                            }),
-                    ]),
-            ]);
+        $media = $this->record->getFirstMedia('resources');
+        if (!$media) {
+            return null;
+        }
+
+        return (object) [
+            'url' => $media->getFullUrl(),
+            'name' => $media->file_name,
+            'size' => $media->human_readable_size,
+            'type' => $media->mime_type,
+            'isPdf' => str_contains($media->mime_type, 'pdf'),
+            'isImage' => str_contains($media->mime_type, 'image'),
+            'isOfficeDoc' => str_contains($media->mime_type, 'msword') ||
+                             str_contains($media->mime_type, 'wordprocessingml') ||
+                             str_contains($media->mime_type, 'ms-excel') ||
+                             str_contains($media->mime_type, 'spreadsheetml') ||
+                             str_contains($media->mime_type, 'ms-powerpoint') ||
+                             str_contains($media->mime_type, 'presentationml'),
+        ];
+    }
+
+    public function getAccessLevelBadge(): array
+    {
+        $state = $this->record->access_level;
+        $label = match ($state) {
+            'all' => 'All Members',
+            'teacher' => 'Teachers Only',
+            'owner' => 'Owner Only',
+            default => $state,
+        };
+        $color = match ($state) {
+            'all' => 'success',
+            'teacher' => 'warning',
+            'owner' => 'danger',
+            default => 'gray',
+        };
+        return ['label' => $label, 'color' => $color];
+    }
+
+    public function getFormattedDescription(): HtmlString
+    {
+        return new HtmlString(Str::markdown($this->record->description ?? ''));
     }
 }
