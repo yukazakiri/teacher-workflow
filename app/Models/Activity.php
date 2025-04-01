@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Activity extends Model
 {
@@ -46,6 +47,14 @@ class Activity extends Model
         "grading_criteria",
         "form_config",
         "mode",
+        "format",
+        "custom_format",
+        "submission_type",
+        "allow_file_uploads",
+        "allow_text_entry",
+        "allowed_file_types",
+        "max_file_size",
+        "allow_teacher_submission",
     ];
 
     /**
@@ -60,6 +69,11 @@ class Activity extends Model
         "form_config" => "array",
         "total_points" => "float", // Ensure it's float/decimal if needed
         "credit_units" => "float", // Ensure it's float
+        "allow_file_uploads" => "boolean",
+        "allow_text_entry" => "boolean",
+        "allowed_file_types" => "array",
+        "max_file_size" => "integer",
+        "allow_teacher_submission" => "boolean",
     ];
     /**
      * Get the teacher that owns the activity.

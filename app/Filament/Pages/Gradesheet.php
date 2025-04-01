@@ -1517,4 +1517,48 @@ class Gradesheet extends Page
             "scores" => $scores,
         ];
     }
+
+    /**
+     * Get the formatted grade for a specific term for a student.
+     */
+    public function getFormattedTermGrade(string $studentId, string $termKey): HtmlString|string
+    {
+        $termGradeValue = $this->studentTermGrades[$studentId][$termKey] ?? null;
+        $numericScale = $this->team?->getCollegeNumericScale();
+
+        if ($termGradeValue === null || !$numericScale) {
+            return new HtmlString('<span class="text-gray-400 dark:text-gray-500">-</span>');
+        }
+
+        $formattedGrade = $this->gradingService->formatCollegeGrade($termGradeValue, $numericScale);
+        $color = $this->gradingService->getCollegeGradeColor($termGradeValue, $numericScale);
+
+        // Add tooltip with raw value if needed
+        $rawValue = number_format($termGradeValue, 2);
+        $title = "{$termKey} Grade: {$rawValue}";
+
+        return new HtmlString("<span class='{$color} font-semibold' title='{$title}'>{$formattedGrade}</span>");
+    }
+
+    // Helper to get term background color for table headers
+    public function getTermHeaderClass(string $term): string
+    {
+        return match ($term) {
+            Activity::TERM_PRELIM => 'bg-teal-50 dark:bg-teal-900/50',
+            Activity::TERM_MIDTERM => 'bg-purple-50 dark:bg-purple-900/50',
+            Activity::TERM_FINAL => 'bg-orange-50 dark:bg-orange-900/50',
+            default => 'bg-gray-50 dark:bg-white/5', // Fallback
+        };
+    }
+
+    // Helper to get SHS component background color for table headers
+    public function getShsComponentHeaderClass(string $componentType): string
+    {
+        return match ($componentType) {
+            Activity::COMPONENT_WRITTEN_WORK => 'bg-blue-50 dark:bg-blue-900/50',
+            Activity::COMPONENT_PERFORMANCE_TASK => 'bg-red-50 dark:bg-red-900/50',
+            Activity::COMPONENT_QUARTERLY_ASSESSMENT => 'bg-yellow-50 dark:bg-yellow-900/50',
+            default => 'bg-gray-50 dark:bg-white/5', // Fallback
+        };
+    }
 }

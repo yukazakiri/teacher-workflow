@@ -80,6 +80,13 @@ class Team extends JetstreamTeam
     {
         return [
             "personal_team" => "boolean",
+            "shs_ww_weight" => "integer",
+            "shs_pt_weight" => "integer",
+            "shs_qa_weight" => "integer",
+            "college_prelim_weight" => "integer",
+            "college_midterm_weight" => "integer",
+            "college_final_weight" => "integer",
+            "onboarding_step" => "integer",
         ];
     }
 

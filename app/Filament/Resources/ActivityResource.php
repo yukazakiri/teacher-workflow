@@ -41,6 +41,8 @@ use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Notifications\Notification; // Added Notification import
 use Illuminate\Support\Str; // Added Str import
+use App\Filament\Resources\ActivityResource\Pages\CreateActivityCustom; // Import the new custom resource page
+use App\Models\Team; // Added Team import
 
 class ActivityResource extends Resource
 {
@@ -63,6 +65,14 @@ class ActivityResource extends Resource
 
     public static function form(Form $form): Form
     {
+        // Get current team settings to control visibility
+        // Note: This assumes the context is within an authenticated user's session
+        $team = Auth::user()?->currentTeam;
+        $isCollege = $team?->usesCollegeGrading() ?? false;
+        $isShs = $team?->usesShsGrading() ?? false;
+        $isCollegeTerm = $team?->usesCollegeTermGrading() ?? false;
+        $isCollegeGwa = $team?->usesCollegeGwaGrading() ?? false;
+
         return $form->schema([
             Tabs::make("Activity Details")
                 ->tabs([
@@ -95,12 +105,10 @@ class ActivityResource extends Resource
                                         ])
                                         ->default("draft")
                                         ->required(),
-                                    DateTimePicker::make("deadline")
+                                    DateTimePicker::make("due_date") // Changed from deadline
                                         ->label("Submission Deadline")
-                                        ->placeholder(
-                                            "Optional: Set a deadline"
-                                        )
-                                        ->native(false) // Use Filament's date picker
+                                        ->placeholder("Optional: Set a deadline")
+                                        ->native(false)
                                         ->weekStartsOnSunday(),
                                 ])
                                 ->columns(2),
@@ -136,22 +144,57 @@ class ActivityResource extends Resource
                                         ])
                                         ->required()
                                         ->default("individual")
-                                        ->reactive(),
-                                    Radio::make("category")
-                                        ->label("Grading Category")
+                                        ->live(), // Use live() for reactivity
+
+                                    // --- SHS Component Type ---
+                                    Select::make('component_type')
+                                        ->label('SHS Component')
                                         ->options([
-                                            "written" => "Written Work",
-                                            "performance" => "Performance Task",
+                                            Activity::COMPONENT_WRITTEN_WORK => 'Written Work (WW)',
+                                            Activity::COMPONENT_PERFORMANCE_TASK => 'Performance Task (PT)',
+                                            Activity::COMPONENT_QUARTERLY_ASSESSMENT => 'Quarterly Assessment (QA)',
                                         ])
-                                        ->required()
-                                        ->default("written"),
+                                        ->placeholder('Select SHS Component')
+                                        ->required(fn(): bool => $isShs) // Required only if team is SHS
+                                        ->visible(fn(): bool => $isShs), // Visible only if team is SHS
+
+                                    // --- College Term ---
+                                    Select::make('term')
+                                        ->label('College Term')
+                                        ->options([
+                                            Activity::TERM_PRELIM => 'Prelim',
+                                            Activity::TERM_MIDTERM => 'Midterm',
+                                            Activity::TERM_FINAL => 'Final',
+                                        ])
+                                        ->placeholder('Select College Term')
+                                         // Required only if team uses College Term grading
+                                        ->required(fn(): bool => $isCollegeTerm)
+                                         // Visible only if team uses College Term grading
+                                        ->visible(fn(): bool => $isCollegeTerm),
+
+                                    // --- College Credit Units ---
+                                    TextInput::make('credit_units')
+                                        ->label('Credit Units')
+                                        ->numeric()
+                                        ->minValue(0)
+                                        ->step(0.01) // Allow decimals like 1.5, 0.75
+                                        ->placeholder('e.g., 3.00')
+                                        ->helperText('Units used for College GWA calculation.')
+                                        // Required only if team uses College GWA grading
+                                        ->required(fn(): bool => $isCollegeGwa)
+                                        // Visible only if team is College (Term or GWA)
+                                        ->visible(fn(): bool => $isCollege),
+
                                     TextInput::make("total_points")
                                         ->label("Total Points")
                                         ->required()
                                         ->numeric()
                                         ->minValue(0)
                                         ->default(10),
-                                    Select::make("format") // Added Format from Wizard
+
+                                    // --- General Format (Quiz, Assignment etc.) ---
+                                    // Keep this section as is
+                                    Select::make("format")
                                         ->label("Activity Format")
                                         ->options([
                                             "quiz" => "Quiz",
@@ -164,7 +207,7 @@ class ActivityResource extends Resource
                                         ])
                                         ->searchable()
                                         ->required()
-                                        ->reactive()
+                                        ->live()
                                         ->afterStateUpdated(
                                             fn(
                                                 Set $set,
@@ -475,6 +518,45 @@ class ActivityResource extends Resource
                     ->label("Type")
                     ->searchable()
                     ->sortable(),
+                // --- Conditional Term/Component Column ---
+                Tables\Columns\BadgeColumn::make('term_or_component')
+                    ->label('Term/Component')
+                    ->getStateUsing(function (?Activity $record) {
+                        if (!$record) return null;
+                        if ($record->term) {
+                            return $record->term_description;
+                        } elseif ($record->component_type) {
+                            return $record->component_type_code;
+                        }
+                        return null;
+                    })
+                    ->colors([
+                        // SHS Colors
+                        'info' => Activity::COMPONENT_WRITTEN_WORK,
+                        'warning' => Activity::COMPONENT_PERFORMANCE_TASK,
+                        'success' => Activity::COMPONENT_QUARTERLY_ASSESSMENT,
+                        // College Colors
+                        'teal' => Activity::TERM_PRELIM,
+                        'purple' => Activity::TERM_MIDTERM,
+                        'orange' => Activity::TERM_FINAL,
+                    ])
+                     ->formatStateUsing(function (string $state, ?Activity $record) {
+                         if (!$record) return $state;
+                         if ($record->term) return $record->term_description;
+                         if ($record->component_type) return $record->component_type_code;
+                         return $state;
+                     })
+                    ->visible(function (?Activity $record): bool {
+                        if (!$record) return false;
+                        return $record->term || $record->component_type;
+                    })
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function($q) use ($search) {
+                            $q->where('term', 'like', "%{$search}%")
+                              ->orWhere('component_type', 'like', "%{$search}%");
+                        });
+                    })
+                    ->sortable(['term', 'component_type']),
                 Tables\Columns\BadgeColumn::make("mode")
                     ->label("Mode")
                     ->colors([
@@ -492,41 +574,30 @@ class ActivityResource extends Resource
                             ),
                         }
                     ),
-                Tables\Columns\BadgeColumn::make("category")
-                    ->label("Category")
-                    ->colors([
-                        "info" => "written",
-                        "purple" => "performance", // Changed color
-                    ])
-                    ->formatStateUsing(
-                        fn(string $state): string => match ($state) {
-                            "written" => "Written",
-                            "performance" => "Performance",
-                            default => Str::title(
-                                str_replace("_", " ", $state)
-                            ),
-                        }
-                    ),
-                // Tables\Columns\TextColumn::make('format')
-                //     ->formatStateUsing(fn (string $state, Activity $record): string =>
-                //         $state === 'other' && !empty($record->custom_format) ? $record->custom_format : ucfirst($state)
-                //     )
-                //     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make("total_points")
                     ->label("Points")
                     ->numeric()
                     ->sortable(),
+                Tables\Columns\TextColumn::make("credit_units")
+                    ->label("Units")
+                    ->numeric(decimalPlaces: 2)
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(function (?Activity $record): bool {
+                        if (!$record || !$record->team) return false;
+                        return $record->team->usesCollegeGrading();
+                    }),
                 Tables\Columns\BadgeColumn::make("status")->colors([
                     "gray" => "draft",
                     "success" => "published",
                     "warning" => "archived",
                 ]),
-                Tables\Columns\TextColumn::make("deadline")
+                Tables\Columns\TextColumn::make("due_date")
                     ->dateTime()
                     ->sortable()
                     ->label("Deadline")
                     ->placeholder("No deadline"),
-                Tables\Columns\TextColumn::make("teacher.name") // Show who created it
+                Tables\Columns\TextColumn::make("teacher.name")
                     ->label("Created By")
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -546,14 +617,25 @@ class ActivityResource extends Resource
                     "group" => "Group",
                     "take_home" => "Take-Home",
                 ]),
-                Tables\Filters\SelectFilter::make("category")->options([
-                    "written" => "Written",
-                    "performance" => "Performance",
-                ]),
-                Tables\Filters\SelectFilter::make("teacher_id") // Filter by creator
+                Tables\Filters\SelectFilter::make("term")
+                    ->label('College Term')
+                    ->options([
+                        Activity::TERM_PRELIM => 'Prelim',
+                        Activity::TERM_MIDTERM => 'Midterm',
+                        Activity::TERM_FINAL => 'Final',
+                    ])
+                    ->visible(fn() => Auth::user()?->currentTeam?->usesCollegeTermGrading()),
+                Tables\Filters\SelectFilter::make("component_type")
+                    ->label('SHS Component')
+                    ->options([
+                        Activity::COMPONENT_WRITTEN_WORK => 'Written Work (WW)',
+                        Activity::COMPONENT_PERFORMANCE_TASK => 'Performance Task (PT)',
+                        Activity::COMPONENT_QUARTERLY_ASSESSMENT => 'Quarterly Assessment (QA)',
+                    ])
+                    ->visible(fn() => Auth::user()?->currentTeam?->usesShsGrading()),
+                Tables\Filters\SelectFilter::make("teacher_id")
                     ->label("Created By")
                     ->options(
-                        // Fetch teachers within the current team
                         fn() => User::whereHas(
                             "teams",
                             fn($q) => $q->where(
@@ -561,34 +643,31 @@ class ActivityResource extends Resource
                                 Auth::user()->currentTeam->id
                             )
                         )
-
                             ->pluck("name", "id")
                             ->toArray()
                     )
                     ->searchable()
                     ->preload(),
-                Tables\Filters\TernaryFilter::make("deadline")
+                Tables\Filters\TernaryFilter::make("due_date")
                     ->label("Has Deadline")
                     ->nullable(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\ActionGroup::make([
-                    // Group less common actions
                     Tables\Actions\Action::make("duplicate")
                         ->label("Duplicate")
                         ->icon("heroicon-o-document-duplicate")
                         ->color("gray")
-                        // ->visible(fn (Activity $record) => Auth::user()->can('duplicate', $record)) // Requires ActivityPolicy::duplicate
                         ->action(function (Activity $record) {
                             try {
-                                $newActivity = $record->replicateWithRelations(); // Assuming you have a trait/method for deep cloning if needed
+                                $newActivity = $record->replicateWithRelations();
                                 $newActivity->title =
                                     $record->title . " (Copy)";
                                 $newActivity->status = "draft";
                                 $newActivity->created_at = now();
                                 $newActivity->updated_at = now();
-                                $newActivity->teacher_id = Auth::id(); // Assign to current user
+                                $newActivity->teacher_id = Auth::id();
                                 $newActivity->save();
 
                                 Notification::make()
@@ -608,13 +687,7 @@ class ActivityResource extends Resource
                                     ->send();
                             }
                         }),
-                    // Tables\Actions\Action::make('track_progress') // Example: Link to a custom progress page
-                    //     ->label('Track Progress')
-                    //     ->icon('heroicon-o-chart-bar')
-                    //     ->color('gray')
-                    //     ->url(fn (Activity $record): string => self::getUrl('progress', ['record' => $record])) // Assumes a custom page route 'progress'
-                    //     ->visible(fn (Activity $record) => Auth::user()->can('trackProgress', $record)), // Requires ActivityPolicy::trackProgress
-                    Tables\Actions\DeleteAction::make(), // Keep delete accessible
+                    Tables\Actions\DeleteAction::make(),
                 ]),
             ])
             ->bulkActions([
@@ -629,10 +702,8 @@ class ActivityResource extends Resource
                         ) {
                             $count = 0;
                             foreach ($records as $record) {
-                                // if (Auth::user()->can('update', $record)) { // Check policy
                                 $record->update(["status" => "published"]);
                                 $count++;
-                                // }
                             }
                             Notification::make()
                                 ->title("Published {$count} activities.")
@@ -650,10 +721,8 @@ class ActivityResource extends Resource
                         ) {
                             $count = 0;
                             foreach ($records as $record) {
-                                // if (Auth::user()->can('update', $record)) { // Check policy
                                 $record->update(["status" => "archived"]);
                                 $count++;
-                                // }
                             }
                             Notification::make()
                                 ->title("Archived {$count} activities.")
@@ -662,7 +731,6 @@ class ActivityResource extends Resource
                         })
                         ->deselectRecordsAfterCompletion(),
                     Tables\Actions\DeleteBulkAction::make(),
-                    // ->visible(fn() => Auth::user()->can('deleteAny', Activity::class)), // Check policy
                 ]),
             ])
             ->striped();
@@ -671,11 +739,8 @@ class ActivityResource extends Resource
     public static function getRelations(): array
     {
         return [
-            // Only show Groups manager if the activity mode is 'group'
             RelationManagers\GroupsRelationManager::class,
-            // Use the improved StudentSubmissionsRelationManager for grading
             RelationManagers\StudentSubmissionsRelationManager::class,
-            // RelationManagers\SubmissionsRelationManager::class, // Commented out - StudentSubmissions is preferred for grading workflow
         ];
     }
 
@@ -683,23 +748,20 @@ class ActivityResource extends Resource
     {
         return [
             "index" => Pages\ListActivities::route("/"),
-            "create" => Pages\CreateActivity::route("/create"),
+            "create" => Pages\CreateActivity::route("/create-standard"),
+            "custom-create" => CreateActivityCustom::route("/create-custom"), 
             "edit" => Pages\EditActivity::route("/{record}/edit"),
-            // Example custom page:
-            // 'progress' => Pages\TrackActivityProgress::route('/{record}/progress'),
         ];
     }
 
     public static function canCreate(): bool
     {
-        // Allow creation if user is owner or teacher
         $user = Auth::user();
         return $user &&
             ($user->ownsTeam($user->currentTeam) ||
                 $user->hasTeamRole($user->currentTeam, "teacher"));
     }
 
-    // Helper for File Type Options
     public static function getCommonFileTypeOptions(): array
     {
         return [
@@ -721,7 +783,6 @@ class ActivityResource extends Resource
         ];
     }
 
-    // Helper for Form Builder Blocks
     public static function getFormBuilderBlocks(): array
     {
         return [
@@ -772,8 +833,8 @@ class ActivityResource extends Resource
                         ->rows(2),
                     KeyValue::make("options")
                         ->label("Options")
-                        ->keyLabel("Value") // Internal value stored
-                        ->valueLabel("Label") // Text displayed to user
+                        ->keyLabel("Value")
+                        ->valueLabel("Label")
                         ->addButtonLabel("Add Option")
                         ->required(),
                     Toggle::make("multiple")
@@ -782,7 +843,7 @@ class ActivityResource extends Resource
                         ->reactive(),
                     Toggle::make("required")->default(false),
                 ]),
-            Block::make("checkbox_list") // Changed from 'checkbox' for clarity, assuming multiple options
+            Block::make("checkbox_list")
                 ->label("Checkbox List")
                 ->icon("heroicon-o-check-square")
                 ->schema([
@@ -834,7 +895,6 @@ class ActivityResource extends Resource
                         ->label("Help Text (Optional)")
                         ->rows(2),
                     Toggle::make("required")->default(false),
-                    // Add options for date format if needed
                 ]),
             Block::make("file")
                 ->label("File Upload Field")
@@ -863,28 +923,4 @@ class ActivityResource extends Resource
                 ]),
         ];
     }
-
-    // Optional: Helper for replicating relations (if needed for duplicate action)
-    // Add this method or use a trait if you need deep cloning including relations
-    // public function replicateWithRelations(): Model
-    // {
-    //     $newModel = $this->replicate();
-    //     $newModel->push(); // Save the main model first to get an ID
-
-    //     // Example: Replicate 'roles' relation
-    //     foreach ($this->roles as $role) {
-    //         $newRole = $role->replicate();
-    //         $newRole->activity_id = $newModel->id;
-    //         $newRole->push();
-    //     }
-
-    //     // Example: Replicate 'resources' relation (adjust relation name)
-    //     // foreach ($this->resources as $resource) {
-    //     //     $newResource = $resource->replicate();
-    //     //     $newResource->activity_id = $newModel->id; // Assuming 'activity_id' FK
-    //     //     $newResource->push();
-    //     // }
-
-    //     return $newModel;
-    // }
 }

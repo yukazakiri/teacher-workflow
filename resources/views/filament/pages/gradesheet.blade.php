@@ -1,5 +1,15 @@
 @php
 use Illuminate\Support\Str;
+use App\Models\Activity;
+use App\Models\Team;
+
+// Determine grading system specifics for easier conditional rendering
+$isShs = $gradingSystemType === Team::GRADING_SYSTEM_SHS;
+$isCollege = $gradingSystemType === Team::GRADING_SYSTEM_COLLEGE;
+$isCollegeTerm = $team?->usesCollegeTermGrading() ?? false;
+$isCollegeGwa = $team?->usesCollegeGwaGrading() ?? false;
+$numericScale = $team?->getCollegeNumericScale();
+
 @endphp
 
 <x-filament-panels::page>
@@ -131,31 +141,72 @@ use Illuminate\Support\Str;
                 @elseif ($activities->isEmpty())
                     <div class="text-center py-12 text-gray-500 dark:text-gray-400">No published activities found for this team.</div>
                 @else
-                    <table class="w-full fi-ta-table divide-y divide-gray-200 dark:divide-white/5">
-                        <thead class="bg-gray-50 dark:bg-white/5 sticky top-0 z-10">
+                    <table class="fi-ta-table w-full min-w-max divide-y divide-gray-200 dark:divide-white/5">
+                        {{-- TABLE HEADER --}}
+                        <thead class="sticky top-0 z-10">
                             <tr class="fi-ta-header-row">
-                                <th class="fi-ta-header-cell px-3 py-3.5 sm:first-of-type:ps-6 sm:last-of-type:pe-6 text-start whitespace-nowrap">
+                                {{-- Student Name Header --}}
+                                <th class="fi-ta-header-cell px-3 py-3.5 sm:first-of-type:ps-6 sm:last-of-type:pe-6 text-start whitespace-nowrap bg-gray-50 dark:bg-white/5">
                                     <span class="text-sm font-semibold text-gray-900 dark:text-white">Student Name</span>
                                 </th>
+
                                 {{-- Activity Headers --}}
                                 @foreach ($activities as $activity)
-                                    <th class="fi-ta-header-cell px-3 py-3.5 text-center whitespace-nowrap">
-                                        <div class="flex flex-col items-center">
-                                             {{-- SHS Component Badge --}}
-                                             @if ($gradingSystemType === \App\Models\Team::GRADING_SYSTEM_SHS && $activity->component_type)
-                                                 <span @class([
-                                                    'inline-flex items-center justify-center w-6 h-6 rounded-md text-xs font-bold mb-1',
-                                                    'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' => $activity->component_type === \App\Models\Activity::COMPONENT_WRITTEN_WORK,
-                                                    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' => $activity->component_type === \App\Models\Activity::COMPONENT_PERFORMANCE_TASK,
-                                                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' => $activity->component_type === \App\Models\Activity::COMPONENT_QUARTERLY_ASSESSMENT,
-                                                 ])>
-                                                     {{ $activity->component_type_code }}
-                                                 </span>
-                                             @endif
-                                            <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ $activity->title }}</span>
+                                    @php
+                                        $headerClass = 'bg-gray-50 dark:bg-white/5'; // Default
+                                        $icon = null;
+                                        $iconClass = '';
+                                        $prefix = '';
+                                        if ($isShs && $activity->component_type) {
+                                            $headerClass = $this->getShsComponentHeaderClass($activity->component_type);
+                                            $prefix = $activity->component_type_code;
+                                            $icon = match($activity->component_type) {
+                                                Activity::COMPONENT_WRITTEN_WORK => 'heroicon-o-pencil-square',
+                                                Activity::COMPONENT_PERFORMANCE_TASK => 'heroicon-o-user-group', // Example icon
+                                                Activity::COMPONENT_QUARTERLY_ASSESSMENT => 'heroicon-o-chart-bar-square', // Example icon
+                                                default => null,
+                                            };
+                                            $iconClass = match($activity->component_type) {
+                                                Activity::COMPONENT_WRITTEN_WORK => 'text-blue-600 dark:text-blue-400',
+                                                Activity::COMPONENT_PERFORMANCE_TASK => 'text-red-600 dark:text-red-400',
+                                                Activity::COMPONENT_QUARTERLY_ASSESSMENT => 'text-yellow-600 dark:text-yellow-400',
+                                                default => '',
+                                            };
+                                        } elseif ($isCollegeTerm && $activity->term) {
+                                            $headerClass = $this->getTermHeaderClass($activity->term);
+                                            $prefix = $activity->getTermCode();
+                                            $icon = match($activity->term) {
+                                                Activity::TERM_PRELIM => 'heroicon-o-calendar-days', // Example
+                                                Activity::TERM_MIDTERM => 'heroicon-o-calendar', // Example
+                                                Activity::TERM_FINAL => 'heroicon-o-flag', // Example
+                                                default => null,
+                                            };
+                                             $iconClass = match($activity->term) {
+                                                Activity::TERM_PRELIM => 'text-teal-600 dark:text-teal-400',
+                                                Activity::TERM_MIDTERM => 'text-purple-600 dark:text-purple-400',
+                                                Activity::TERM_FINAL => 'text-orange-600 dark:text-orange-400',
+                                                default => '',
+                                            };
+                                        }
+                                    @endphp
+                                    <th @class([
+                                        'fi-ta-header-cell px-3 py-3.5 text-center whitespace-nowrap border-x border-gray-200 dark:border-white/10',
+                                        $headerClass
+                                    ])>
+                                        <div class="flex flex-col items-center space-y-1">
+                                            {{-- Icon and Prefix --}}
+                                            <div class="flex items-center justify-center gap-1 text-xs font-bold {{ $iconClass }}">
+                                                @if($icon) <x-dynamic-component :component="$icon" class="w-3.5 h-3.5" /> @endif
+                                                @if($prefix) <span>[{{ $prefix }}]</span> @endif
+                                            </div>
+                                            {{-- Title --}}
+                                            <span class="text-sm font-semibold text-gray-900 dark:text-white" title="{{ $activity->title }}">
+                                                {{ Str::limit($activity->title, 25) }} {{-- Limit title length --}}
+                                            </span>
+                                            {{-- Points/Units --}}
                                             <span class="text-xs text-gray-500 dark:text-gray-400">
                                                 ({{ $activity->total_points ?? 'N/A' }} pts
-                                                @if ($gradingSystemType === \App\Models\Team::GRADING_SYSTEM_COLLEGE && $activity->credit_units > 0)
+                                                @if ($isCollegeGwa && $activity->credit_units > 0)
                                                     / {{ $activity->credit_units }} units
                                                 @endif
                                                 )
@@ -163,16 +214,28 @@ use Illuminate\Support\Str;
                                         </div>
                                     </th>
                                 @endforeach
+
+                                {{-- Calculated Term Grade Headers (College Term Only) --}}
+                                @if ($isCollegeTerm)
+                                    <th class="fi-ta-header-cell px-3 py-3.5 text-center whitespace-nowrap bg-teal-100 dark:bg-teal-900 border-x border-gray-200 dark:border-white/10">
+                                        <span class="text-sm font-semibold text-teal-800 dark:text-teal-200">Prelim Grade</span>
+                                    </th>
+                                    <th class="fi-ta-header-cell px-3 py-3.5 text-center whitespace-nowrap bg-purple-100 dark:bg-purple-900 border-x border-gray-200 dark:border-white/10">
+                                        <span class="text-sm font-semibold text-purple-800 dark:text-purple-200">Midterm Grade</span>
+                                    </th>
+                                    <th class="fi-ta-header-cell px-3 py-3.5 text-center whitespace-nowrap bg-orange-100 dark:bg-orange-900 border-x border-gray-200 dark:border-white/10">
+                                        <span class="text-sm font-semibold text-orange-800 dark:text-orange-200">Final Term Grade</span>
+                                    </th>
+                                @endif
+
                                 {{-- Overall Grade Header --}}
                                 @if ($showFinalGrades)
-                                    <th class="fi-ta-header-cell px-3 py-3.5 sm:first-of-type:ps-6 sm:last-of-type:pe-6 text-center whitespace-nowrap">
+                                    <th class="fi-ta-header-cell px-3 py-3.5 sm:first-of-type:ps-6 sm:last-of-type:pe-6 text-center whitespace-nowrap bg-gray-100 dark:bg-gray-700 border-l border-gray-200 dark:border-white/10">
                                         <span class="text-sm font-semibold text-gray-900 dark:text-white">
-                                            @if ($gradingSystemType === \App\Models\Team::GRADING_SYSTEM_SHS)
-                                                Overall Grade
-                                            @elseif ($gradingSystemType === \App\Models\Team::GRADING_SYSTEM_COLLEGE)
-                                                GWA / Avg
-                                            @else
-                                                Overall Grade
+                                            @if ($isShs) Overall (Transmuted)
+                                            @elseif ($isCollegeTerm) Final Grade (Avg)
+                                            @elseif ($isCollegeGwa) GWA
+                                            @else Overall Grade
                                             @endif
                                         </span>
                                          <span class="block text-xs text-gray-400 dark:text-gray-500">(Click to View)</span>
@@ -180,44 +243,68 @@ use Illuminate\Support\Str;
                                 @endif
                             </tr>
                         </thead>
+
+                        {{-- TABLE BODY --}}
                         <tbody class="divide-y divide-gray-200 dark:divide-white/5">
                             @foreach ($students as $student)
                                 <tr class="fi-ta-row h-16 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors duration-75">
-                                    <td class="fi-ta-cell px-3 py-2 sm:first-of-type:ps-6 sm:last-of-type:pe-6">
-                                        <span class="text-sm text-gray-900 dark:text-white">{{ $student->name }}</span>
+                                    {{-- Student Name Cell --}}
+                                    <td class="fi-ta-cell px-3 py-2 sm:first-of-type:ps-6 sm:last-of-type:pe-6 sticky left-0 bg-white dark:bg-gray-800 z-0">
+                                        <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $student->name }}</span>
                                     </td>
-                                    {{-- Score Inputs --}}
+
+                                    {{-- Score Input Cells --}}
                                     @foreach ($activities as $activity)
                                          @php
-                                             // Generate a unique key for the wire:model.defer
                                              $wireModelKey = "activityScores.{$student->id}.{$activity->id}";
+                                             $cellClass = 'bg-white dark:bg-gray-800'; // Default
+                                             if ($isShs && $activity->component_type) {
+                                                 $cellClass = $this->getShsComponentHeaderClass($activity->component_type); // Use header class for consistency
+                                             } elseif ($isCollegeTerm && $activity->term) {
+                                                 $cellClass = $this->getTermHeaderClass($activity->term);
+                                             }
                                          @endphp
-                                        <td class="fi-ta-cell px-3 py-2 text-center">
+                                        <td @class([
+                                            'fi-ta-cell px-3 py-2 text-center border-x border-gray-200 dark:border-white/5',
+                                            $cellClass . ' opacity-80' // Slightly transparent background
+                                        ])>
                                             <input
                                                 type="number"
-                                                {{-- Use wire:model.defer to only update on save --}}
                                                 wire:model.defer="{{ $wireModelKey }}"
                                                 min="0"
                                                 @if($activity->total_points !== null) max="{{ $activity->total_points }}" @endif
-                                                step="0.01" {{-- Allow decimals --}}
+                                                step="0.01"
                                                 placeholder="-"
                                                 aria-label="Score for {{ $student->name }} on {{ $activity->title }}"
-                                                class="fi-input block w-20 rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 disabled:opacity-70 dark:bg-gray-700 dark:text-white dark:focus:border-primary-500 dark:border-gray-600 text-center text-sm py-1.5 px-1
-                                                       @error($wireModelKey) !border-danger-600 dark:!border-danger-500 @enderror" {{-- Highlight on error --}}
+                                                @class([
+                                                    'fi-input block w-20 rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 disabled:opacity-70 dark:bg-gray-700 dark:text-white dark:focus:border-primary-500 dark:border-gray-600 text-center text-sm py-1.5 px-1',
+                                                    '!border-danger-600 dark:!border-danger-500' => $errors->has($wireModelKey)
+                                                ])
                                             />
-                                             {{-- Display validation error message inline --}}
                                             @error($wireModelKey)
                                                 <p class="mt-1 text-xs text-danger-600 dark:text-danger-400">{{ $message }}</p>
                                             @enderror
                                         </td>
                                     @endforeach
-                                    {{-- Overall Grade Display --}}
+
+                                    {{-- Calculated Term Grade Cells (College Term Only) --}}
+                                    @if ($isCollegeTerm)
+                                        <td class="fi-ta-cell px-3 py-2 text-center font-medium bg-teal-50 dark:bg-teal-900/50 border-x border-gray-200 dark:border-white/10">
+                                            {!! $this->getFormattedTermGrade($student->id, Activity::TERM_PRELIM) !!}
+                                        </td>
+                                        <td class="fi-ta-cell px-3 py-2 text-center font-medium bg-purple-50 dark:bg-purple-900/50 border-x border-gray-200 dark:border-white/10">
+                                            {!! $this->getFormattedTermGrade($student->id, Activity::TERM_MIDTERM) !!}
+                                        </td>
+                                        <td class="fi-ta-cell px-3 py-2 text-center font-medium bg-orange-50 dark:bg-orange-900/50 border-x border-gray-200 dark:border-white/10">
+                                            {!! $this->getFormattedTermGrade($student->id, Activity::TERM_FINAL) !!}
+                                        </td>
+                                    @endif
+
+                                    {{-- Overall Grade Cell --}}
                                     @if ($showFinalGrades)
-                                        <td class="fi-ta-cell px-3 py-2 sm:first-of-type:ps-6 sm:last-of-type:pe-6 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                            {{-- Use wire:click for modal --}}
+                                        <td class="fi-ta-cell px-3 py-2 sm:first-of-type:ps-6 sm:last-of-type:pe-6 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors bg-gray-100 dark:bg-gray-700 border-l border-gray-200 dark:border-white/10"
                                             wire:click="openFinalGradeModal('{{ $student->id }}')"
                                             title="Click to view grade breakdown for {{ $student->name }}">
-                                            {{-- Use the new formatted grade method --}}
                                              {!! $this->getFormattedOverallGrade($student->id) !!}
                                         </td>
                                     @endif
@@ -378,9 +465,9 @@ use Illuminate\Support\Str;
                                  // --- USE CORRECT RENDER FUNCTION ---
                                  if (result.breakdown?.type === 'shs') {
                                      renderShsModalContent(contentContainer, result);
-                                 } else if (result.breakdown?.type === 'college_term') { // Check for new type
+                                 } else if (result.breakdown?.type === 'college_term') {
                                      renderCollegeTermModalContent(contentContainer, result);
-                                 } else if (result.breakdown?.type === 'college_gwa') { // Check for new type
+                                 } else if (result.breakdown?.type === 'college_gwa') {
                                      renderCollegeGwaModalContent(contentContainer, result);
                                  } else {
                                      contentContainer.innerHTML = '<p>Grading system not configured or data unavailable.</p>';
