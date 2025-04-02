@@ -125,13 +125,13 @@ class AppPanelProvider extends PanelProvider
             ->globalSearch(false)
 
             ->plugins([
-                FilamentDeveloperLoginsPlugin::make()
-                    ->enabled(app()->environment("local"))
-                    ->switchable(false)
-                    ->users([
-                        "test User" => "test@example.com",
-                        "student" => "ejohnson.edu@student.edu",
-                    ]),
+                // FilamentDeveloperLoginsPlugin::make()
+                //     ->enabled(app()->environment("local"))
+                //     ->switchable(false)
+                //     ->users([
+                //         "test User" => "test@example.com",
+                //         "student" => "ejohnson.edu@student.edu",
+                //     ]),
                 EasyFooterPlugin::make()->withLoadTime(),
                 FilamentAssistantPlugin::make(),
                 // FilamentSimpleThemePlugin::make(),

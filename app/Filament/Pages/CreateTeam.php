@@ -352,9 +352,8 @@ class CreateTeam extends RegisterTenant
     /**
      * Handle creating a new team
      */
-    protected function createNewTeam(
-        array $data
-    ): \Illuminate\Http\RedirectResponse {
+    protected function createNewTeam(array $data)
+    {
         // We should be in create mode to use this
         if ($this->activeOption !== "create") {
             // This shouldn't happen if validation/visibility works, but as a safeguard
