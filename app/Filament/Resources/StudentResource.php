@@ -35,6 +35,18 @@ use Filament\Infolists\Components\Grid;
 use Filament\Tables\View\TablesRenderHook;
 use Symfony\Component\Console\Helper\TableStyle;
 use Ysfkaya\FilamentPhoneInput\Forms\PhoneInput;
+use Filament\Forms\Components\FileUpload;
+use Filament\Actions\Action;
+use Prism\Prism\Prism;
+use Prism\Prism\Enums\Provider;
+use Prism\Prism\ValueObjects\Messages\UserMessage;
+use Prism\Prism\ValueObjects\Messages\Support\Document;
+use Prism\Prism\Schema\ArraySchema;
+use Prism\Prism\Schema\ObjectSchema;
+use Prism\Prism\Schema\StringSchema;
+use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Writer\Csv;
 
 class StudentResource extends Resource
 {
@@ -289,6 +301,142 @@ class StudentResource extends Resource
                                 ->send();
                         }),
                 ]),
+            ])
+            ->headerActions([
+                Tables\Actions\Action::make('import_students')
+                    ->label('Import Students')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->form([
+                        FileUpload::make('document')
+                            ->label('Upload Gradesheet')
+                            ->acceptedFileTypes(['text/csv', 'application/pdf'])
+                            ->helperText('Upload a CSV or PDF file containing student information')
+                            ->required()
+                            ->maxSize(5120) // 5MB
+                            ->directory('temp-imports'),
+                    ])
+                    ->action(function (array $data): void {
+                        if (!Auth::user()->currentTeam) {
+                            Notification::make()
+                                ->title('Error')
+                                ->body('You must select a team before importing students.')
+                                ->danger()
+                                ->send();
+                            return;
+                        }
+
+                        // Fix file path handling
+                        $filePath = Storage::disk('public')->path($data['document']);
+                        
+                        // Ensure the file exists
+                        if (!file_exists($filePath)) {
+                            // Try with different disk configuration
+                            $filePath = Storage::disk('local')->path($data['document']);
+                            
+                            if (!file_exists($filePath)) {
+                                Notification::make()
+                                    ->title('Error')
+                                    ->body('Could not locate the uploaded file. Please try again.')
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
+                        }
+                        
+                        // Get file mime type
+                        $mimeType = mime_content_type($filePath);
+                        
+                        // Define the schema for student data
+                        $studentSchema = new ObjectSchema(
+                            name: 'student',
+                            description: 'Student information',
+                            properties: [
+                                new StringSchema('name', 'Student full name'),
+                                new StringSchema('email', 'Student email address (if available)'),
+                                new StringSchema('student_id', 'School-assigned student ID (if available)'),
+                                new StringSchema('gender', 'Student gender (male, female, other, or prefer_not_to_say)'),
+                            ],
+                            requiredFields: ['name']
+                        );
+                        
+                        $studentsSchema = new ArraySchema(
+                            name: 'students',
+                            description: 'List of students extracted from the document',
+                            items: $studentSchema
+                        );
+                        
+                        // Process the document with Prism using structured output
+                        try {
+                            $response = Prism::structured()
+                                ->using(Provider::Gemini, 'gemini-2.0-flash')
+                                ->withSchema($studentsSchema)
+                                ->withMessages([
+                                    new UserMessage(
+                                        "Analyze this student gradesheet document and extract student information. " .
+                                        "Extract each student's full name, email (if available), student ID (if available), " .
+                                        "gender (if available). The gender should be one of: male, female, other, prefer_not_to_say. " .
+                                        "Return the data as a structured list of student objects.",
+                                        [Document::fromPath($filePath)]
+                                    ),
+                                ])
+                                ->asStructured();
+                            
+                            // Get the structured data directly
+                            $studentsData = $response->structured;
+                            
+                            if (empty($studentsData)) {
+                                Notification::make()
+                                    ->title('Error')
+                                    ->body('Could not extract student data from the document. Please check the file format.')
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
+                            
+                            // Import students
+                            $importCount = 0;
+                            $teamId = Auth::user()->currentTeam->id;
+                            
+                            foreach ($studentsData as $studentData) {
+                                // Make sure name is provided
+                                if (empty($studentData['name'])) {
+                                    continue;
+                                }
+                                
+                                // Check if student with this name already exists in the team
+                                $existingStudent = Student::where('team_id', $teamId)
+                                    ->where('name', $studentData['name'])
+                                    ->first();
+                                
+                                if (!$existingStudent) {
+                                    Student::create([
+                                        'team_id' => $teamId,
+                                        'name' => $studentData['name'],
+                                        'email' => $studentData['email'] ?? null,
+                                        'student_id' => $studentData['student_id'] ?? null,
+                                        'gender' => $studentData['gender'] ?? null,
+                                        'status' => 'active',
+                                    ]);
+                                    $importCount++;
+                                }
+                            }
+                            
+                            // Clean up the temp file
+                            Storage::delete($data['document']);
+                            
+                            Notification::make()
+                                ->title('Import Successful')
+                                ->body("Successfully imported {$importCount} new students.")
+                                ->success()
+                                ->send();
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->title('Import Failed')
+                                ->body('Error processing document: ' . $e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
             ]);
     }
 
