@@ -50,24 +50,21 @@ class AppServiceProvider extends ServiceProvider
         );
         $this->configureUrl();
         $this->configureVite();
+
         // We're going to use our helper directly instead of directives
         // to avoid any closure/stringable issues
         //
         // Tool::register(DataAccessTool::class);
     }
-    
+
     /**
      * Configure Filament's file upload to work with secure environments
      */
     private function configureFilamentUploads(): void
     {
         // Ensure uploads work properly with secure domain
-        if (str_contains(config('app.url'), 'https://')) {
-            // Force HTTPS for all URLs when in a secure environment
-            URL::forceScheme('https');
-        }
     }
-    
+
     private function configurePrisms(): void
     {
         // This is example of how to register a Prism.
