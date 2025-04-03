@@ -3,7 +3,10 @@
     "name": "laravel/laravel",
     "type": "project",
     "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "keywords": [
+        "laravel",
+        "framework"
+    ],
     "license": "MIT",
     "require": {
         "php": "^8.2",
@@ -25,12 +28,8 @@
         "laravel/tinker": "^2.10.1",
         "laravel/workos": "^0.2.0",
         "livewire/livewire": "^3.0",
-<<<<<<< HEAD
         "monicahq/laravel-cloudflare": "^3.8",
-||||||| d6c65c9
-=======
         "owenvoke/blade-fontawesome": "^2.9",
->>>>>>> 7ccc3c78580fb1c7d160cb933eb9253c4803ae2a
         "prism-php/prism": "^0.55.0",
         "smalot/pdfparser": "^2.11",
         "spatie/laravel-medialibrary": "^11.12",
