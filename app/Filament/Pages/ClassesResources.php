@@ -27,6 +27,7 @@ use Filament\Support\Enums\ActionSize;
 use Filament\Support\Enums\IconPosition;
 use Filament\Support\Enums\IconSize;
 use Livewire\WithPagination;
+use Illuminate\Support\Str;
 
 class ClassesResources extends Page
 {
@@ -77,6 +78,117 @@ class ClassesResources extends Page
         $isOwner = $team->userIsOwner($user);
         
         return [
+            // Quick Upload Action
+            Action::make('quick_upload')
+                ->label('Quick Upload')
+                ->icon('heroicon-o-arrow-up-tray')
+                ->color('primary')
+                ->size(ActionSize::Medium)
+                ->form([
+                    FileUpload::make('file')
+                        ->label('Upload File')
+                        ->disk('public')
+                        ->directory('class-resources/' . $team->id)
+                        ->acceptedFileTypes([
+                            'application/pdf', 
+                            'text/plain',
+                            'text/csv',
+                            'text/markdown',
+                            'image/jpeg',
+                            'image/png',
+                            'image/gif',
+                            'image/webp'
+                        ])
+                        ->helperText('Upload files that can be processed by AI: PDFs, text files, and images')
+                        ->required()
+                        ->live()
+                        ->afterStateUpdated(function (callable $set, $state) {
+                            if ($state) {
+                                $filename = pathinfo($state, PATHINFO_FILENAME);
+                                $title = Str::title(str_replace(['-', '_'], ' ', $filename));
+                                $set('title', $title);
+                            }
+                        }),
+
+                    TextInput::make('title')
+                        ->label('Title')
+                        ->required(),
+
+                    Select::make('category_id')
+                        ->label('Category')
+                        ->options(function() {
+                            $team = Filament::getTenant();
+                            return ResourceCategory::where('team_id', $team->id)
+                                ->pluck('name', 'id')
+                                ->toArray();
+                        })
+                        ->searchable()
+                        ->placeholder('Select a category (optional)')
+                        ->live(),
+
+                    Select::make('access_level')
+                        ->label('Access Level')
+                        ->options([
+                            'all' => 'All Team Members',
+                            'teacher' => 'Teachers Only',
+                            'owner' => 'Team Owner Only',
+                        ])
+                        ->default('all')
+                        ->required()
+                        ->helperText('Who can access this resource'),
+                ])
+                ->action(function (array $data): void {
+                    $team = Filament::getTenant();
+                    $user = Auth::user();
+                    
+                    // Create the resource first without the file
+                    $resource = ModelsClassResource::create([
+                        'team_id' => $team->id,
+                        'title' => $data['title'],
+                        'description' => null, // Description was removed from form
+                        'category_id' => $data['category_id'] ?? null,
+                        'access_level' => $data['access_level'],
+                        'created_by' => $user->id,
+                    ]);
+                    
+                    // Add the file to media collection
+                    if (!empty($data['file'])) {
+                        // Handle the file upload using Spatie Media Library
+                        $resource->addMediaFromDisk($data['file'], 'public')
+                            ->toMediaCollection('resources');
+                            
+                        // Try to extract text for AI processing if it's a PDF
+                        if (Str::endsWith(strtolower($data['file']), '.pdf')) {
+                            try {
+                                $filePath = Storage::disk('public')->path($data['file']);
+                                if (file_exists($filePath)) {
+                                    $parser = new \Smalot\PdfParser\Parser();
+                                    $pdf = $parser->parseFile($filePath);
+                                    $text = $pdf->getText();
+                                    
+                                    // Store the first 1000 characters of text as description
+                                    if (!empty($text)) {
+                                        $resource->description = Str::limit($text, 1000);
+                                        $resource->save();
+                                    }
+                                }
+                            } catch (\Exception $e) {
+                                \Illuminate\Support\Facades\Log::error('PDF parsing error: ' . $e->getMessage());
+                            }
+                        }
+                    }
+
+                    // Show success notification
+                    Notification::make()
+                        ->title('Resource uploaded successfully')
+                        ->success()
+                        ->send();
+
+                    // Refresh the resources list
+                    $this->dispatch('resource-created');
+                })
+                ->visible(fn () => Gate::allows('create', ModelsClassResource::class)),
+
             // Filter dropdown
             Action::make('filters')
                 ->label('Filters')
@@ -152,183 +264,6 @@ class ClassesResources extends Page
                 ->color('gray')
                 ->visible($isOwner || Gate::allows('manageCategories', ModelsClassResource::class)),
                 
-            // Add new resource
-            Action::make('add_resource')
-                ->label('Add New Resource')
-                ->icon('heroicon-o-plus')
-                ->color('primary')
-                ->visible(fn() => Gate::allows('create', ModelsClassResource::class))
-                ->modalHeading('Upload New Resource')
-                ->modalDescription('Upload a new resource to share with your team. The title and description will be automatically generated from the file metadata.')
-                ->modalSubmitActionLabel('Upload Resource')
-                ->size(ActionSize::Medium)
-                ->form([
-                    Section::make()
-                        ->schema([
-                            Forms\Components\FileUpload::make('file')
-                                ->label('Document File')
-                                ->disk('public')
-                                ->acceptedFileTypes([
-                                    'application/pdf',
-                                    'image/jpeg',
-                                    'image/png',
-                                    'image/gif', 
-                                    'application/msword',
-                                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                                    'application/vnd.ms-excel',
-                                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                    'application/vnd.ms-powerpoint',
-                                    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                                    'text/plain'
-                                ])
-                                ->helperText('Upload PDF, Word, Excel, PowerPoint, or image files')
-                                ->required()
-                                ->maxSize(10240)
-                                ->preserveFilenames()
-                                ->extraAttributes(['class' => 'min-h-40']),
-                                
-                            TextInput::make('title')
-                                ->label('Title (Optional)')
-                                ->placeholder('Leave empty to auto-generate from file')
-                                ->helperText('A descriptive title will be generated from the file if left empty'),
-                                
-                            Textarea::make('description')
-                                ->label('Description (Optional)')
-                                ->placeholder('Leave empty to auto-generate from file')
-                                ->helperText('Content details will be extracted from PDF metadata if available')
-                                ->rows(3),
-                                
-                            Select::make('category_id')
-                                ->label('Category')
-                                ->options(function() {
-                                    return ResourceCategory::where('team_id', Auth::user()->currentTeam->id)
-                                        ->pluck('name', 'id');
-                                })
-                                ->createOptionForm([
-                                    TextInput::make('name')
-                                        ->required(),
-                                    Textarea::make('description'),
-                                    Select::make('type')
-                                        ->options([
-                                            'teaching' => 'Teaching Materials',
-                                            'student' => 'Student Resources',
-                                            'admin' => 'Administrative Documents',
-                                        ])
-                                        ->default('teaching')
-                                        ->required(),
-                                ])
-                                ->searchable()
-                                ->preload(),
-                                
-                            Select::make('access_level')
-                                ->label('Access Level')
-                                ->options([
-                                    'all' => 'All Team Members',
-                                    'teacher' => 'Teachers Only',
-                                    'owner' => 'Team Owner Only',
-                                ])
-                                ->default('all')
-                                ->required()
-                                ->helperText('Who can access this resource'),
-                        ])
-                        ->columns(1),
-                ])
-                ->action(function (array $data): void {
-                    $team = Filament::getTenant();
-                    $user = Auth::user();
-                    
-                    // Get the file path and information
-                    $filePath = $data['file'];
-                    $fileName = pathinfo($filePath, PATHINFO_BASENAME);
-                    $fileNameWithoutExtension = pathinfo($filePath, PATHINFO_FILENAME);
-                    
-                    // Generate title if not provided
-                    $title = $data['title'] ?? null;
-                    if (empty($title)) {
-                        $title = str_replace(['-', '_'], ' ', $fileNameWithoutExtension);
-                        $title = ucwords($title);
-                    }
-                    
-                    // Log file information for debugging
-                    Log::info('File upload information:', [
-                        'filePath' => $filePath,
-                        'storage_path' => storage_path('app/public/' . $filePath),
-                        'exists' => file_exists(storage_path('app/public/' . $filePath)),
-                        'public_url' => Storage::url($filePath),
-                    ]);
-                    
-                    // Check if file exists in storage
-                    if (!file_exists(storage_path('app/public/' . $filePath))) {
-                        Log::error('File not found in storage:', ['path' => storage_path('app/public/' . $filePath)]);
-                        Notification::make()
-                            ->title('Upload failed')
-                            ->body('The file could not be found in storage.')
-                            ->danger()
-                            ->send();
-                        return;
-                    }
-                    
-                    try {
-                        // Create a new resource
-                        $resource = new ModelsClassResource();
-                        $resource->team_id = $team->id;
-                        $resource->created_by = $user->id;
-                        $resource->category_id = $data['category_id'] ?? null;
-                        $resource->access_level = $data['access_level'];
-                        $resource->title = $title;
-                        $resource->description = $data['description'] ?? 'Processing...';
-                        $resource->file = $filePath;
-                        
-                        // Save the resource first to ensure it has an ID
-                        $resource->save();
-                        
-                        // Try to add media
-                        $media = $resource->addMedia(storage_path('app/public/' . $filePath))
-                            ->usingName($fileNameWithoutExtension)
-                            ->withCustomProperties([
-                                'original_filename' => $fileName,
-                                'team_id' => $team->id
-                            ])
-                            ->toMediaCollection('resources');
-                            
-                        // Log successful media addition
-                        Log::info('Media added successfully:', [
-                            'id' => $media->id,
-                            'url' => $media->getUrl(),
-                            'path' => $media->getPath(),
-                            'filename' => $media->file_name,
-                            'collection_name' => $media->collection_name,
-                            'disk' => $media->disk,
-                            'exists' => Storage::disk($media->disk)->exists($media->id . '/' . $media->file_name),
-                        ]);
-                        
-                        // Notification
-                        Notification::make()
-                            ->title('Resource created successfully')
-                            ->success()
-                            ->send();
-                            
-                        // Refresh the resources list
-                        $this->dispatch('resource-created');
-                        
-                    } catch (\Exception $e) {
-                        Log::error('Error during resource creation:', [
-                            'error' => $e->getMessage(),
-                            'trace' => $e->getTraceAsString()
-                        ]);
-                        
-                        // Clean up any temporary files if needed
-                        if (isset($resource) && $resource->exists) {
-                            $resource->delete();
-                        }
-                        
-                        Notification::make()
-                            ->title('Upload failed')
-                            ->body('There was an error processing the file. Please try again.')
-                            ->danger()
-                            ->send();
-                    }
-                }),
         ];
     }
 

@@ -19,6 +19,8 @@ use Illuminate\Support\ServiceProvider;
 use App\Providers\FilamentTeamBadgeServiceProvider;
 use App\Tools\DataAccessTool;
 use Prism\Prism\Facades\Tool;
+use Filament\Support\Facades\FilamentAsset;
+use Illuminate\Http\UploadedFile;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -39,6 +41,7 @@ class AppServiceProvider extends ServiceProvider
         Team::observe(TeamObserver::class);
         Livewire::component("chat-interface", ChatInterface::class);
         $this->configurePrisms();
+        $this->configureFilamentUploads();
 
         // Register the SafeQrCode component
         Blade::component(
@@ -52,6 +55,19 @@ class AppServiceProvider extends ServiceProvider
         //
         // Tool::register(DataAccessTool::class);
     }
+    
+    /**
+     * Configure Filament's file upload to work with secure environments
+     */
+    private function configureFilamentUploads(): void
+    {
+        // Ensure uploads work properly with secure domain
+        if (str_contains(config('app.url'), 'https://')) {
+            // Force HTTPS for all URLs when in a secure environment
+            URL::forceScheme('https');
+        }
+    }
+    
     private function configurePrisms(): void
     {
         // This is example of how to register a Prism.

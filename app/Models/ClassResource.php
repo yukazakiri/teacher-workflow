@@ -6,11 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Smalot\PdfParser\Parser;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
-use Illuminate\Support\Facades\Storage;
-use Smalot\PdfParser\Parser;
 
 class ClassResource extends Model implements HasMedia
 {
@@ -30,7 +31,7 @@ class ClassResource extends Model implements HasMedia
         'created_by',
         'is_pinned',
         'is_archived',
-        'file',
+        'file', // Stores the path to the file in storage
     ];
 
     /**
@@ -41,117 +42,100 @@ class ClassResource extends Model implements HasMedia
     protected $with = ['category'];
 
     /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'is_pinned' => 'boolean',
+        'is_archived' => 'boolean',
+    ];
+
+    /**
      * The "booted" method of the model.
      */
     protected static function boot()
     {
         parent::boot();
 
-        // Handle media processing after resource creation
-        static::created(function ($resource) {
-            if (!empty($resource->file) && file_exists($resource->file)) {
-                try {
-                    $fileName = pathinfo($resource->file, PATHINFO_BASENAME);
-                    $fileNameWithoutExtension = pathinfo($resource->file, PATHINFO_FILENAME);
-                    
-                    $media = $resource->addMedia($resource->file)
-                        ->usingName($fileNameWithoutExtension)
-                        ->withCustomProperties([
-                            'original_filename' => $fileName,
-                            'team_id' => $resource->team_id
-                        ])
-                        ->toMediaCollection('resources');
-
-                    // Ensure the media is using the public disk
-                    if ($media->disk !== 'public') {
-                        $media->disk = 'public';
-                        $media->save();
+        // Try to extract PDF content after media has been added
+        static::updated(function ($resource) {
+            if (empty($resource->description)) {
+                // Check if resource has PDF media
+                $media = $resource->getMedia('resources')->first();
+                if ($media && $media->mime_type === 'application/pdf') {
+                    try {
+                        $filePath = $media->getPath();
+                        if (file_exists($filePath)) {
+                            $parser = new Parser();
+                            $pdf = $parser->parseFile($filePath);
+                            
+                            // Try to get content
+                            $text = $pdf->getText();
+                            if (!empty($text)) {
+                                $resource->description = Str::limit($text, 1000);
+                                $resource->saveQuietly(); // Save without triggering events
+                                return;
+                            }
+                            
+                            // If no content, try metadata
+                            $details = $pdf->getDetails();
+                            $descriptionParts = [];
+                            if (isset($details['Subject']) && !empty($details['Subject'])) {
+                                $descriptionParts[] = $details['Subject'];
+                            }
+                            if (isset($details['Keywords']) && !empty($details['Keywords'])) {
+                                $descriptionParts[] = "Keywords: " . $details['Keywords'];
+                            }
+                            if (isset($details['Author']) && !empty($details['Author'])) {
+                                $descriptionParts[] = "Author: " . $details['Author'];
+                            }
+                            
+                            if (!empty($descriptionParts)) {
+                                $resource->description = implode("\n", $descriptionParts);
+                                $resource->saveQuietly(); // Save without triggering events
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::error('PDF parsing error on create: ' . $e->getMessage());
                     }
-                } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error('Failed to add media in boot: ' . $e->getMessage());
                 }
             }
         });
 
-        // Extract metadata when media is added
-        static::updated(function ($resource) {
-            // Process metadata from media files
-            $resource->getMedia('resources')->each(function ($media) use ($resource) {
-                // Process file metadata if description is empty or processing
-                if (empty($resource->description) || $resource->description === 'Processing...') {
-                    // Extract metadata from file
-                $fileName = $media->file_name;
-                $fileExtension = pathinfo($fileName, PATHINFO_EXTENSION);
-                $fileNameWithoutExtension = pathinfo($fileName, PATHINFO_FILENAME);
-                
-                    // Generate title from filename if not set
-                    if (empty($resource->title)) {
-                $title = str_replace(['-', '_'], ' ', $fileNameWithoutExtension);
-                        $resource->title = ucwords($title);
-                    }
-                    
-                    // Default description
-                    $description = "Document: " . $resource->title;
-                
-                // For PDF files, try to extract more metadata
-                if (strtolower($fileExtension) === 'pdf') {
-                    try {
-                        // Get the file path
-                        $filePath = $media->getPath();
-                        
-                        // Parse PDF
-                        $parser = new Parser();
-                        $pdf = $parser->parseFile($filePath);
-                        
-                        // Extract details
-                        $details = $pdf->getDetails();
-                        
-                        // Build description from available metadata
-                        $descriptionParts = [];
-                        
-                        if (isset($details['Title']) && !empty($details['Title'])) {
-                            $resource->title = $details['Title'];
-                        }
-                        
-                        if (isset($details['Subject']) && !empty($details['Subject'])) {
-                            $descriptionParts[] = $details['Subject'];
-                        }
-                        
-                        if (isset($details['Keywords']) && !empty($details['Keywords'])) {
-                            $descriptionParts[] = "Keywords: " . $details['Keywords'];
-                        }
-                        
-                        if (isset($details['Author']) && !empty($details['Author'])) {
-                            $descriptionParts[] = "Author: " . $details['Author'];
-                        }
-                        
-                        if (isset($details['Creator']) && !empty($details['Creator'])) {
-                            $descriptionParts[] = "Created with: " . $details['Creator'];
-                        }
-                        
-                        if (isset($details['CreationDate']) && !empty($details['CreationDate'])) {
-                            $descriptionParts[] = "Created on: " . $details['CreationDate'];
-                        }
-                        
-                        // Set the description
-                        if (!empty($descriptionParts)) {
-                            $description = implode("\n", $descriptionParts);
-                        }
-                    } catch (\Exception $e) {
-                        // If PDF parsing fails, just use the filename
-                            \Illuminate\Support\Facades\Log::error('PDF parsing error: ' . $e->getMessage());
-                            $description = "Document: " . $resource->title;
-                        }
-                }
-                
-                    // Set description
-                    $resource->description = $description;
-                    
-                    // Save without triggering events to avoid recursion
-                    $resource->saveQuietly();
-                }
-            });
-        });
+        // Media cleanup is automatically handled by Spatie Media Library
+    }
+
+    /**
+     * Register media collections for the model.
+     */
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('resources')
+            ->singleFile() // Only one file per resource
+            ->acceptsMimeTypes([
+                'application/pdf', 
+                'text/plain',
+                'text/csv',
+                'text/markdown',
+                'image/jpeg',
+                'image/png',
+                'image/gif',
+                'image/webp'
+            ]);
+    }
+    
+    /**
+     * Register any media conversions.
+     */
+    public function registerMediaConversions(Media $media = null): void
+    {
+        // Generate thumbnails for images
+        $this->addMediaConversion('thumb')
+            ->width(200)
+            ->height(200)
+            ->performOnCollections('resources')
+            ->nonQueued();
     }
 
     /**
@@ -179,72 +163,40 @@ class ClassResource extends Model implements HasMedia
     }
 
     /**
-     * Register media collections for the model.
+     * Get the URL to access the stored file.
      */
-    public function registerMediaCollections(): void
+    public function getFileUrlAttribute(): ?string
     {
-        $this
-            ->addMediaCollection('resources')
-            ->useDisk('public')
-            ->singleFile()
-            ->acceptsMimeTypes([
-                'application/pdf',
-                'image/jpeg',
-                'image/png',
-                'image/gif',
-                'application/msword',
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'application/vnd.ms-excel',
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'application/vnd.ms-powerpoint',
-                'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                'text/plain'
-            ]);
+        $media = $this->getMedia('resources')->first();
+        return $media ? $media->getUrl() : null;
     }
 
     /**
-     * Register media conversions.
+     * Get file metadata like size and type.
      */
-    public function registerMediaConversions(Media $media = null): void
+    public function getFileMetadataAttribute(): ?object
     {
-        $this->addMediaConversion('thumbnail')
-            ->width(200)
-            ->height(200)
-            ->fit('crop', 200, 200)
-            ->nonQueued();
-
-        $this->addMediaConversion('preview')
-            ->width(400)
-            ->height(400)
-            ->fit('contain', 400, 400)
-            ->nonQueued();
-    }
-
-    /**
-     * Get the path generator class.
-     */
-    public function getPathGenerator(): string
-    {
-        return \App\Support\MediaLibrary\CustomPathGenerator::class;
-    }
-
-    /**
-     * Get the URL of the media file.
-     */
-    public function getMediaUrl(): ?string
-    {
-        $media = $this->getFirstMedia('resources');
+        $media = $this->getMedia('resources')->first();
+        
         if (!$media) {
             return null;
         }
-
-        // Ensure we're using the correct disk
-        if ($media->disk !== 'public') {
-            $media->disk = 'public';
-            $media->save();
+        
+        try {
+            return (object) [
+                'size' => $media->size,
+                'human_readable_size' => \Illuminate\Support\Number::fileSize($media->size, precision: 2),
+                'mime_type' => $media->mime_type,
+                'last_modified' => $media->updated_at,
+                'file_name' => $media->file_name,
+                'extension' => $media->extension,
+                'has_thumb' => $media->hasGeneratedConversion('thumb'),
+                'thumb_url' => $media->hasGeneratedConversion('thumb') ? $media->getUrl('thumb') : null,
+            ];
+        } catch (\Exception $e) {
+             \Illuminate\Support\Facades\Log::error('Error getting media metadata: ' . $e->getMessage());
+            return null;
         }
-
-        return $media->getUrl();
     }
 
     /**
@@ -256,7 +208,7 @@ class ClassResource extends Model implements HasMedia
         $team = $this->team;
         
         // Check if user is a member of the team
-        if (!$team->hasUser($user)) {
+        if (!$team || !$user || !$team->hasUser($user)) {
             return false;
         }
 

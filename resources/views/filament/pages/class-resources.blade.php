@@ -2,6 +2,17 @@
 
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Gate;
+use App\Models\ClassResource;
+use Illuminate\Support\Facades\Auth;
+use Filament\Facades\Filament;
+
+// Get current team and user for resource permissions
+$team = Filament::getTenant();
+$user = Auth::user();
+$isTeamOwner = $team->userIsOwner($user);
+
+// Check resource creation permissions
+$canCreateResources = Gate::allows('create', ClassResource::class);
 
 ?>
 

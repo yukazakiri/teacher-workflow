@@ -90,14 +90,11 @@
                             <iframe src="{{ $mediaDetails->url }}" class="w-full h-[60vh] border border-gray-200 dark:border-gray-700 rounded-lg bg-white"></iframe>
                         @elseif ($mediaDetails->isImage)
                              <div class="flex justify-center p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                                @if ($mediaDetails->hasThumb)
+                                    <img src="{{ $mediaDetails->thumbUrl }}" class="max-w-full max-h-[200px] border border-gray-200 dark:border-gray-700 rounded-lg mb-2" alt="{{ $mediaDetails->name }} (thumbnail)">
+                                    <br>
+                                @endif
                                 <img src="{{ $mediaDetails->url }}" class="max-w-full max-h-[60vh] border border-gray-200 dark:border-gray-700 rounded-lg" alt="{{ $mediaDetails->name }}">
-                            </div>
-                        @elseif ($mediaDetails->isOfficeDoc)
-                            <div class="p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-lg dark:bg-yellow-900/30 dark:border-yellow-600">
-                                <div class="flex items-center">
-                                    <x-heroicon-o-exclamation-triangle class="h-6 w-6 text-yellow-500 dark:text-yellow-400 mr-3" />
-                                    <p class="text-yellow-700 dark:text-yellow-300">Preview not available for this file type. Please download to view.</p>
-                                </div>
                             </div>
                         @else
                             <div class="p-4 bg-gray-50 border-l-4 border-gray-200 rounded-lg dark:bg-gray-800 dark:border-gray-600">
