@@ -1,7 +1,12 @@
 @import "../../../../vendor/filament/filament/resources/css/theme.css";
 /* Make barely visible borders visible */
 /* Make barely visible borders visible */
-
+.fi-body {
+    @apply bg-gray-100 dark:bg-gray-900 !important;
+}
+.fi-sidebar-item-button {
+    @apply hover:shadow-inner !important;
+}
 .ring-gray-950\/5 {
     @apply ring-gray-950/15;
 }
