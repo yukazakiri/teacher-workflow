@@ -59,7 +59,11 @@ use CodeWithDennis\FilamentThemeInspector\FilamentThemeInspectorPlugin;
 use DutchCodingCompany\FilamentDeveloperLogins\FilamentDeveloperLoginsPlugin;
 use App\Filament\Pages\WeeklySchedule;
 use App\Filament\Pages\AttendanceManager;
-
+use DutchCodingCompany\FilamentSocialite\FilamentSocialitePlugin;
+use DutchCodingCompany\FilamentSocialite\Models\SocialiteUser;
+use DutchCodingCompany\FilamentSocialite\Provider;
+use Illuminate\Support\Facades\Http;
+use Laravel\Socialite\Contracts\User as SocialiteUserContract;
 class AppPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
@@ -125,13 +129,67 @@ class AppPanelProvider extends PanelProvider
             ->globalSearch(false)
 
             ->plugins([
-                // FilamentDeveloperLoginsPlugin::make()
-                //     ->enabled(app()->environment("local"))
-                //     ->switchable(false)
-                //     ->users([
-                //         "test User" => "test@example.com",
-                //         "student" => "ejohnson.edu@student.edu",
-                //     ]),
+                FilamentSocialitePlugin::make()
+                    // (required) Add providers corresponding with providers in `config/services.php`.
+                    ->providers([
+                        // Create a provider 'gitlab' corresponding to the Socialite driver with the same name.
+                        Provider::make("google")
+                            ->label("Google")
+                            ->icon("fab-google-plus-g")
+                            ->color(Color::hex("#4285f4"))
+                            ->outlined(true)
+                            ->stateless(false),
+                    ])
+                    ->registration(true)
+                    ->createUserUsing(function (
+                        string $provider,
+                        SocialiteUserContract $oauthUser,
+                        FilamentSocialitePlugin $plugin
+                    ) {
+                        // Create the user with basic info first
+                        $user = User::create([
+                            "name" => $oauthUser->getName(),
+                            "email" => $oauthUser->getEmail(),
+                            "password" => null, // Important: Password should be nullable
+                        ]);
+
+                        // Get avatar URL from OAuth provider
+                        $avatarUrl = $oauthUser->getAvatar();
+
+                        if ($avatarUrl) {
+                            try {
+                                // Download the image to a temporary file
+                                $tempFile = tempnam(
+                                    sys_get_temp_dir(),
+                                    "avatar_"
+                                );
+                                file_put_contents(
+                                    $tempFile,
+                                    file_get_contents($avatarUrl)
+                                );
+
+                                // Create an UploadedFile instance from the temp file
+                                $uploadedFile = new \Illuminate\Http\UploadedFile(
+                                    $tempFile,
+                                    "avatar.jpg", // Filename
+                                    "image/jpeg", // MIME type (adjust if needed)
+                                    null,
+                                    true // Test mode to avoid moving the file again
+                                );
+
+                                // Use Jetstream's method with the proper UploadedFile instance
+                                $user->updateProfilePhoto($uploadedFile);
+
+                                // Remove the temporary file
+                                @unlink($tempFile);
+                            } catch (\Exception $e) {
+                                // Log error if avatar download fails
+                                report($e);
+                            }
+                        }
+
+                        return $user; // Return the created user
+                    }),
                 EasyFooterPlugin::make()->withLoadTime(),
                 FilamentAssistantPlugin::make(),
                 // FilamentSimpleThemePlugin::make(),
