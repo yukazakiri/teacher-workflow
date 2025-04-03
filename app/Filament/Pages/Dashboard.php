@@ -30,14 +30,16 @@ use Illuminate\Contracts\Support\Htmlable;
 use Filament\Pages\Dashboard as PagesDashboard;
 use App\Filament\Widgets\TeamMembersTableWidget;
 use App\Filament\Widgets\PendingInvitationsTableWidget;
-use App\Filament\Resources\ActivityResource;
+use App\Filament\Resources\ActivityResource; // Added import
+use App\Filament\Resources\StudentResource; // Added import
 use App\Models\Activity;
+
 class Dashboard extends PagesDashboard
 {
     protected static string $routePath = "/";
 
     protected static ?int $navigationSort = -2;
-    const ONBOARDING_STUDENT_THRESHOLD = 5;
+    public const ONBOARDING_STUDENT_THRESHOLD = 5;
     protected static ?string $navigationLabel = "Home";
     /**
      * @var view-string
@@ -111,22 +113,43 @@ class Dashboard extends PagesDashboard
     public function getOnboardingState(): int
     {
         $user = Auth::user();
-        $team = $user?->currentTeam()->first();
+        // Eager load students count and ensure team exists
+        $team = $user?->currentTeam()->withCount("students")->first();
 
         if (!$team) {
+            \Illuminate\Support\Facades\Log::debug(
+                "getOnboardingState: No current team found.",
+                ["user_id" => $user->id]
+            );
             return 0; // No team context
         }
 
         // Ensure onboarding_step is treated as int
         $currentStep = (int) $team->onboarding_step;
+        $studentCount = $team->students_count; // Use eager loaded count
+
+        \Illuminate\Support\Facades\Log::debug(
+            "getOnboardingState: Checking state",
+            [
+                "team_id" => $team->id,
+                "user_id" => $user->id,
+                "current_step" => $currentStep,
+                "student_count" => $studentCount,
+                "threshold" => self::ONBOARDING_STUDENT_THRESHOLD,
+            ]
+        );
 
         // Check for initial onboarding (State 1)
         // Only show if they haven't dismissed step 1 yet (step is 0)
-        $teamCreatedRecently =
-            $team->created_at->diffInMinutes(now()) < 60 * 24; // Expand to 24 hours for flexibility
-        $studentCount = $team->students()->count();
+        // Optional: Add check for team creation time if desired
+        // $teamCreatedRecently = $team->created_at->diffInMinutes(now()) < (60 * 24 * 7); // e.g., within 7 days
 
-        if ($currentStep === 0 && $teamCreatedRecently && $studentCount === 0) {
+        // State 1: Team exists, 0 students, haven't completed step 0
+        // Note: We might not need teamCreatedRecently if we rely purely on step=0 and count=0
+        if ($currentStep === 0 && $studentCount === 0) {
+            \Illuminate\Support\Facades\Log::debug(
+                "getOnboardingState: Returning State 1"
+            );
             return 1;
         }
 
@@ -136,14 +159,16 @@ class Dashboard extends PagesDashboard
             $currentStep <= 1 &&
             $studentCount >= self::ONBOARDING_STUDENT_THRESHOLD
         ) {
-            // Optional: Add check if they have any activities yet?
-            // $hasActivities = Activity::where('team_id', $team->id)->exists();
-            // if (!$hasActivities) {
+            \Illuminate\Support\Facades\Log::debug(
+                "getOnboardingState: Returning State 2"
+            );
             return 2;
-            // }
         }
 
         // Default: No onboarding needed for now
+        \Illuminate\Support\Facades\Log::debug(
+            "getOnboardingState: Returning State 0"
+        );
         return 0;
     }
     /**
@@ -274,10 +299,8 @@ class Dashboard extends PagesDashboard
             "conversationId" => request()->get("conversation_id"),
             // 'needsOnboarding' => $this->needsOnboarding(), // Remove old flag
             "onboardingState" => $onboardingState, // Pass the state
-            "studentResourceUrl" => $currentTeam
-                ? route("filament.app.resources.students.create", [
-                    "tenant" => $currentTeam,
-                ])
+            "studentResourceCreateUrl" => $currentTeam // Changed variable name for clarity
+                ? StudentResource::getUrl("index", ["tenant" => $currentTeam]) // Use Resource URL generation
                 : "#",
             // Add URL for creating activities - Make sure ActivityResource exists and has a 'create' page
             "activityResourceCreateUrl" => $currentTeam

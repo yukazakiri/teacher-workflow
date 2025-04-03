@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 
 namespace App\Filament\Resources;
@@ -107,7 +106,9 @@ class ActivityResource extends Resource
                                         ->required(),
                                     DateTimePicker::make("due_date") // Changed from deadline
                                         ->label("Submission Deadline")
-                                        ->placeholder("Optional: Set a deadline")
+                                        ->placeholder(
+                                            "Optional: Set a deadline"
+                                        )
                                         ->native(false)
                                         ->weekStartsOnSunday(),
                                 ])
@@ -147,39 +148,44 @@ class ActivityResource extends Resource
                                         ->live(), // Use live() for reactivity
 
                                     // --- SHS Component Type ---
-                                    Select::make('component_type')
-                                        ->label('SHS Component')
+                                    Select::make("component_type")
+                                        ->label("SHS Component")
                                         ->options([
-                                            Activity::COMPONENT_WRITTEN_WORK => 'Written Work (WW)',
-                                            Activity::COMPONENT_PERFORMANCE_TASK => 'Performance Task (PT)',
-                                            Activity::COMPONENT_QUARTERLY_ASSESSMENT => 'Quarterly Assessment (QA)',
+                                            Activity::COMPONENT_WRITTEN_WORK =>
+                                                "Written Work (WW)",
+                                            Activity::COMPONENT_PERFORMANCE_TASK =>
+                                                "Performance Task (PT)",
+                                            Activity::COMPONENT_QUARTERLY_ASSESSMENT =>
+                                                "Quarterly Assessment (QA)",
                                         ])
-                                        ->placeholder('Select SHS Component')
+                                        ->placeholder("Select SHS Component")
                                         ->required(fn(): bool => $isShs) // Required only if team is SHS
                                         ->visible(fn(): bool => $isShs), // Visible only if team is SHS
 
                                     // --- College Term ---
-                                    Select::make('term')
-                                        ->label('College Term')
+                                    Select::make("term")
+                                        ->label("College Term")
                                         ->options([
-                                            Activity::TERM_PRELIM => 'Prelim',
-                                            Activity::TERM_MIDTERM => 'Midterm',
-                                            Activity::TERM_FINAL => 'Final',
+                                            Activity::TERM_PRELIM => "Prelim",
+                                            Activity::TERM_MIDTERM => "Midterm",
+                                            Activity::TERM_FINAL => "Final",
                                         ])
-                                        ->placeholder('Select College Term')
-                                         // Required only if team uses College Term grading
+                                        ->placeholder("Select College Term")
+                                        // Required only if team uses College Term grading
                                         ->required(fn(): bool => $isCollegeTerm)
-                                         // Visible only if team uses College Term grading
+                                        // Visible only if team uses College Term grading
                                         ->visible(fn(): bool => $isCollegeTerm),
 
                                     // --- College Credit Units ---
-                                    TextInput::make('credit_units')
-                                        ->label('Credit Units')
+                                    TextInput::make("credit_units")
+                                        ->label("Credit Units")
                                         ->numeric()
                                         ->minValue(0)
                                         ->step(0.01) // Allow decimals like 1.5, 0.75
-                                        ->placeholder('e.g., 3.00')
-                                        ->helperText('Units used for College GWA calculation.')
+                                        ->placeholder("e.g., 3.00")
+                                        ->helperText(
+                                            "Units used for College GWA calculation."
+                                        )
                                         // Required only if team uses College GWA grading
                                         ->required(fn(): bool => $isCollegeGwa)
                                         // Visible only if team is College (Term or GWA)
@@ -519,10 +525,12 @@ class ActivityResource extends Resource
                     ->searchable()
                     ->sortable(),
                 // --- Conditional Term/Component Column ---
-                Tables\Columns\BadgeColumn::make('term_or_component')
-                    ->label('Term/Component')
+                Tables\Columns\BadgeColumn::make("term_or_component")
+                    ->label("Term/Component")
                     ->getStateUsing(function (?Activity $record) {
-                        if (!$record) return null;
+                        if (!$record) {
+                            return null;
+                        }
                         if ($record->term) {
                             return $record->term_description;
                         } elseif ($record->component_type) {
@@ -532,31 +540,54 @@ class ActivityResource extends Resource
                     })
                     ->colors([
                         // SHS Colors
-                        'info' => Activity::COMPONENT_WRITTEN_WORK,
-                        'warning' => Activity::COMPONENT_PERFORMANCE_TASK,
-                        'success' => Activity::COMPONENT_QUARTERLY_ASSESSMENT,
+                        "info" => Activity::COMPONENT_WRITTEN_WORK,
+                        "warning" => Activity::COMPONENT_PERFORMANCE_TASK,
+                        "success" => Activity::COMPONENT_QUARTERLY_ASSESSMENT,
                         // College Colors
-                        'teal' => Activity::TERM_PRELIM,
-                        'purple' => Activity::TERM_MIDTERM,
-                        'orange' => Activity::TERM_FINAL,
+                        "teal" => Activity::TERM_PRELIM,
+                        "purple" => Activity::TERM_MIDTERM,
+                        "orange" => Activity::TERM_FINAL,
                     ])
-                     ->formatStateUsing(function (string $state, ?Activity $record) {
-                         if (!$record) return $state;
-                         if ($record->term) return $record->term_description;
-                         if ($record->component_type) return $record->component_type_code;
-                         return $state;
-                     })
+                    ->formatStateUsing(function (
+                        string $state,
+                        ?Activity $record
+                    ) {
+                        if (!$record) {
+                            return $state;
+                        }
+                        if ($record->term) {
+                            return $record->term_description;
+                        }
+                        if ($record->component_type) {
+                            return $record->component_type_code;
+                        }
+                        return $state;
+                    })
                     ->visible(function (?Activity $record): bool {
-                        if (!$record) return false;
+                        if (!$record) {
+                            return false;
+                        }
                         return $record->term || $record->component_type;
                     })
-                    ->searchable(query: function (Builder $query, string $search): Builder {
-                        return $query->where(function($q) use ($search) {
-                            $q->where('term', 'like', "%{$search}%")
-                              ->orWhere('component_type', 'like', "%{$search}%");
-                        });
-                    })
-                    ->sortable(['term', 'component_type']),
+                    ->searchable(
+                        query: function (
+                            Builder $query,
+                            string $search
+                        ): Builder {
+                            return $query->where(function ($q) use ($search) {
+                                $q->where(
+                                    "term",
+                                    "like",
+                                    "%{$search}%"
+                                )->orWhere(
+                                    "component_type",
+                                    "like",
+                                    "%{$search}%"
+                                );
+                            });
+                        }
+                    )
+                    ->sortable(["term", "component_type"]),
                 Tables\Columns\BadgeColumn::make("mode")
                     ->label("Mode")
                     ->colors([
@@ -584,7 +615,9 @@ class ActivityResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->visible(function (?Activity $record): bool {
-                        if (!$record || !$record->team) return false;
+                        if (!$record || !$record->team) {
+                            return false;
+                        }
                         return $record->team->usesCollegeGrading();
                     }),
                 Tables\Columns\BadgeColumn::make("status")->colors([
@@ -618,21 +651,27 @@ class ActivityResource extends Resource
                     "take_home" => "Take-Home",
                 ]),
                 Tables\Filters\SelectFilter::make("term")
-                    ->label('College Term')
+                    ->label("College Term")
                     ->options([
-                        Activity::TERM_PRELIM => 'Prelim',
-                        Activity::TERM_MIDTERM => 'Midterm',
-                        Activity::TERM_FINAL => 'Final',
+                        Activity::TERM_PRELIM => "Prelim",
+                        Activity::TERM_MIDTERM => "Midterm",
+                        Activity::TERM_FINAL => "Final",
                     ])
-                    ->visible(fn() => Auth::user()?->currentTeam?->usesCollegeTermGrading()),
+                    ->visible(
+                        fn() => Auth::user()?->currentTeam?->usesCollegeTermGrading()
+                    ),
                 Tables\Filters\SelectFilter::make("component_type")
-                    ->label('SHS Component')
+                    ->label("SHS Component")
                     ->options([
-                        Activity::COMPONENT_WRITTEN_WORK => 'Written Work (WW)',
-                        Activity::COMPONENT_PERFORMANCE_TASK => 'Performance Task (PT)',
-                        Activity::COMPONENT_QUARTERLY_ASSESSMENT => 'Quarterly Assessment (QA)',
+                        Activity::COMPONENT_WRITTEN_WORK => "Written Work (WW)",
+                        Activity::COMPONENT_PERFORMANCE_TASK =>
+                            "Performance Task (PT)",
+                        Activity::COMPONENT_QUARTERLY_ASSESSMENT =>
+                            "Quarterly Assessment (QA)",
                     ])
-                    ->visible(fn() => Auth::user()?->currentTeam?->usesShsGrading()),
+                    ->visible(
+                        fn() => Auth::user()?->currentTeam?->usesShsGrading()
+                    ),
                 Tables\Filters\SelectFilter::make("teacher_id")
                     ->label("Created By")
                     ->options(
@@ -748,9 +787,14 @@ class ActivityResource extends Resource
     {
         return [
             "index" => Pages\ListActivities::route("/"),
-            "create" => Pages\CreateActivity::route("/create-standard"),
-            "custom-create" => CreateActivityCustom::route("/create-custom"), 
+            // Point 'create' route to the custom page
+            "create-guide" => Pages\CreateActivityCustomGuide::route(
+                "/create/guide"
+            ),
+            // Keep other routes if needed
+            "create" => Pages\CreateActivity::route("/create"), // Keep standard if you need it
             "edit" => Pages\EditActivity::route("/{record}/edit"),
+            // "custom-create" => CreateActivityCustom::route("/create-custom"), // Remove or rename if replaced
         ];
     }
 
