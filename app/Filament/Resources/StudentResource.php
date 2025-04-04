@@ -401,7 +401,7 @@ class StudentResource extends Resource
                                 ->send();
 
                             $response = Prism::structured()
-                                ->using(Provider::Gemini, "gemini-1.5-flash") // Ensure model is suitable
+                                ->using(Provider::Gemini, "gemini-2.0-flash") // Ensure model is suitable
                                 ->withSchema($studentsSchema)
                                 ->withMessages([
                                     new UserMessage(
