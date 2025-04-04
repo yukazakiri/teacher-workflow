@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements
     HasTenants,
@@ -33,9 +34,11 @@ class User extends Authenticatable implements
     use HasProfilePhoto;
     use HasTeams;
     use Notifiable;
+    use HasRoles;
     use HasUuids;
     use TwoFactorAuthenticatable;
-
+    public $incrementing = false;
+    protected $keyType = "string";
     /**
      * The attributes that are mass assignable.
      *
@@ -86,7 +89,7 @@ class User extends Authenticatable implements
     public function canAccessPanel(Panel $panel): bool
     {
         if ($panel->getId() === "admin") {
-            return app()->environment("local");
+            return $this->email === "marianolukkanit17@gmail.com";
         }
 
         return true;

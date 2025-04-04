@@ -17,11 +17,7 @@ class GroupRole extends Model
      *
      * @var array<int, string>
      */
-    protected $fillable = [
-        'activity_id',
-        'name',
-        'description',
-    ];
+    protected $fillable = ["activity_id", "name", "description"];
 
     /**
      * Get the activity that owns the role.
@@ -34,7 +30,7 @@ class GroupRole extends Model
     /**
      * Get the student assignments for the role.
      */
-    public function studentAssignments(): HasMany
+    public function assignments(): HasMany
     {
         return $this->hasMany(StudentGroupAssignment::class);
     }

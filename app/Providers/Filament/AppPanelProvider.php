@@ -80,6 +80,7 @@ class AppPanelProvider extends PanelProvider
             ->brandName("FilaGrade")
             // ->sidebarCollapsibleOnDesktop(true)
             ->sidebarFullyCollapsibleOnDesktop()
+            ->emailVerification()
             // ->topNavigation()
             ->registration()
             ->passwordReset()
@@ -273,9 +274,15 @@ class AppPanelProvider extends PanelProvider
                     ->icon("heroicon-o-user-circle"),
                 MenuItem::make()
                     ->label(function () {
-                        $githubService = app(\Devonab\FilamentEasyFooter\Services\GitHubService::class);
+                        $githubService = app(
+                            \Devonab\FilamentEasyFooter\Services\GitHubService::class
+                        );
                         $version = $githubService->getLatestTag();
-                        return "Changelogs (" . (str()->startsWith($version, 'v') ? $version : 'v' . $version) . ")";
+                        return "Changelogs (" .
+                            (str()->startsWith($version, "v")
+                                ? $version
+                                : "v" . $version) .
+                            ")";
                     })
                     ->url(fn() => \App\Filament\Pages\Changelogs::getUrl())
                     ->icon("heroicon-o-document-text"),
