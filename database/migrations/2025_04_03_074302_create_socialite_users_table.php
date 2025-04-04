@@ -18,6 +18,10 @@ return new class extends Migration {
 
             $table->unique(["provider", "provider_id"]);
         });
+
+        Schema::table("users", function (Blueprint $table) {
+            $table->string("password")->nullable()->change();
+        });
     }
 
     public function down()
