@@ -20,6 +20,7 @@ use App\Filament\Pages\ApiTokens;
 use Filament\Navigation\MenuItem;
 use App\Filament\Pages\CreateTeam;
 use App\Filament\Pages\Gradesheet;
+use App\Filament\Pages\Changelogs;
 use Filament\Support\Colors\Color;
 use App\Filament\Pages\EditProfile;
 use Illuminate\Support\Facades\Auth;
@@ -63,7 +64,9 @@ use DutchCodingCompany\FilamentSocialite\FilamentSocialitePlugin;
 use DutchCodingCompany\FilamentSocialite\Models\SocialiteUser;
 use DutchCodingCompany\FilamentSocialite\Provider;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\HtmlString;
 use Laravel\Socialite\Contracts\User as SocialiteUserContract;
+use Devonab\FilamentEasyFooter\Services\GitHubService;
 class AppPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
@@ -125,6 +128,7 @@ class AppPanelProvider extends PanelProvider
                 \App\Filament\Pages\ClassesResources::class,
                 \App\Filament\Pages\WeeklySchedule::class,
                 \App\Filament\Pages\AttendanceManager::class,
+                \App\Filament\Pages\Changelogs::class,
             ])
             ->globalSearch(false)
 
@@ -190,7 +194,32 @@ class AppPanelProvider extends PanelProvider
 
                         return $user; // Return the created user
                     }),
-                EasyFooterPlugin::make()->withLoadTime(),
+                EasyFooterPlugin::make()
+                    ->withLoadTime()
+                    ->withSentence(
+                        new HtmlString(
+                            '<img src="https://static.cdnlogo.com/logos/l/23/laravel.svg" style="margin-right:.5rem;" alt="Laravel Logo" width="20" height="20"> Laravel'
+                        )
+                    )
+                    ->withGithub(showLogo: true, showUrl: true)
+                    ->withLogo(
+                        "https://static.cdnlogo.com/logos/l/23/laravel.svg", // Path to logo
+                        "https://laravel.com",
+                        "Powered by Laravel"
+                        // URL for logo link (optional)
+                    )
+                    ->withLinks([
+                        [
+                            "title" => "About",
+                            "url" => "https://example.com/about",
+                        ],
+                        ["title" => "CGV", "url" => "https://example.com/cgv"],
+                        [
+                            "title" => "Privacy Policy",
+                            "url" => "https://example.com/privacy-policy",
+                        ],
+                    ])
+                    ->withBorder(),
                 FilamentAssistantPlugin::make(),
                 // FilamentSimpleThemePlugin::make(),
                 \LaraZeus\Boredom\BoringAvatarPlugin::make()
@@ -242,6 +271,14 @@ class AppPanelProvider extends PanelProvider
                         ])
                     )
                     ->icon("heroicon-o-user-circle"),
+                MenuItem::make()
+                    ->label(function () {
+                        $githubService = app(\Devonab\FilamentEasyFooter\Services\GitHubService::class);
+                        $version = $githubService->getLatestTag();
+                        return "Changelogs (" . (str()->startsWith($version, 'v') ? $version : 'v' . $version) . ")";
+                    })
+                    ->url(fn() => \App\Filament\Pages\Changelogs::getUrl())
+                    ->icon("heroicon-o-document-text"),
             ])
             ->widgets([
                 Widgets\AccountWidget::class,
