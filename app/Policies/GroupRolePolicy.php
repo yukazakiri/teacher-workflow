@@ -3,10 +3,10 @@
 namespace App\Policies;
 
 use App\Models\User;
-use App\Models\Activity;
+use App\Models\GroupRole;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
-class ActivityPolicy
+class GroupRolePolicy
 {
     use HandlesAuthorization;
 
@@ -15,15 +15,15 @@ class ActivityPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_activity');
+        return $user->can('view_any_group::role');
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, Activity $activity): bool
+    public function view(User $user, GroupRole $groupRole): bool
     {
-        return $user->can('view_activity');
+        return $user->can('view_group::role');
     }
 
     /**
@@ -31,23 +31,23 @@ class ActivityPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_activity');
+        return $user->can('create_group::role');
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, Activity $activity): bool
+    public function update(User $user, GroupRole $groupRole): bool
     {
-        return $user->can('update_activity');
+        return $user->can('update_group::role');
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, Activity $activity): bool
+    public function delete(User $user, GroupRole $groupRole): bool
     {
-        return $user->can('delete_activity');
+        return $user->can('delete_group::role');
     }
 
     /**
@@ -55,15 +55,15 @@ class ActivityPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_activity');
+        return $user->can('delete_any_group::role');
     }
 
     /**
      * Determine whether the user can permanently delete.
      */
-    public function forceDelete(User $user, Activity $activity): bool
+    public function forceDelete(User $user, GroupRole $groupRole): bool
     {
-        return $user->can('force_delete_activity');
+        return $user->can('force_delete_group::role');
     }
 
     /**
@@ -71,15 +71,15 @@ class ActivityPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_activity');
+        return $user->can('force_delete_any_group::role');
     }
 
     /**
      * Determine whether the user can restore.
      */
-    public function restore(User $user, Activity $activity): bool
+    public function restore(User $user, GroupRole $groupRole): bool
     {
-        return $user->can('restore_activity');
+        return $user->can('restore_group::role');
     }
 
     /**
@@ -87,15 +87,15 @@ class ActivityPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_activity');
+        return $user->can('restore_any_group::role');
     }
 
     /**
      * Determine whether the user can replicate.
      */
-    public function replicate(User $user, Activity $activity): bool
+    public function replicate(User $user, GroupRole $groupRole): bool
     {
-        return $user->can('replicate_activity');
+        return $user->can('replicate_group::role');
     }
 
     /**
@@ -103,6 +103,6 @@ class ActivityPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_activity');
+        return $user->can('reorder_group::role');
     }
 }

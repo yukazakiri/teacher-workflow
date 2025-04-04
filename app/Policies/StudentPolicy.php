@@ -1,167 +1,108 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Policies;
 
-use App\Models\Student;
-use App\Models\Team;
 use App\Models\User;
+use App\Models\Student;
 use Illuminate\Auth\Access\HandlesAuthorization;
-use Illuminate\Auth\Access\Response;
 
 class StudentPolicy
 {
     use HandlesAuthorization;
 
     /**
-     * Determine whether the user can view any students.
+     * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        // Both teachers and students can view the student list
-        return $user->hasTeamRole($user->currentTeam, 'teacher') || 
-               $user->hasTeamRole($user->currentTeam, 'student');
+        return $user->can('view_any_student');
     }
 
     /**
-     * Determine whether the user can view the student.
+     * Determine whether the user can view the model.
      */
     public function view(User $user, Student $student): bool
     {
-        // Ensure they're on the same team
-        if (!$user->belongsToTeam($student->team)) {
-            return false;
-        }
-
-        // Teachers can view any student in their team
-        if ($user->hasTeamRole($student->team, 'teacher')) {
-            return true;
-        }
-
-        // Students can only view themselves
-        if ($user->hasTeamRole($student->team, 'student')) {
-            return $user->id === $student->user_id;
-        }
-
-        return false;
+        return $user->can('view_student');
     }
 
     /**
-     * Determine whether the user can create students.
+     * Determine whether the user can create models.
      */
     public function create(User $user): bool
     {
-        // Only teachers can create students
-        return $user->hasTeamRole($user->currentTeam, 'teacher');
+        return $user->can('create_student');
     }
 
     /**
-     * Determine whether the user can update the student.
+     * Determine whether the user can update the model.
      */
     public function update(User $user, Student $student): bool
     {
-        // Ensure they're on the same team
-        if (!$user->belongsToTeam($student->team)) {
-            return false;
-        }
-
-        // Teachers can update any student in their team
-        if ($user->hasTeamRole($student->team, 'teacher')) {
-            return true;
-        }
-
-        // Students can update their own profile only
-        if ($user->hasTeamRole($student->team, 'student')) {
-            return $user->id === $student->user_id;
-        }
-
-        return false;
+        return $user->can('update_student');
     }
 
     /**
-     * Determine whether the user can delete the student.
+     * Determine whether the user can delete the model.
      */
     public function delete(User $user, Student $student): bool
     {
-        // Only teachers can delete students
-        return $user->belongsToTeam($student->team) && 
-               $user->hasTeamRole($student->team, 'teacher');
+        return $user->can('delete_student');
     }
 
     /**
-     * Determine whether the user can restore the student.
+     * Determine whether the user can bulk delete.
      */
-    public function restore(User $user, Student $student): bool
+    public function deleteAny(User $user): bool
     {
-        // Only teachers can restore students
-        return $user->belongsToTeam($student->team) && 
-               $user->hasTeamRole($student->team, 'teacher');
+        return $user->can('delete_any_student');
     }
 
     /**
-     * Determine whether the user can permanently delete the student.
+     * Determine whether the user can permanently delete.
      */
     public function forceDelete(User $user, Student $student): bool
     {
-        // Only teachers can force delete students
-        return $user->belongsToTeam($student->team) && 
-               $user->hasTeamRole($student->team, 'teacher');
+        return $user->can('force_delete_student');
     }
 
     /**
-     * Determine whether the user can link or unlink a student to a user.
+     * Determine whether the user can permanently bulk delete.
      */
-    public function manageUserLinks(User $user, Student $student): bool
+    public function forceDeleteAny(User $user): bool
     {
-        // Only team owners can link/unlink users
-        return $user->belongsToTeam($student->team) && 
-               $user->ownsTeam($student->team);
+        return $user->can('force_delete_any_student');
     }
 
     /**
-     * Determine whether the user can view the student's attendance.
+     * Determine whether the user can restore.
      */
-    public function viewAttendance(User $user, Student $student): bool
+    public function restore(User $user, Student $student): bool
     {
-        // Ensure they're on the same team
-        if (!$user->belongsToTeam($student->team)) {
-            return false;
-        }
-
-        // Teachers can view any student's attendance
-        if ($user->hasTeamRole($student->team, 'teacher')) {
-            return true;
-        }
-
-        // Students can only view their own attendance
-        if ($user->hasTeamRole($student->team, 'student')) {
-            return $user->id === $student->user_id;
-        }
-
-        return false;
+        return $user->can('restore_student');
     }
 
     /**
-     * Determine whether the user can view the student's progress.
+     * Determine whether the user can bulk restore.
      */
-    public function viewProgress(User $user, Student $student): bool
+    public function restoreAny(User $user): bool
     {
-        // Ensure they're on the same team
-        if (!$user->belongsToTeam($student->team)) {
-            return false;
-        }
-
-        // Teachers can view any student's progress
-        if ($user->hasTeamRole($student->team, 'teacher')) {
-            return true;
-        }
-
-        // Students can only view their own progress
-        if ($user->hasTeamRole($student->team, 'student')) {
-            return $user->id === $student->user_id;
-        }
-
-        return false;
+        return $user->can('restore_any_student');
     }
-} 
+
+    /**
+     * Determine whether the user can replicate.
+     */
+    public function replicate(User $user, Student $student): bool
+    {
+        return $user->can('replicate_student');
+    }
+
+    /**
+     * Determine whether the user can reorder.
+     */
+    public function reorder(User $user): bool
+    {
+        return $user->can('reorder_student');
+    }
+}
