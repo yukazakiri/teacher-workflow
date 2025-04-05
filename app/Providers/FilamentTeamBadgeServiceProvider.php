@@ -26,4 +26,4 @@ class FilamentTeamBadgeServiceProvider extends ServiceProvider
             fn (): string => view('components.current-team-badge')->render(),
         );
     }
-} 
+}

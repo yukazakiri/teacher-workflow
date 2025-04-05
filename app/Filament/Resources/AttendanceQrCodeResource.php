@@ -19,25 +19,25 @@ class AttendanceQrCodeResource extends Resource
     protected static ?string $model = AttendanceQrCode::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-qr-code';
-    
+
     protected static ?string $navigationGroup = 'Class Management';
 
     protected static ?int $navigationSort = 6;
-    
+
     protected static ?string $recordTitleAttribute = 'description';
 
     public static function canAccess(): bool
     {
         $user = Auth::user();
         $team = $user?->currentTeam;
-        
-        if (!$team) {
+
+        if (! $team) {
             return false;
         }
-        
+
         return $team->userIsOwner($user);
     }
-    
+
     /**
      * Determine if this resource's navigation item should be displayed.
      * Only show it for team owners.
@@ -46,19 +46,17 @@ class AttendanceQrCodeResource extends Resource
     {
         return static::canAccess();
     }
-    
+
     /**
      * Get the navigation items for this resource.
      * Only team owners should see these navigation items.
-     * 
-     * @return array
      */
     public static function getNavigationItems(): array
     {
-        if (!static::canAccess()) {
+        if (! static::canAccess()) {
             return [];
         }
-        
+
         return parent::getNavigationItems();
     }
 
@@ -73,23 +71,23 @@ class AttendanceQrCodeResource extends Resource
                     ->required()
                     ->searchable()
                     ->preload(),
-                
+
                 Forms\Components\DatePicker::make('date')
                     ->label('Date')
                     ->required()
                     ->default(now()),
-                
+
                 Forms\Components\DateTimePicker::make('expires_at')
                     ->label('Expires At')
                     ->required()
                     ->default(function () {
                         return now()->addMinutes(30);
                     }),
-                
+
                 Forms\Components\Toggle::make('is_active')
                     ->label('Active')
                     ->default(true),
-                
+
                 Forms\Components\Textarea::make('description')
                     ->label('Description')
                     ->placeholder('e.g., Morning Class Attendance')
@@ -106,33 +104,33 @@ class AttendanceQrCodeResource extends Resource
                     ->label('Class')
                     ->sortable()
                     ->searchable(),
-                
+
                 Tables\Columns\TextColumn::make('date')
                     ->label('Date')
                     ->date()
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('description')
                     ->label('Description')
                     ->limit(30)
                     ->searchable(),
-                
+
                 Tables\Columns\TextColumn::make('expires_at')
                     ->label('Expires At')
                     ->dateTime()
                     ->sortable()
                     ->badge()
                     ->color(fn (Carbon $state) => $state->isPast() ? 'danger' : 'success'),
-                
+
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Active')
                     ->boolean(),
-                
+
                 Tables\Columns\TextColumn::make('code')
                     ->label('QR Code')
                     ->copyable()
                     ->limit(10),
-                
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Created At')
                     ->dateTime()
@@ -145,12 +143,12 @@ class AttendanceQrCodeResource extends Resource
                     ->relationship('team', 'name')
                     ->searchable()
                     ->preload(),
-                
+
                 Tables\Filters\Filter::make('is_active')
                     ->label('Active')
                     ->toggle()
                     ->query(fn (Builder $query): Builder => $query->where('is_active', true)),
-                
+
                 Tables\Filters\Filter::make('date')
                     ->form([
                         Forms\Components\DatePicker::make('date_from')
@@ -232,7 +230,7 @@ class AttendanceQrCodeResource extends Resource
             'edit' => Pages\EditAttendanceQrCode::route('/{record}/edit'),
         ];
     }
-    
+
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()

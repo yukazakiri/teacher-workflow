@@ -19,22 +19,22 @@ class StatsOverview extends BaseWidget
                 ->description('Total registered users')
                 ->descriptionIcon('heroicon-m-user')
                 ->color('primary'),
-            
+
             Stat::make('Total Teams', Team::count())
                 ->description('Active teams')
                 ->descriptionIcon('heroicon-m-user-group')
                 ->color('success'),
-            
+
             Stat::make('Total Students', Student::count())
                 ->description('Registered students')
                 ->descriptionIcon('heroicon-m-academic-cap')
                 ->color('warning'),
-            
+
             Stat::make('Activities', Activity::count())
-                ->description(Activity::where('status', 'published')->count() . ' published')
+                ->description(Activity::where('status', 'published')->count().' published')
                 ->descriptionIcon('heroicon-m-document-text')
                 ->color('danger'),
-            
+
             Stat::make('Exams', Exam::count())
                 ->description('Total exams')
                 ->descriptionIcon('heroicon-m-clipboard-document-list')

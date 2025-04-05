@@ -5,11 +5,11 @@ namespace App\Filament\Resources\ExamResource\Pages;
 use App\Filament\Resources\ExamResource;
 use App\Models\Question;
 use Filament\Actions;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
-use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\DB;
 
 class EditExam extends EditRecord
 {
@@ -19,18 +19,18 @@ class EditExam extends EditRecord
     {
         $user = Auth::user();
         $team = $user?->currentTeam;
-        
-        if (!$team || !$team->userIsOwner($user)) {
+
+        if (! $team || ! $team->userIsOwner($user)) {
             Notification::make()
                 ->title('Access Denied')
                 ->body('Only team owners can edit exams.')
                 ->danger()
                 ->send();
-                
+
             redirect()->route('filament.app.pages.dashboard', ['tenant' => $team->id ?? 1])->send();
             exit;
         }
-        
+
         parent::mount($record);
     }
 
@@ -65,7 +65,7 @@ class EditExam extends EditRecord
             $type = $question->type;
 
             // Skip if this type isn't in our predefined types
-            if (!isset($questionsByType[$type])) {
+            if (! isset($questionsByType[$type])) {
                 continue;
             }
 
@@ -82,9 +82,9 @@ class EditExam extends EditRecord
                     if (is_object($question->correct_answer) && method_exists($question->correct_answer, 'offsetGet')) {
                         // Get the first item from the ArrayObject
                         $correctAnswer = $question->correct_answer->getArrayCopy();
-                        $questionData['correct_answer'] = !empty($correctAnswer) ? $correctAnswer[0] : '';
-                    } else if (is_array($question->correct_answer)) {
-                        $questionData['correct_answer'] = !empty($question->correct_answer) ? $question->correct_answer[0] : '';
+                        $questionData['correct_answer'] = ! empty($correctAnswer) ? $correctAnswer[0] : '';
+                    } elseif (is_array($question->correct_answer)) {
+                        $questionData['correct_answer'] = ! empty($question->correct_answer) ? $question->correct_answer[0] : '';
                     } else {
                         $questionData['correct_answer'] = $question->correct_answer;
                     }
@@ -95,9 +95,9 @@ class EditExam extends EditRecord
                     if (is_object($question->correct_answer) && method_exists($question->correct_answer, 'offsetGet')) {
                         // Get the first item from the ArrayObject
                         $correctAnswer = $question->correct_answer->getArrayCopy();
-                        $questionData['correct_answer'] = !empty($correctAnswer) ? $correctAnswer[0] : '';
-                    } else if (is_array($question->correct_answer)) {
-                        $questionData['correct_answer'] = !empty($question->correct_answer) ? $question->correct_answer[0] : '';
+                        $questionData['correct_answer'] = ! empty($correctAnswer) ? $correctAnswer[0] : '';
+                    } elseif (is_array($question->correct_answer)) {
+                        $questionData['correct_answer'] = ! empty($question->correct_answer) ? $question->correct_answer[0] : '';
                     } else {
                         $questionData['correct_answer'] = $question->correct_answer;
                     }
@@ -108,9 +108,9 @@ class EditExam extends EditRecord
                     if (is_object($question->correct_answer) && method_exists($question->correct_answer, 'offsetGet')) {
                         // Get the first item from the ArrayObject
                         $correctAnswer = $question->correct_answer->getArrayCopy();
-                        $questionData['correct_answer'] = !empty($correctAnswer) ? $correctAnswer[0] : '';
-                    } else if (is_array($question->correct_answer)) {
-                        $questionData['correct_answer'] = !empty($question->correct_answer) ? $question->correct_answer[0] : '';
+                        $questionData['correct_answer'] = ! empty($correctAnswer) ? $correctAnswer[0] : '';
+                    } elseif (is_array($question->correct_answer)) {
+                        $questionData['correct_answer'] = ! empty($question->correct_answer) ? $question->correct_answer[0] : '';
                     } else {
                         $questionData['correct_answer'] = $question->correct_answer;
                     }
@@ -138,13 +138,13 @@ class EditExam extends EditRecord
         // Create sections for each question type that has questions
         $sectionIndex = 0;
         foreach ($questionsByType as $type => $typeQuestions) {
-            if (!empty($typeQuestions)) {
+            if (! empty($typeQuestions)) {
                 // Add a section for this question type
                 $data['question_sections'][] = [
                     'type' => "{$type}_section",
                     'data' => [
-                        'questions' => $typeQuestions
-                    ]
+                        'questions' => $typeQuestions,
+                    ],
                 ];
                 $sectionIndex++;
             }
@@ -196,7 +196,7 @@ class EditExam extends EditRecord
             // Process each question in the section
             foreach ($section['data']['questions'] as $questionData) {
                 // Create question record
-                $question = new Question();
+                $question = new Question;
                 $question->fill([
                     'teacher_id' => Auth::id(),
                     'exam_id' => $exam->id,

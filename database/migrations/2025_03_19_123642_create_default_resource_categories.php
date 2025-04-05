@@ -1,10 +1,8 @@
 <?php
 
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use App\Models\ResourceCategory;
 use App\Models\Team;
+use Illuminate\Database\Migrations\Migration;
 
 return new class extends Migration
 {
@@ -29,7 +27,7 @@ return new class extends Migration
         // Remove default categories by their names
         $defaultTeacherCategories = ['Lesson Plans', 'Answer Keys', 'Worksheets', 'Quiz Templates', 'Exams'];
         $defaultStudentCategories = ['Handouts', 'Reading Materials', 'Homework', 'Syllabi', 'Study Guides'];
-        
+
         ResourceCategory::whereIn('name', array_merge($defaultTeacherCategories, $defaultStudentCategories))
             ->where('is_default', true)
             ->delete();

@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\AsArrayObject;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Casts\AsArrayObject;
-use Illuminate\Database\Eloquent\Casts\AsCollection;
 
 class Question extends Model
 {
@@ -21,22 +20,22 @@ class Question extends Model
      *
      * @var array<int, string>
      */
-     protected $fillable = [
-         'teacher_id',
-         'exam_id',
-         'team_id',
-         'question_type_id',
-         'type',
-         'content',
-         'choices',
-         'correct_answer',
-         'explanation',
-         'rubric',
-         'word_limit',
-         'matching_pairs',
-         'answers',
-         'points',
-     ];
+    protected $fillable = [
+        'teacher_id',
+        'exam_id',
+        'team_id',
+        'question_type_id',
+        'type',
+        'content',
+        'choices',
+        'correct_answer',
+        'explanation',
+        'rubric',
+        'word_limit',
+        'matching_pairs',
+        'answers',
+        'points',
+    ];
 
     /**
      * The attributes that should be cast.
@@ -72,20 +71,18 @@ class Question extends Model
     /**
      * Get the exam that owns the question.
      */
-     public function exam(): BelongsTo
-     {
-         return $this->belongsTo(Exam::class);
-     }
+    public function exam(): BelongsTo
+    {
+        return $this->belongsTo(Exam::class);
+    }
 
-     /**
-      * Get the question type that owns the question.
-      */
-     public function questionType(): BelongsTo
-     {
-         return $this->belongsTo(QuestionType::class);
-     }
-
-
+    /**
+     * Get the question type that owns the question.
+     */
+    public function questionType(): BelongsTo
+    {
+        return $this->belongsTo(QuestionType::class);
+    }
 
     /**
      * Get the exam questions.

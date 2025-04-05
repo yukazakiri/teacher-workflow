@@ -22,15 +22,15 @@ return new class extends Migration
             }
 
             // Add graded_by and graded_at columns
-            if (!Schema::hasColumn('activity_submissions', 'graded_by')) {
+            if (! Schema::hasColumn('activity_submissions', 'graded_by')) {
                 $table->uuid('graded_by')->nullable()->after('feedback');
                 $table->foreign('graded_by')
                     ->references('id')
                     ->on('users')
                     ->onDelete('set null');
             }
-            
-            if (!Schema::hasColumn('activity_submissions', 'graded_at')) {
+
+            if (! Schema::hasColumn('activity_submissions', 'graded_at')) {
                 $table->timestamp('graded_at')->nullable()->after('graded_by');
             }
 
@@ -53,11 +53,11 @@ return new class extends Migration
             // Drop foreign keys
             $table->dropForeign(['graded_by']);
             $table->dropForeign(['group_id']);
-            
+
             // Drop columns
             $table->dropColumn('graded_at');
             $table->dropColumn('graded_by');
-            
+
             // Rename group_id back to activity_group_id
             $table->renameColumn('group_id', 'activity_group_id');
         });

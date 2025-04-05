@@ -2,49 +2,49 @@
 
 namespace App\Models;
 
-use Filament\Panel;
-use Laravel\Jetstream\HasTeams;
-use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Support\Collection;
-use Laravel\Jetstream\HasProfilePhoto;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Notifications\Notifiable;
-use Filament\Models\Contracts\HasTenants;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasAvatar;
-use Laravel\Fortify\TwoFactorAuthenticatable;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
-use LaraZeus\Boredom\Concerns\HasBoringAvatar;
-use Livewire\Features\SupportAttributes\Attribute;
+use Filament\Models\Contracts\HasTenants;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
+use Laravel\Fortify\TwoFactorAuthenticatable;
+use Laravel\Jetstream\HasProfilePhoto;
+use Laravel\Jetstream\HasTeams;
+use Laravel\Sanctum\HasApiTokens;
+use LaraZeus\Boredom\Concerns\HasBoringAvatar;
 use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable implements
-    HasTenants,
-    FilamentUser,
-    HasAvatar
+class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenants
 {
     use HasApiTokens;
+
     // use HasBoringAvatar;
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory;
+
     use HasProfilePhoto;
-    use HasTeams;
-    use Notifiable;
     use HasRoles;
+    use HasTeams;
     use HasUuids;
+    use Notifiable;
     use TwoFactorAuthenticatable;
+
     public $incrementing = false;
-    protected $keyType = "string";
+
+    protected $keyType = 'string';
+
     /**
      * The attributes that are mass assignable.
      *
      * @var array<int, string>
      */
-    protected $fillable = ["name", "email", "password"];
+    protected $fillable = ['name', 'email', 'password'];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -52,10 +52,10 @@ class User extends Authenticatable implements
      * @var array<int, string>
      */
     protected $hidden = [
-        "password",
-        "remember_token",
-        "two_factor_recovery_codes",
-        "two_factor_secret",
+        'password',
+        'remember_token',
+        'two_factor_recovery_codes',
+        'two_factor_secret',
     ];
 
     /**
@@ -63,7 +63,7 @@ class User extends Authenticatable implements
      *
      * @var array<int, string>
      */
-    protected $appends = ["profile_photo_url"];
+    protected $appends = ['profile_photo_url'];
 
     /**
      * Get the attributes that should be cast.`
@@ -73,8 +73,8 @@ class User extends Authenticatable implements
     protected function casts(): array
     {
         return [
-            "email_verified_at" => "datetime",
-            "password" => "hashed",
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
         ];
     }
 
@@ -88,8 +88,8 @@ class User extends Authenticatable implements
 
     public function canAccessPanel(Panel $panel): bool
     {
-        if ($panel->getId() === "admin") {
-            return $this->email === "marianolukkanit17@gmail.com";
+        if ($panel->getId() === 'admin') {
+            return $this->email === 'marianolukkanit17@gmail.com';
         }
 
         return true;

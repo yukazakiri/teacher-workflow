@@ -41,7 +41,7 @@ class TeacherWorkflowSeeder extends Seeder
         $team2 = $this->createTeamWithStudentRecords($teacher);
 
         // Set team1 as current team for teacher if not set
-        if (!$teacher->current_team_id) {
+        if (! $teacher->current_team_id) {
             $teacher->current_team_id = $team1->id;
             $teacher->save();
         }
@@ -83,7 +83,7 @@ class TeacherWorkflowSeeder extends Seeder
     /**
      * Create a team with invited users that have student role
      *
-     * @param User $teacher The teacher user
+     * @param  User  $teacher  The teacher user
      * @return Team The created team
      */
     private function createTeamWithInvitedUsers(User $teacher): Team
@@ -128,7 +128,7 @@ class TeacherWorkflowSeeder extends Seeder
             );
 
             // Add user to team if not already a member
-            if (!$team1->hasUser($studentUser)) {
+            if (! $team1->hasUser($studentUser)) {
                 $team1->users()->attach(
                     $studentUser,
                     ['role' => 'student']
@@ -147,7 +147,7 @@ class TeacherWorkflowSeeder extends Seeder
                     'team_id' => $team1->id,
                     'status' => 'active',
                     'user_id' => $studentUser->id,
-                    'student_id' => 'ST' . str_pad((string)$i, 4, '0', STR_PAD_LEFT),
+                    'student_id' => 'ST'.str_pad((string) $i, 4, '0', STR_PAD_LEFT),
                     'gender' => $i % 2 === 0 ? 'female' : 'male',
                     'birth_date' => now()->subYears(rand(18, 25))->subDays(rand(1, 365)),
                 ]
@@ -160,7 +160,7 @@ class TeacherWorkflowSeeder extends Seeder
     /**
      * Create a team with student records but no invited users
      *
-     * @param User $teacher The teacher user
+     * @param  User  $teacher  The teacher user
      * @return Team The created team
      */
     private function createTeamWithStudentRecords(User $teacher): Team
@@ -191,7 +191,7 @@ class TeacherWorkflowSeeder extends Seeder
                     'team_id' => $team2->id,
                     'status' => 'active',
                     'user_id' => null, // No associated user
-                    'student_id' => 'RS' . str_pad((string)$i, 4, '0', STR_PAD_LEFT),
+                    'student_id' => 'RS'.str_pad((string) $i, 4, '0', STR_PAD_LEFT),
                     'gender' => $i % 2 === 0 ? 'female' : 'male',
                     'birth_date' => now()->subYears(rand(18, 25))->subDays(rand(1, 365)),
                     'notes' => $i % 5 === 0 ? 'Transfer student' : null,

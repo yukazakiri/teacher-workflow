@@ -21,8 +21,8 @@ class PrismServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Just make sure the alias exists
-        if (!$this->app->bound('prism')) {
+        if (! $this->app->bound('prism')) {
             $this->app->alias(PrismManager::class, 'prism');
         }
     }
-} 
+}

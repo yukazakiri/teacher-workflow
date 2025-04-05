@@ -12,7 +12,6 @@ use App\Models\Group;
 use App\Models\GroupRoleAssignment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ActivityController extends Controller
@@ -127,6 +126,7 @@ class ActivityController extends Controller
         if ($format === 'pdf') {
             $pdf = app('dompdf.wrapper');
             $pdf->loadView('exports.activity_report', $reportData);
+
             return $pdf->download("activity_report_{$activity->id}.pdf");
         } elseif ($format === 'csv') {
             $headers = [
@@ -134,12 +134,12 @@ class ActivityController extends Controller
                 'Content-Disposition' => "attachment; filename=activity_report_{$activity->id}.csv",
             ];
 
-            $callback = function() use ($reportData) {
+            $callback = function () use ($reportData) {
                 $handle = fopen('php://output', 'w');
-                
+
                 // Add header row
                 fputcsv($handle, ['Student Name', 'Status', 'Score', 'Submission Date']);
-                
+
                 // Add data rows
                 foreach ($reportData['submissions'] as $submission) {
                     fputcsv($handle, [
@@ -149,7 +149,7 @@ class ActivityController extends Controller
                         $submission->created_at->format('Y-m-d H:i:s'),
                     ]);
                 }
-                
+
                 fclose($handle);
             };
 
@@ -159,7 +159,7 @@ class ActivityController extends Controller
             // This is a simplified example
             return back()->with('error', 'Excel export is not implemented yet.');
         }
-        
+
         return back()->with('error', 'Unsupported export format.');
     }
 
@@ -170,7 +170,7 @@ class ActivityController extends Controller
     {
         // Validate the request
         $validated = $request->validate([
-            'score' => 'required|numeric|min:0|max:' . $submission->activity->total_points,
+            'score' => 'required|numeric|min:0|max:'.$submission->activity->total_points,
             'feedback' => 'nullable|string',
         ]);
 
@@ -191,7 +191,7 @@ class ActivityController extends Controller
 
         return back()->with('success', 'Submission graded successfully.');
     }
-    
+
     /**
      * Create a new group for an activity.
      */
@@ -202,22 +202,22 @@ class ActivityController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
         ]);
-        
+
         // Check if user has permission to manage this activity
         if ($activity->team_id !== Auth::user()->currentTeam->id && $activity->teacher_id !== Auth::id()) {
             abort(403, 'You do not have permission to manage this activity.');
         }
-        
+
         // Create the group
         $group = Group::create([
             'activity_id' => $activity->id,
             'name' => $validated['name'],
             'description' => $validated['description'],
         ]);
-        
+
         return back()->with('success', 'Group created successfully.');
     }
-    
+
     /**
      * Add a student to a group.
      */
@@ -227,25 +227,25 @@ class ActivityController extends Controller
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
         ]);
-        
+
         // Check if user has permission to manage this group
         $activity = $group->activity;
         if ($activity->team_id !== Auth::user()->currentTeam->id && $activity->teacher_id !== Auth::id()) {
             abort(403, 'You do not have permission to manage this group.');
         }
-        
+
         // Check if the student is in the same team
         $user = Auth::user()->currentTeam->users()->where('id', $validated['user_id'])->first();
-        if (!$user) {
+        if (! $user) {
             abort(403, 'The selected student is not in your team.');
         }
-        
+
         // Add the student to the group
         $group->members()->syncWithoutDetaching([$validated['user_id']]);
-        
+
         return back()->with('success', 'Student added to group successfully.');
     }
-    
+
     /**
      * Remove a student from a group.
      */
@@ -255,24 +255,24 @@ class ActivityController extends Controller
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
         ]);
-        
+
         // Check if user has permission to manage this group
         $activity = $group->activity;
         if ($activity->team_id !== Auth::user()->currentTeam->id && $activity->teacher_id !== Auth::id()) {
             abort(403, 'You do not have permission to manage this group.');
         }
-        
+
         // Remove the student from the group
         $group->members()->detach($validated['user_id']);
-        
+
         // Also remove any role assignments for this student in this group
         GroupRoleAssignment::where('group_id', $group->id)
             ->where('user_id', $validated['user_id'])
             ->delete();
-        
+
         return back()->with('success', 'Student removed from group successfully.');
     }
-    
+
     /**
      * Create a new role for an activity.
      */
@@ -283,22 +283,22 @@ class ActivityController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
         ]);
-        
+
         // Check if user has permission to manage this activity
         if ($activity->team_id !== Auth::user()->currentTeam->id && $activity->teacher_id !== Auth::id()) {
             abort(403, 'You do not have permission to manage this activity.');
         }
-        
+
         // Create the role
         $role = ActivityRole::create([
             'activity_id' => $activity->id,
             'name' => $validated['name'],
             'description' => $validated['description'],
         ]);
-        
+
         return back()->with('success', 'Role created successfully.');
     }
-    
+
     /**
      * Assign a role to a student in a group.
      */
@@ -311,25 +311,25 @@ class ActivityController extends Controller
             'activity_role_id' => 'required|exists:activity_roles,id',
             'notes' => 'nullable|string',
         ]);
-        
+
         // Check if user has permission to manage this group
         $group = Group::findOrFail($validated['group_id']);
         $activity = $group->activity;
         if ($activity->team_id !== Auth::user()->currentTeam->id && $activity->teacher_id !== Auth::id()) {
             abort(403, 'You do not have permission to manage this group.');
         }
-        
+
         // Check if the student is in the group
-        if (!$group->members()->where('user_id', $validated['user_id'])->exists()) {
+        if (! $group->members()->where('user_id', $validated['user_id'])->exists()) {
             abort(403, 'The selected student is not in this group.');
         }
-        
+
         // Check if the role belongs to the activity
         $role = ActivityRole::findOrFail($validated['activity_role_id']);
         if ($role->activity_id !== $activity->id) {
             abort(403, 'The selected role does not belong to this activity.');
         }
-        
+
         // Create or update the role assignment
         GroupRoleAssignment::updateOrCreate(
             [
@@ -341,10 +341,10 @@ class ActivityController extends Controller
                 'notes' => $validated['notes'],
             ]
         );
-        
+
         return back()->with('success', 'Role assigned successfully.');
     }
-    
+
     /**
      * Remove a role assignment.
      */
@@ -356,13 +356,13 @@ class ActivityController extends Controller
         if ($activity->team_id !== Auth::user()->currentTeam->id && $activity->teacher_id !== Auth::id()) {
             abort(403, 'You do not have permission to manage this role assignment.');
         }
-        
+
         // Delete the assignment
         $assignment->delete();
-        
+
         return back()->with('success', 'Role assignment removed successfully.');
     }
-    
+
     /**
      * View a specific submission.
      */
@@ -373,7 +373,7 @@ class ActivityController extends Controller
         if ($activity->team_id !== Auth::user()->currentTeam->id && $activity->teacher_id !== Auth::id()) {
             abort(403, 'You do not have permission to view this submission.');
         }
-        
+
         return view('activities.submission', [
             'submission' => $submission,
             'activity' => $activity,

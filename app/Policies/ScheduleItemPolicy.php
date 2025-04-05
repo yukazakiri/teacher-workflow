@@ -18,7 +18,7 @@ class ScheduleItemPolicy
     public function viewAny(User $user): bool
     {
         // Both teachers and students can view schedule items
-        return $user->hasTeamRole($user->currentTeam, 'teacher') || 
+        return $user->hasTeamRole($user->currentTeam, 'teacher') ||
                $user->hasTeamRole($user->currentTeam, 'student');
     }
 
@@ -46,7 +46,7 @@ class ScheduleItemPolicy
     public function update(User $user, ScheduleItem $scheduleItem): bool
     {
         // Only teachers can update schedule items
-        return $user->belongsToTeam($scheduleItem->team) && 
+        return $user->belongsToTeam($scheduleItem->team) &&
                $user->hasTeamRole($scheduleItem->team, 'teacher');
     }
 
@@ -56,7 +56,7 @@ class ScheduleItemPolicy
     public function delete(User $user, ScheduleItem $scheduleItem): bool
     {
         // Only team owners can delete schedule items
-        return $user->belongsToTeam($scheduleItem->team) && 
+        return $user->belongsToTeam($scheduleItem->team) &&
                $user->ownsTeam($scheduleItem->team);
     }
 
@@ -66,7 +66,7 @@ class ScheduleItemPolicy
     public function restore(User $user, ScheduleItem $scheduleItem): bool
     {
         // Only team owners can restore schedule items
-        return $user->belongsToTeam($scheduleItem->team) && 
+        return $user->belongsToTeam($scheduleItem->team) &&
                $user->ownsTeam($scheduleItem->team);
     }
 
@@ -76,7 +76,7 @@ class ScheduleItemPolicy
     public function forceDelete(User $user, ScheduleItem $scheduleItem): bool
     {
         // Only team owners can permanently delete schedule items
-        return $user->belongsToTeam($scheduleItem->team) && 
+        return $user->belongsToTeam($scheduleItem->team) &&
                $user->ownsTeam($scheduleItem->team);
     }
-} 
+}

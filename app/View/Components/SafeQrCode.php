@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\View\Components;
 
 use App\Helpers\QrCodeHelper;
-use Illuminate\View\Component;
 use Illuminate\Support\Facades\Log;
+use Illuminate\View\Component;
 
 class SafeQrCode extends Component
 {
@@ -25,7 +25,7 @@ class SafeQrCode extends Component
     {
         return view('components.safe-qr-code');
     }
-    
+
     /**
      * Safely generate a QR code using available packages
      */
@@ -36,21 +36,21 @@ class SafeQrCode extends Component
             try {
                 // First try to convert to clean UTF-8
                 $cleanUrl = mb_convert_encoding($url, 'UTF-8', 'UTF-8');
-                
+
                 $qrCode = \LaravelQRCode\Facades\QRCode::text($cleanUrl)
                     ->setOutfile(false)
                     ->setSize(8)
                     ->setMargin(2)
                     ->png();
-                    
-                return '<img src="data:image/png;base64,' . base64_encode($qrCode) . '" alt="QR Code" class="w-48 h-48">';
+
+                return '<img src="data:image/png;base64,'.base64_encode($qrCode).'" alt="QR Code" class="w-48 h-48">';
             } catch (\Throwable $e) {
-                Log::error('LaravelQRCode failed: ' . $e->getMessage());
+                Log::error('LaravelQRCode failed: '.$e->getMessage());
             }
         }
-        
-        // Use our own helper class which utilizes BaconQrCode directly 
+
+        // Use our own helper class which utilizes BaconQrCode directly
         // with error handling baked in
         return QrCodeHelper::generateSvg($url, $this->size);
     }
-} 
+}

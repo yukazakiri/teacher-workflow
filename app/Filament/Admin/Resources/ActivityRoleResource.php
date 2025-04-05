@@ -3,24 +3,21 @@
 namespace App\Filament\Admin\Resources;
 
 use App\Filament\Admin\Resources\ActivityRoleResource\Pages;
-use App\Filament\Admin\Resources\ActivityRoleResource\RelationManagers;
 use App\Models\ActivityRole;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ActivityRoleResource extends Resource
 {
     protected static ?string $model = ActivityRole::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-identification';
-    
+
     protected static ?string $navigationGroup = 'Learning Management';
-    
+
     protected static ?int $navigationSort = 16;
 
     public static function form(Form $form): Form

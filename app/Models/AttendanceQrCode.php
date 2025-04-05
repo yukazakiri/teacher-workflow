@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Str;
 
 class AttendanceQrCode extends Model
 {
@@ -70,7 +69,7 @@ class AttendanceQrCode extends Model
      */
     public function isValid(): bool
     {
-        return $this->is_active && !$this->isExpired();
+        return $this->is_active && ! $this->isExpired();
     }
 
     /**
@@ -81,13 +80,13 @@ class AttendanceQrCode extends Model
         do {
             // Generate 32 bytes (256 bits) of random data for strong entropy
             $randomData = random_bytes(32);
-            
+
             // Convert to URL-safe base64 without padding (remove = chars)
             $code = rtrim(strtr(base64_encode($randomData), '+/', '-_'), '=');
-            
+
             // Ensure we only keep URL-safe characters (extra precaution)
             $code = preg_replace('/[^a-zA-Z0-9_-]/', '', $code);
-            
+
             // Make sure we still have enough characters (at least 40) for uniqueness
             if (strlen($code) < 40) {
                 continue;
@@ -100,7 +99,7 @@ class AttendanceQrCode extends Model
     /**
      * Create a new QR code for a team.
      */
-    public static function createForTeam(Team $team, User $user, Carbon $date, int $expiryMinutes = 30, string $description = null): self
+    public static function createForTeam(Team $team, User $user, Carbon $date, int $expiryMinutes = 30, ?string $description = null): self
     {
         return self::create([
             'team_id' => $team->id,
@@ -119,6 +118,7 @@ class AttendanceQrCode extends Model
     public function deactivate(): self
     {
         $this->update(['is_active' => false]);
+
         return $this;
     }
 
@@ -128,8 +128,9 @@ class AttendanceQrCode extends Model
     public function extendExpiry(int $minutes): self
     {
         $this->update([
-            'expires_at' => Carbon::parse($this->expires_at)->addMinutes($minutes)
+            'expires_at' => Carbon::parse($this->expires_at)->addMinutes($minutes),
         ]);
+
         return $this;
     }
 }

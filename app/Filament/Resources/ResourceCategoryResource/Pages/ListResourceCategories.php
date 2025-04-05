@@ -2,11 +2,11 @@
 
 namespace App\Filament\Resources\ResourceCategoryResource\Pages;
 
+use App\Filament\Resources\ResourceCategoryResource;
 use Filament\Actions;
-use Illuminate\Support\Facades\Auth;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
-use App\Filament\Resources\ResourceCategoryResource;
+use Illuminate\Support\Facades\Auth;
 
 class ListResourceCategories extends ListRecords
 {
@@ -16,24 +16,25 @@ class ListResourceCategories extends ListRecords
     {
         $user = Auth::user();
         $team = $user?->currentTeam;
-        
-        if (!$team || !$team->userIsOwner($user)) {
+
+        if (! $team || ! $team->userIsOwner($user)) {
             Notification::make()
                 ->title('Access Denied')
                 ->body('Only team owners can access the exam management.')
                 ->danger()
                 ->send();
-                
-            redirect()->route('filament.app.pages.dashboard', ['tenant' => $team->id ]);
-            
+
+            redirect()->route('filament.app.pages.dashboard', ['tenant' => $team->id]);
+
         }
-        
+
         parent::mount();
     }
+
     protected function getHeaderActions(): array
     {
         return [
             Actions\CreateAction::make(),
         ];
     }
-} 
+}

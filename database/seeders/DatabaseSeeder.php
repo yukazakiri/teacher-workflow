@@ -8,14 +8,11 @@ use App\Models\ActivitySubmission;
 use App\Models\ActivityType;
 use App\Models\Student;
 use App\Models\Team;
-use App\Models\TeamInvitation;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-
-use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
 {
@@ -39,7 +36,7 @@ class DatabaseSeeder extends Seeder
         );
 
         // Set default team for teacher if not already set
-        if (!$teacher->current_team_id) {
+        if (! $teacher->current_team_id) {
             $teacher->current_team_id = $classroomWithInvitedStudents->id;
             $teacher->save();
         }
@@ -50,19 +47,17 @@ class DatabaseSeeder extends Seeder
 
     /**
      * Create teacher account
-     *
-     * @return User
      */
     private function createTeacherAccount(): User
     {
         return User::firstOrCreate(
-            ["email" => "test@example.com"],
+            ['email' => 'test@example.com'],
             [
-                "name" => "Test User",
-                "email" => "test@example.com",
-                "password" => Hash::make("password"),
-                "email_verified_at" => now(),
-                "remember_token" => Str::random(10),
+                'name' => 'Test User',
+                'email' => 'test@example.com',
+                'password' => Hash::make('password'),
+                'email_verified_at' => now(),
+                'remember_token' => Str::random(10),
             ]
         );
     }
@@ -74,43 +69,43 @@ class DatabaseSeeder extends Seeder
     {
         $activityTypes = [
             [
-                "name" => "Quiz",
-                "description" => "Short assessment to test knowledge",
+                'name' => 'Quiz',
+                'description' => 'Short assessment to test knowledge',
             ],
             [
-                "name" => "Assignment",
-                "description" => "Task to be completed by students",
+                'name' => 'Assignment',
+                'description' => 'Task to be completed by students',
             ],
             [
-                "name" => "Project",
-                "description" => "Larger task requiring planning and execution",
+                'name' => 'Project',
+                'description' => 'Larger task requiring planning and execution',
             ],
             [
-                "name" => "Presentation",
-                "description" => "Oral presentation of a topic",
+                'name' => 'Presentation',
+                'description' => 'Oral presentation of a topic',
             ],
             [
-                "name" => "Discussion",
-                "description" => "Group discussion on a topic",
+                'name' => 'Discussion',
+                'description' => 'Group discussion on a topic',
             ],
             [
-                "name" => "Lab Work",
-                "description" => "Hands-on laboratory activity",
+                'name' => 'Lab Work',
+                'description' => 'Hands-on laboratory activity',
             ],
             [
-                "name" => "Essay",
-                "description" => "Written composition on a specific topic",
+                'name' => 'Essay',
+                'description' => 'Written composition on a specific topic',
             ],
             [
-                "name" => "Exam",
-                "description" => "Formal assessment of knowledge",
+                'name' => 'Exam',
+                'description' => 'Formal assessment of knowledge',
             ],
         ];
 
         foreach ($activityTypes as $type) {
             ActivityType::firstOrCreate(
-                ["name" => $type["name"]],
-                ["description" => $type["description"]]
+                ['name' => $type['name']],
+                ['description' => $type['description']]
             );
         }
     }
@@ -123,23 +118,23 @@ class DatabaseSeeder extends Seeder
         // Create or retrieve team with SHS config
         $classroom = Team::firstOrCreate(
             [
-                "name" => "Grade 11 - STEM A", // More SHS-like name
-                "user_id" => $teacher->id,
+                'name' => 'Grade 11 - STEM A', // More SHS-like name
+                'user_id' => $teacher->id,
             ],
             [
-                "personal_team" => false,
-                "id" => Str::uuid(),
-                "join_code" => "STEM11", // Custom join code
+                'personal_team' => false,
+                'id' => Str::uuid(),
+                'join_code' => 'STEM11', // Custom join code
                 // SHS Configuration
-                "grading_system_type" => Team::GRADING_SYSTEM_SHS,
-                "shs_ww_weight" => 30,
-                "shs_pt_weight" => 50,
-                "shs_qa_weight" => 20,
+                'grading_system_type' => Team::GRADING_SYSTEM_SHS,
+                'shs_ww_weight' => 30,
+                'shs_pt_weight' => 50,
+                'shs_qa_weight' => 20,
                 // Nullify College fields
-                "college_grading_scale" => null,
-                "college_prelim_weight" => null,
-                "college_midterm_weight" => null,
-                "college_final_weight" => null,
+                'college_grading_scale' => null,
+                'college_prelim_weight' => null,
+                'college_midterm_weight' => null,
+                'college_final_weight' => null,
             ]
         );
 
@@ -150,29 +145,29 @@ class DatabaseSeeder extends Seeder
             $studentName = $studentNames[$i];
             $email = $this->generateStudentEmail($studentName);
             $studentUser = User::firstOrCreate(
-                ["email" => $email],
+                ['email' => $email],
                 [
                     // Attributes to use IF CREATING the user
-                    "name" => $studentName,
-                    "password" => Hash::make("password"), // Need a default password
-                    "email_verified_at" => now(), // Optionally mark as verified
-                    "remember_token" => Str::random(10),
+                    'name' => $studentName,
+                    'password' => Hash::make('password'), // Need a default password
+                    'email_verified_at' => now(), // Optionally mark as verified
+                    'remember_token' => Str::random(10),
                     // Add any other required fields for your users table here
                 ] /* ... user details ... */
             );
-            if (!$studentUser->belongsToTeam($classroom)) {
+            if (! $studentUser->belongsToTeam($classroom)) {
                 // Add the student user to the classroom team.
                 // Assuming 'student' is the desired role key in the pivot table.
                 // Adjust 'student' if your application uses a different role key.
                 $classroom
                     ->users()
-                    ->attach($studentUser, ["role" => "student"]);
+                    ->attach($studentUser, ['role' => 'student']);
 
                 // Optionally, set the user's current team if this is their first team
                 if (is_null($studentUser->current_team_id)) {
                     $studentUser
                         ->forceFill([
-                            "current_team_id" => $classroom->id,
+                            'current_team_id' => $classroom->id,
                         ])
                         ->save();
                 }
@@ -180,24 +175,23 @@ class DatabaseSeeder extends Seeder
 
             // Create linked student record
             $student = Student::firstOrCreate(
-                ["team_id" => $classroom->id, "user_id" => $studentUser->id],
+                ['team_id' => $classroom->id, 'user_id' => $studentUser->id],
                 [
-                    "name" => $studentUser->name,
-                    "email" => $studentUser->email,
-                    "status" => "active",
-                    "student_id" =>
-                        "SHS" .
-                        str_pad((string) ($i + 1), 3, "0", STR_PAD_LEFT), // Use SHS prefix
-                    "gender" => $i % 2 === 0 ? "male" : "female",
-                    "birth_date" => now()
+                    'name' => $studentUser->name,
+                    'email' => $studentUser->email,
+                    'status' => 'active',
+                    'student_id' => 'SHS'.
+                        str_pad((string) ($i + 1), 3, '0', STR_PAD_LEFT), // Use SHS prefix
+                    'gender' => $i % 2 === 0 ? 'male' : 'female',
+                    'birth_date' => now()
                         ->subYears(rand(16, 18))
                         ->subDays(rand(1, 365)), // SHS age range
-                    "notes" => $this->getRandomStudentNote($i),
+                    'notes' => $this->getRandomStudentNote($i),
                 ]
             );
             $studentUsersData[] = [
-                "user" => $studentUser,
-                "student" => $student,
+                'user' => $studentUser,
+                'student' => $student,
             ];
         }
 
@@ -219,23 +213,23 @@ class DatabaseSeeder extends Seeder
         // Create or retrieve team with College Term config
         $classroom = Team::firstOrCreate(
             [
-                "name" => "Introduction to Psychology", // More College-like name
-                "user_id" => $teacher->id,
+                'name' => 'Introduction to Psychology', // More College-like name
+                'user_id' => $teacher->id,
             ],
             [
-                "personal_team" => false,
-                "id" => Str::uuid(),
-                "join_code" => "PSY101", // Custom join code
+                'personal_team' => false,
+                'id' => Str::uuid(),
+                'join_code' => 'PSY101', // Custom join code
                 // College Term Configuration (Example: Term-Based, 5-Point Scale)
-                "grading_system_type" => Team::GRADING_SYSTEM_COLLEGE,
-                "college_grading_scale" => Team::COLLEGE_SCALE_TERM_5_POINT,
-                "college_prelim_weight" => 30,
-                "college_midterm_weight" => 30,
-                "college_final_weight" => 40,
+                'grading_system_type' => Team::GRADING_SYSTEM_COLLEGE,
+                'college_grading_scale' => Team::COLLEGE_SCALE_TERM_5_POINT,
+                'college_prelim_weight' => 30,
+                'college_midterm_weight' => 30,
+                'college_final_weight' => 40,
                 // Nullify SHS fields
-                "shs_ww_weight" => null,
-                "shs_pt_weight" => null,
-                "shs_qa_weight" => null,
+                'shs_ww_weight' => null,
+                'shs_pt_weight' => null,
+                'shs_qa_weight' => null,
             ]
         );
 
@@ -247,19 +241,18 @@ class DatabaseSeeder extends Seeder
             $studentName = $studentNames[$i];
             $email = $this->generateStudentEmail($studentName);
             $student = Student::firstOrCreate(
-                ["team_id" => $classroom->id, "email" => $email],
+                ['team_id' => $classroom->id, 'email' => $email],
                 [
-                    "name" => $studentName,
-                    "status" => "active",
-                    "user_id" => null,
-                    "student_id" =>
-                        "COLL" .
-                        str_pad((string) ($i + 1), 4, "0", STR_PAD_LEFT), // Use COLL prefix
-                    "gender" => $i % 2 === 0 ? "female" : "male",
-                    "birth_date" => now()
+                    'name' => $studentName,
+                    'status' => 'active',
+                    'user_id' => null,
+                    'student_id' => 'COLL'.
+                        str_pad((string) ($i + 1), 4, '0', STR_PAD_LEFT), // Use COLL prefix
+                    'gender' => $i % 2 === 0 ? 'female' : 'male',
+                    'birth_date' => now()
                         ->subYears(rand(18, 22))
                         ->subDays(rand(1, 365)), // College age range
-                    "notes" => $this->getRandomStudentNote($i),
+                    'notes' => $this->getRandomStudentNote($i),
                 ]
             );
             $students[] = $student;
@@ -284,17 +277,17 @@ class DatabaseSeeder extends Seeder
         $students
     ): void {
         // Get activity types
-        $quizType = ActivityType::where("name", "Quiz")->first();
-        $assignmentType = ActivityType::where("name", "Assignment")->first();
-        $projectType = ActivityType::where("name", "Project")->first();
-        $essayType = ActivityType::where("name", "Essay")->first();
+        $quizType = ActivityType::where('name', 'Quiz')->first();
+        $assignmentType = ActivityType::where('name', 'Assignment')->first();
+        $projectType = ActivityType::where('name', 'Project')->first();
+        $essayType = ActivityType::where('name', 'Essay')->first();
         $presentationType = ActivityType::where(
-            "name",
-            "Presentation"
+            'name',
+            'Presentation'
         )->first();
         $quarterlyExamType = ActivityType::where(
-            "name",
-            "Quarterly Exam"
+            'name',
+            'Quarterly Exam'
         )->first(); // For SHS QA
 
         // --- Create activities based on classroom type ---
@@ -311,10 +304,10 @@ class DatabaseSeeder extends Seeder
             $teacher,
             $students,
             $quizType,
-            title: "Unit 1 Quiz",
-            description: "Quiz covering the first unit.",
-            instructions: "Answer all questions.",
-            category: "written",
+            title: 'Unit 1 Quiz',
+            description: 'Quiz covering the first unit.',
+            instructions: 'Answer all questions.',
+            category: 'written',
             component: Activity::COMPONENT_WRITTEN_WORK,
             term: Activity::TERM_PRELIM,
             totalPoints: 25,
@@ -326,10 +319,10 @@ class DatabaseSeeder extends Seeder
             $teacher,
             $students,
             $essayType,
-            title: "Introductory Essay",
-            description: "Essay on core concepts.",
-            instructions: "Write a 500-word essay.",
-            category: "written",
+            title: 'Introductory Essay',
+            description: 'Essay on core concepts.',
+            instructions: 'Write a 500-word essay.',
+            category: 'written',
             component: Activity::COMPONENT_WRITTEN_WORK,
             term: Activity::TERM_PRELIM,
             totalPoints: 50,
@@ -341,10 +334,10 @@ class DatabaseSeeder extends Seeder
             $teacher,
             $students,
             $presentationType,
-            title: "Topic Presentation",
-            description: "Present a chosen topic.",
-            instructions: "5-minute presentation with slides.",
-            category: "performance",
+            title: 'Topic Presentation',
+            description: 'Present a chosen topic.',
+            instructions: '5-minute presentation with slides.',
+            category: 'performance',
             component: Activity::COMPONENT_PERFORMANCE_TASK,
             term: Activity::TERM_MIDTERM,
             totalPoints: 50,
@@ -356,10 +349,10 @@ class DatabaseSeeder extends Seeder
             $teacher,
             $students,
             $assignmentType,
-            title: "Mid-Unit Assignment",
-            description: "Practice exercises.",
-            instructions: "Complete the worksheet.",
-            category: "written",
+            title: 'Mid-Unit Assignment',
+            description: 'Practice exercises.',
+            instructions: 'Complete the worksheet.',
+            category: 'written',
             component: Activity::COMPONENT_WRITTEN_WORK,
             term: Activity::TERM_MIDTERM,
             totalPoints: 30,
@@ -371,10 +364,10 @@ class DatabaseSeeder extends Seeder
             $teacher,
             $students,
             $projectType,
-            title: "Group Research Project",
-            description: "Collaborative research.",
-            instructions: "Work in groups. Submit paper & presentation.",
-            category: "performance", // Often graded on output/presentation
+            title: 'Group Research Project',
+            description: 'Collaborative research.',
+            instructions: 'Work in groups. Submit paper & presentation.',
+            category: 'performance', // Often graded on output/presentation
             component: Activity::COMPONENT_PERFORMANCE_TASK, // Primary component is often PT for projects
             term: Activity::TERM_FINAL,
             totalPoints: 100,
@@ -389,10 +382,10 @@ class DatabaseSeeder extends Seeder
                 $teacher,
                 $students,
                 $quarterlyExamType,
-                title: "Quarterly Examination",
-                description: "Comprehensive assessment for the quarter.",
-                instructions: "Answer all sections.",
-                category: "written",
+                title: 'Quarterly Examination',
+                description: 'Comprehensive assessment for the quarter.',
+                instructions: 'Answer all sections.',
+                category: 'written',
                 component: Activity::COMPONENT_QUARTERLY_ASSESSMENT,
                 term: null, // QA is SHS specific
                 totalPoints: 100,
@@ -406,10 +399,10 @@ class DatabaseSeeder extends Seeder
                 $teacher,
                 $students,
                 $quarterlyExamType, // Reuse type or create 'Final Exam' type
-                title: "Final Examination",
-                description: "Comprehensive assessment for the course.",
-                instructions: "Answer all sections.",
-                category: "written",
+                title: 'Final Examination',
+                description: 'Comprehensive assessment for the course.',
+                instructions: 'Answer all sections.',
+                category: 'written',
                 component: null,
                 term: Activity::TERM_FINAL,
                 totalPoints: 100,
@@ -417,6 +410,7 @@ class DatabaseSeeder extends Seeder
             );
         }
     }
+
     /**
      * Helper to create a single activity and its submissions, adapting to grading system.
      */
@@ -435,27 +429,27 @@ class DatabaseSeeder extends Seeder
         ?float $creditUnits,
         bool $isGroup = false
     ): void {
-        if (!$activityType) {
+        if (! $activityType) {
             return;
         }
 
         $activityData = [
             // Common fields
-            "teacher_id" => $teacher->id, // Assuming created_by implies teacher
-            "team_id" => $classroom->id,
-            "activity_type_id" => $activityType->id,
-            "description" => $description,
-            "instructions" => $instructions,
-            "category" => $category,
-            "total_points" => $totalPoints,
-            "status" => "published",
-            "mode" => $isGroup ? "group" : "individual",
+            'teacher_id' => $teacher->id, // Assuming created_by implies teacher
+            'team_id' => $classroom->id,
+            'activity_type_id' => $activityType->id,
+            'description' => $description,
+            'instructions' => $instructions,
+            'category' => $category,
+            'total_points' => $totalPoints,
+            'status' => 'published',
+            'mode' => $isGroup ? 'group' : 'individual',
             // System Specific Fields
-            "component_type" => $classroom->usesShsGrading()
+            'component_type' => $classroom->usesShsGrading()
                 ? $component
                 : null,
-            "term" => $classroom->usesCollegeTermGrading() ? $term : null,
-            "credit_units" => $classroom->usesCollegeGwaGrading()
+            'term' => $classroom->usesCollegeTermGrading() ? $term : null,
+            'credit_units' => $classroom->usesCollegeGwaGrading()
                 ? $creditUnits
                 : null, // Assign only if GWA system
         ];
@@ -463,19 +457,19 @@ class DatabaseSeeder extends Seeder
         // Use firstOrCreate with a unique constraint (team_id, title)
         $activity = Activity::firstOrCreate(
             [
-                "team_id" => $classroom->id,
-                "title" => $title,
+                'team_id' => $classroom->id,
+                'title' => $title,
             ],
             $activityData
         );
 
         // Add roles if it's a group project (Simplified - assumes project type means group)
         if ($isGroup) {
-            $roles = ["Leader", "Researcher", "Writer", "Presenter"];
+            $roles = ['Leader', 'Researcher', 'Writer', 'Presenter'];
             foreach ($roles as $roleName) {
                 ActivityRole::firstOrCreate(
-                    ["activity_id" => $activity->id, "name" => $roleName],
-                    ["description" => "Role for the " . $title]
+                    ['activity_id' => $activity->id, 'name' => $roleName],
+                    ['description' => 'Role for the '.$title]
                 );
             }
             // Note: Group assignment logic is complex and not fully implemented here.
@@ -495,29 +489,27 @@ class DatabaseSeeder extends Seeder
         $students,
         $essayType
     ): void {
-        if (!$essayType) {
+        if (! $essayType) {
             return;
         }
 
         $essay = Activity::firstOrCreate(
             [
-                "team_id" => $classroom->id,
-                "title" => "Analytical Essay",
+                'team_id' => $classroom->id,
+                'title' => 'Analytical Essay',
             ],
             [
-                "teacher_id" => $teacher->id,
-                "team_id" => $classroom->id,
-                "activity_type_id" => $essayType->id,
-                "description" =>
-                    "Analysis of a key topic from our current unit",
-                "instructions" =>
-                    "Write a 1000-word analytical essay with proper citations.",
-                "format" => "assignment",
-                "category" => "written",
-                "mode" => "take_home",
-                "total_points" => 100,
-                "status" => "published",
-                "deadline" => now()->addDays(14),
+                'teacher_id' => $teacher->id,
+                'team_id' => $classroom->id,
+                'activity_type_id' => $essayType->id,
+                'description' => 'Analysis of a key topic from our current unit',
+                'instructions' => 'Write a 1000-word analytical essay with proper citations.',
+                'format' => 'assignment',
+                'category' => 'written',
+                'mode' => 'take_home',
+                'total_points' => 100,
+                'status' => 'published',
+                'deadline' => now()->addDays(14),
             ]
         );
 
@@ -534,27 +526,26 @@ class DatabaseSeeder extends Seeder
         $students,
         $assignmentType
     ): void {
-        if (!$assignmentType) {
+        if (! $assignmentType) {
             return;
         }
 
         $assignment = Activity::firstOrCreate(
             [
-                "team_id" => $classroom->id,
-                "title" => "Worksheet Assignment",
+                'team_id' => $classroom->id,
+                'title' => 'Worksheet Assignment',
             ],
             [
-                "teacher_id" => $teacher->id,
-                "team_id" => $classroom->id,
-                "activity_type_id" => $assignmentType->id,
-                "description" => "Practice exercises based on recent lessons",
-                "instructions" =>
-                    "Complete all exercises in the provided worksheet.",
-                "format" => "assignment",
-                "category" => "written",
-                "mode" => "individual",
-                "total_points" => 75,
-                "status" => "published",
+                'teacher_id' => $teacher->id,
+                'team_id' => $classroom->id,
+                'activity_type_id' => $assignmentType->id,
+                'description' => 'Practice exercises based on recent lessons',
+                'instructions' => 'Complete all exercises in the provided worksheet.',
+                'format' => 'assignment',
+                'category' => 'written',
+                'mode' => 'individual',
+                'total_points' => 75,
+                'status' => 'published',
             ]
         );
 
@@ -572,25 +563,25 @@ class DatabaseSeeder extends Seeder
         $teacher
     ): void {
         $submissionStatuses = [
-            "not_started",
-            "in_progress",
-            "submitted",
-            "graded",
+            'not_started',
+            'in_progress',
+            'submitted',
+            'graded',
         ];
         $contents = [
             /* ... existing contents ... */
         ];
 
         foreach ($students as $index => $studentData) {
-            $student = isset($studentData["student"])
-                ? $studentData["student"]
+            $student = isset($studentData['student'])
+                ? $studentData['student']
                 : $studentData;
             $statusIndex = $index % count($submissionStatuses);
             $status = $submissionStatuses[$statusIndex];
             $score = null;
             // $finalGrade = null; // We no longer store final_grade on submission
 
-            if ($status === "graded" && $activity->total_points > 0) {
+            if ($status === 'graded' && $activity->total_points > 0) {
                 // Realistic grade distribution
                 $scorePercentages = [
                     0.5,
@@ -612,18 +603,18 @@ class DatabaseSeeder extends Seeder
                     min(1, $scorePercentage + mt_rand(-5, 5) / 100)
                 );
                 $score = round($activity->total_points * $scorePercentage);
-            } elseif ($status === "graded") {
+            } elseif ($status === 'graded') {
                 $score = 0; // Assign 0 if graded but total_points is 0 or less
             }
 
             $content = null;
-            if ($status === "submitted" || $status === "graded") {
+            if ($status === 'submitted' || $status === 'graded') {
                 $content =
-                    $contents[$activity->format ?? "assignment"] ??
-                    "Completed submission."; // Use format if available
+                    $contents[$activity->format ?? 'assignment'] ??
+                    'Completed submission.'; // Use format if available
             }
             $feedback =
-                $status === "graded"
+                $status === 'graded'
                     ? $this->getRealisticFeedback(
                         $score,
                         $activity->total_points
@@ -633,21 +624,20 @@ class DatabaseSeeder extends Seeder
             ActivitySubmission::updateOrCreate(
                 // Use updateOrCreate to avoid duplicates on re-seed
                 [
-                    "activity_id" => $activity->id,
-                    "student_id" => $student->id,
+                    'activity_id' => $activity->id,
+                    'student_id' => $student->id,
                 ],
                 [
-                    "content" => $content,
-                    "status" => $status,
-                    "score" => $score,
-                    "final_grade" => null, // Ensure final_grade is always null
-                    "feedback" => $feedback,
-                    "submitted_at" => in_array($status, ["submitted", "graded"])
+                    'content' => $content,
+                    'status' => $status,
+                    'score' => $score,
+                    'final_grade' => null, // Ensure final_grade is always null
+                    'feedback' => $feedback,
+                    'submitted_at' => in_array($status, ['submitted', 'graded'])
                         ? now()->subDays(rand(1, 7))->subHours(rand(1, 23))
                         : null,
-                    "graded_by" => $status === "graded" ? $teacher->id : null,
-                    "graded_at" =>
-                        $status === "graded"
+                    'graded_by' => $status === 'graded' ? $teacher->id : null,
+                    'graded_at' => $status === 'graded'
                             ? now()->subDays(rand(0, 2))->subHours(rand(1, 23))
                             : null,
                 ]
@@ -658,62 +648,61 @@ class DatabaseSeeder extends Seeder
     /**
      * Get a list of realistic student names
      *
-     * @param int $offset Optional offset to get different names
-     * @return array
+     * @param  int  $offset  Optional offset to get different names
      */
     private function getRealisticStudentNames(int $offset = 0): array
     {
         $names = [
-            "Emma Johnson",
-            "Liam Smith",
-            "Olivia Williams",
-            "Noah Brown",
-            "Ava Jones",
-            "Ethan Miller",
-            "Sophia Davis",
-            "Mason Garcia",
-            "Isabella Rodriguez",
-            "Logan Martinez",
-            "Charlotte Wilson",
-            "Jacob Anderson",
-            "Mia Taylor",
-            "Jack Thomas",
-            "Amelia Hernandez",
-            "Benjamin Moore",
-            "Harper Martin",
-            "Michael Jackson",
-            "Evelyn Thompson",
-            "Alexander White",
-            "Abigail Harris",
-            "Daniel Clark",
-            "Emily Lewis",
-            "Matthew Lee",
-            "Elizabeth Walker",
-            "Henry Hall",
-            "Sofia Allen",
-            "James Young",
-            "Avery King",
-            "Samuel Wright",
-            "Scarlett Scott",
-            "Joseph Green",
-            "Victoria Baker",
-            "David Adams",
-            "Grace Nelson",
-            "Carter Hill",
-            "Chloe Ramirez",
-            "Owen Campbell",
-            "Ella Mitchell",
-            "Wyatt Roberts",
-            "Riley Carter",
-            "John Phillips",
-            "Lillian Evans",
-            "Gabriel Turner",
-            "Nora Torres",
-            "Julian Collins",
-            "Zoey Parker",
-            "Luke Edwards",
-            "Hannah Morgan",
-            "Isaac Murphy",
+            'Emma Johnson',
+            'Liam Smith',
+            'Olivia Williams',
+            'Noah Brown',
+            'Ava Jones',
+            'Ethan Miller',
+            'Sophia Davis',
+            'Mason Garcia',
+            'Isabella Rodriguez',
+            'Logan Martinez',
+            'Charlotte Wilson',
+            'Jacob Anderson',
+            'Mia Taylor',
+            'Jack Thomas',
+            'Amelia Hernandez',
+            'Benjamin Moore',
+            'Harper Martin',
+            'Michael Jackson',
+            'Evelyn Thompson',
+            'Alexander White',
+            'Abigail Harris',
+            'Daniel Clark',
+            'Emily Lewis',
+            'Matthew Lee',
+            'Elizabeth Walker',
+            'Henry Hall',
+            'Sofia Allen',
+            'James Young',
+            'Avery King',
+            'Samuel Wright',
+            'Scarlett Scott',
+            'Joseph Green',
+            'Victoria Baker',
+            'David Adams',
+            'Grace Nelson',
+            'Carter Hill',
+            'Chloe Ramirez',
+            'Owen Campbell',
+            'Ella Mitchell',
+            'Wyatt Roberts',
+            'Riley Carter',
+            'John Phillips',
+            'Lillian Evans',
+            'Gabriel Turner',
+            'Nora Torres',
+            'Julian Collins',
+            'Zoey Parker',
+            'Luke Edwards',
+            'Hannah Morgan',
+            'Isaac Murphy',
         ];
 
         // Return 20 names starting from the offset
@@ -722,28 +711,22 @@ class DatabaseSeeder extends Seeder
 
     /**
      * Generate student email from name
-     *
-     * @param string $name
-     * @return string
      */
     private function generateStudentEmail(string $name): string
     {
-        $nameParts = explode(" ", strtolower($name));
+        $nameParts = explode(' ', strtolower($name));
         $firstInitial = substr($nameParts[0], 0, 1);
         $lastName = end($nameParts);
 
         // Add some variation to emails
-        $variations = ["", "01", "21", "22", ".edu"];
+        $variations = ['', '01', '21', '22', '.edu'];
         $variation = $variations[array_rand($variations)];
 
-        return $firstInitial . $lastName . $variation . "@student.edu";
+        return $firstInitial.$lastName.$variation.'@student.edu';
     }
 
     /**
      * Get random student note
-     *
-     * @param int $index
-     * @return string|null
      */
     private function getRandomStudentNote(int $index): ?string
     {
@@ -753,16 +736,16 @@ class DatabaseSeeder extends Seeder
         }
 
         $notes = [
-            "Transfer student from Springfield High",
-            "Plays on the school basketball team",
-            "Participates in debate club",
-            "Has accommodations for extended time on tests",
-            "Excels in mathematics and science subjects",
-            "International exchange student",
-            "Student council representative",
-            "Requires seating at the front of class (vision)",
-            "Active in theater program",
-            "Demonstrated leadership skills in group projects",
+            'Transfer student from Springfield High',
+            'Plays on the school basketball team',
+            'Participates in debate club',
+            'Has accommodations for extended time on tests',
+            'Excels in mathematics and science subjects',
+            'International exchange student',
+            'Student council representative',
+            'Requires seating at the front of class (vision)',
+            'Active in theater program',
+            'Demonstrated leadership skills in group projects',
         ];
 
         return $notes[$index % count($notes)];
@@ -770,45 +753,41 @@ class DatabaseSeeder extends Seeder
 
     /**
      * Get realistic feedback based on score
-     *
-     * @param int|null $score
-     * @param int $totalPoints
-     * @return string
      */
     private function getRealisticFeedback(?int $score, int $totalPoints): string
     {
-        if (!$score) {
-            return "Please see me during office hours to discuss this submission.";
+        if (! $score) {
+            return 'Please see me during office hours to discuss this submission.';
         }
 
         $percentage = ($score / $totalPoints) * 100;
 
         if ($percentage >= 90) {
             $feedback = [
-                "Excellent work! Your understanding of the concepts is clear and well-presented.",
+                'Excellent work! Your understanding of the concepts is clear and well-presented.',
                 "Outstanding submission. You've demonstrated a thorough grasp of the material.",
-                "Exceptional work. Your analysis shows depth and critical thinking.",
-                "Very well done! Your submission exceeded expectations in both content and presentation.",
+                'Exceptional work. Your analysis shows depth and critical thinking.',
+                'Very well done! Your submission exceeded expectations in both content and presentation.',
             ];
         } elseif ($percentage >= 80) {
             $feedback = [
-                "Good work overall. Your understanding of key concepts is solid.",
-                "Strong submission with thoughtful analysis. A few minor areas could be developed further.",
-                "Well-structured work showing good comprehension. Continue developing your analytical skills.",
+                'Good work overall. Your understanding of key concepts is solid.',
+                'Strong submission with thoughtful analysis. A few minor areas could be developed further.',
+                'Well-structured work showing good comprehension. Continue developing your analytical skills.',
                 "Good job. You've addressed the main requirements effectively.",
             ];
         } elseif ($percentage >= 70) {
             $feedback = [
                 "Satisfactory work. You've covered the basics, but could explore some concepts in more depth.",
-                "Adequate submission that meets requirements. More detailed analysis would strengthen your work.",
+                'Adequate submission that meets requirements. More detailed analysis would strengthen your work.',
                 "You've demonstrated basic understanding. Consider more specific examples in future work.",
-                "Your work shows promise. Focus on developing more thorough explanations of key concepts.",
+                'Your work shows promise. Focus on developing more thorough explanations of key concepts.',
             ];
         } else {
             $feedback = [
-                "This submission needs improvement. Please review the course materials and consider revising.",
+                'This submission needs improvement. Please review the course materials and consider revising.',
                 "There are several areas that need attention. Let's discuss during office hours.",
-                "Your work shows some understanding, but key concepts are missing or incorrect.",
+                'Your work shows some understanding, but key concepts are missing or incorrect.',
                 "This submission doesn't fully address the requirements. Please review the instructions carefully.",
             ];
         }
@@ -818,7 +797,7 @@ class DatabaseSeeder extends Seeder
 }
 
 // Helper function to randomly select an item from an array
-if (!function_exists("array_random")) {
+if (! function_exists('array_random')) {
     function array_random($array)
     {
         return $array[array_rand($array)];

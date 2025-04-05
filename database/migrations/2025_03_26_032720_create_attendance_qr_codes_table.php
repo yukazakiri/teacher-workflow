@@ -21,7 +21,7 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->text('description')->nullable();
             $table->timestamps();
-            
+
             // Index for faster lookup
             $table->index(['team_id', 'date']);
         });

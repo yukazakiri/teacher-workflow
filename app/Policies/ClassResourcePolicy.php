@@ -6,12 +6,11 @@ use App\Models\ClassResource;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
-use Illuminate\Auth\Access\Response;
 
 class ClassResourcePolicy
 {
     use HandlesAuthorization;
-    
+
     /**
      * Determine whether the user can view any models.
      */
@@ -36,10 +35,12 @@ class ClassResourcePolicy
     {
         // Only teachers and owners can create resources
         $team = $user->currentTeam;
-        if (!$team) return false;
-        
-        return $team->userIsOwner($user) || 
-               $user->hasTeamRole($team, 'teacher') || 
+        if (! $team) {
+            return false;
+        }
+
+        return $team->userIsOwner($user) ||
+               $user->hasTeamRole($team, 'teacher') ||
                $user->hasTeamRole($team, 'admin');
     }
 
@@ -49,22 +50,22 @@ class ClassResourcePolicy
     public function update(User $user, ClassResource $classResource): bool
     {
         $team = $user->currentTeam;
-        
+
         // Check team membership
-        if (!$team || $team->id !== $classResource->team_id) {
+        if (! $team || $team->id !== $classResource->team_id) {
             return false;
         }
-        
+
         // Owner can edit all resources
         if ($team->userIsOwner($user)) {
             return true;
         }
-        
+
         // Teachers can edit resources they created
         if ($user->hasTeamRole($team, 'teacher') && $classResource->created_by === $user->id) {
             return true;
         }
-        
+
         return false;
     }
 
@@ -74,22 +75,22 @@ class ClassResourcePolicy
     public function delete(User $user, ClassResource $classResource): bool
     {
         $team = $user->currentTeam;
-        
+
         // Check team membership
-        if (!$team || $team->id !== $classResource->team_id) {
+        if (! $team || $team->id !== $classResource->team_id) {
             return false;
         }
-        
+
         // Owner can delete all resources
         if ($team->userIsOwner($user)) {
             return true;
         }
-        
+
         // Teachers can delete resources they created
         if ($user->hasTeamRole($team, 'teacher') && $classResource->created_by === $user->id) {
             return true;
         }
-        
+
         return false;
     }
 
@@ -109,22 +110,24 @@ class ClassResourcePolicy
     {
         // Only owners can permanently delete
         $team = $user->currentTeam;
-        
-        if (!$team || $team->id !== $classResource->team_id) {
+
+        if (! $team || $team->id !== $classResource->team_id) {
             return false;
         }
-        
+
         return $team->userIsOwner($user);
     }
-    
+
     /**
      * Determine if user can manage categories.
      */
     public function manageCategories(User $user): bool
     {
         $team = $user->currentTeam;
-        if (!$team) return false;
-        
+        if (! $team) {
+            return false;
+        }
+
         return $team->userIsOwner($user);
     }
-} 
+}

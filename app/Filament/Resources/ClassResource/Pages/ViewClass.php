@@ -5,16 +5,15 @@ namespace App\Filament\Resources\ClassResource\Pages;
 use App\Filament\Resources\ClassResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 
 class ViewClass extends ViewRecord
 {
     protected static string $resource = ClassResource::class;
-    
+
     protected static string $view = 'filament.resources.class-resource.pages.view-class-resource';
-    
+
     protected function getHeaderActions(): array
     {
         return [
@@ -27,11 +26,11 @@ class ViewClass extends ViewRecord
     {
         $resource = $this->record;
         $media = $resource->getMedia('resources')->first();
-        
-        if (!$media) {
+
+        if (! $media) {
             return null;
         }
-        
+
         $metadata = $resource->file_metadata; // Access the accessor
         $mimeType = $metadata?->mime_type ?? 'application/octet-stream';
         $fileUrl = $resource->file_url; // Access the accessor
@@ -66,13 +65,13 @@ class ViewClass extends ViewRecord
             'presentationml',
             'opendocument',
         ];
-        
+
         foreach ($officeTypes as $type) {
             if (str_contains($mimeType, $type)) {
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -91,6 +90,7 @@ class ViewClass extends ViewRecord
             'owner' => 'danger',
             default => 'gray',
         };
+
         return ['label' => $label, 'color' => $color];
     }
 

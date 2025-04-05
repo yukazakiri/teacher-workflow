@@ -4,11 +4,11 @@ namespace App\Livewire\Chat;
 
 use App\Models\Conversation;
 use Livewire\Component;
-use Livewire\Attributes\On;
 
 class ChatMessages extends Component
 {
     public ?Conversation $conversation = null;
+
     public bool $isProcessing = false;
 
     public function mount(?Conversation $conversation = null, bool $isProcessing = false)
@@ -19,7 +19,7 @@ class ChatMessages extends Component
 
     public function regenerateLastMessage(): void
     {
-        if (!$this->conversation) {
+        if (! $this->conversation) {
             return;
         }
 
@@ -28,7 +28,7 @@ class ChatMessages extends Component
 
     public function renameConversation(string $newTitle): void
     {
-        if (!$this->conversation) {
+        if (! $this->conversation) {
             return;
         }
 

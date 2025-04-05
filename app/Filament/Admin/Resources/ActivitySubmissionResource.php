@@ -3,15 +3,12 @@
 namespace App\Filament\Admin\Resources;
 
 use App\Filament\Admin\Resources\ActivitySubmissionResource\Pages;
-use App\Filament\Admin\Resources\ActivitySubmissionResource\RelationManagers;
 use App\Models\ActivitySubmission;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ActivitySubmissionResource extends Resource
 {

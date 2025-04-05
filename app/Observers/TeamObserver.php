@@ -2,8 +2,8 @@
 
 namespace App\Observers;
 
-use App\Models\Team;
 use App\Models\ResourceCategory;
+use App\Models\Team;
 
 class TeamObserver
 {

@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('class_resources', function (Blueprint $table) {
-            if (!Schema::hasColumn('class_resources', 'is_pinned')) {
+            if (! Schema::hasColumn('class_resources', 'is_pinned')) {
                 $table->boolean('is_pinned')->default(false)->after('access_level');
             }
         });

@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Models\Activity;
 use App\Models\ActivityType;
 use App\Models\Team;
 use App\Models\User;

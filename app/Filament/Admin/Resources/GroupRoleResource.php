@@ -3,24 +3,21 @@
 namespace App\Filament\Admin\Resources;
 
 use App\Filament\Admin\Resources\GroupRoleResource\Pages;
-use App\Filament\Admin\Resources\GroupRoleResource\RelationManagers;
 use App\Models\GroupRole;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class GroupRoleResource extends Resource
 {
     protected static ?string $model = GroupRole::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-user-circle';
-    
+
     protected static ?string $navigationGroup = 'Learning Management';
-    
+
     protected static ?int $navigationSort = 15;
 
     public static function form(Form $form): Form

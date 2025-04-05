@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -35,7 +35,7 @@ return new class extends Migration
             foreach ($notifications as $notification) {
                 // Find the user with this ID
                 $user = DB::table('users')->where('id', $notification->notifiable_id)->first();
-                
+
                 if ($user) {
                     DB::table('notifications')
                         ->where('id', $notification->id)
@@ -84,10 +84,10 @@ return new class extends Migration
         foreach ($constraints as $constraint) {
             // Check if this constraint references our column
             $columnCheck = DB::select(
-                "SELECT a.attname 
+                'SELECT a.attname 
                  FROM pg_attribute a 
                  JOIN pg_constraint c ON a.attnum = ANY(c.conkey) 
-                 WHERE c.conname = ? AND a.attrelid = (SELECT oid FROM pg_class WHERE relname = ?)",
+                 WHERE c.conname = ? AND a.attrelid = (SELECT oid FROM pg_class WHERE relname = ?)',
                 [$constraint->conname, $table]
             );
 

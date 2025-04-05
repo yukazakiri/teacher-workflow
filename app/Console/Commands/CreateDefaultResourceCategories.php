@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Team;
 use App\Models\ResourceCategory;
+use App\Models\Team;
 use Illuminate\Console\Command;
 
 class CreateDefaultResourceCategories extends Command
@@ -32,16 +32,16 @@ class CreateDefaultResourceCategories extends Command
 
         $this->info('Creating default resource categories for teams...');
         $bar = $this->output->createProgressBar(count($teams));
-        
+
         foreach ($teams as $team) {
             $createdCategories = $this->createDefaultCategoriesForTeam($team->id);
             $count += $createdCategories;
             $bar->advance();
         }
-        
+
         $bar->finish();
         $this->newLine(2);
-        $this->info("Created {$count} default resource categories for " . count($teams) . " teams.");
+        $this->info("Created {$count} default resource categories for ".count($teams).' teams.');
     }
 
     /**
@@ -50,7 +50,7 @@ class CreateDefaultResourceCategories extends Command
     private function createDefaultCategoriesForTeam(string $teamId): int
     {
         $createdCount = 0;
-        
+
         // Teacher Materials
         $teacherCategories = [
             [
@@ -145,7 +145,7 @@ class CreateDefaultResourceCategories extends Command
                     'is_default' => true,
                 ]
             );
-            
+
             if ($result->wasRecentlyCreated) {
                 $createdCount++;
             }
@@ -167,12 +167,12 @@ class CreateDefaultResourceCategories extends Command
                     'is_default' => true,
                 ]
             );
-            
+
             if ($result->wasRecentlyCreated) {
                 $createdCount++;
             }
         }
-        
+
         return $createdCount;
     }
 }

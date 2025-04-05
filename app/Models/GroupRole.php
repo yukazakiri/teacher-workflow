@@ -17,7 +17,7 @@ class GroupRole extends Model
      *
      * @var array<int, string>
      */
-    protected $fillable = ["activity_id", "name", "description"];
+    protected $fillable = ['activity_id', 'name', 'description'];
 
     /**
      * Get the activity that owns the role.

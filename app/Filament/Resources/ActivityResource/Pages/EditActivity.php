@@ -36,11 +36,11 @@ class EditActivity extends EditRecord
     protected function getRedirectUrl(): string
     {
         // Redirect back to index after saving
-        return $this->getResource()::getUrl("index");
+        return $this->getResource()::getUrl('index');
     }
 
     protected function getSavedNotificationTitle(): ?string
     {
-        return "Activity updated";
+        return 'Activity updated';
     }
 }

@@ -26,4 +26,4 @@ return new class extends Migration
             $table->dropColumn(['form_responses', 'submitted_by_teacher']);
         });
     }
-}; 
+};

@@ -38,8 +38,8 @@ class AttendanceController extends Controller
             // Update existing attendance
             $existingAttendance->update([
                 'status' => $request->status,
-                'time_in' => $request->time_in ? $request->date . ' ' . $request->time_in : null,
-                'time_out' => $request->time_out ? $request->date . ' ' . $request->time_out : null,
+                'time_in' => $request->time_in ? $request->date.' '.$request->time_in : null,
+                'time_out' => $request->time_out ? $request->date.' '.$request->time_out : null,
                 'notes' => $request->notes,
             ]);
 
@@ -56,8 +56,8 @@ class AttendanceController extends Controller
             'created_by' => Auth::id(),
             'status' => $request->status,
             'date' => $request->date,
-            'time_in' => $request->time_in ? $request->date . ' ' . $request->time_in : null,
-            'time_out' => $request->time_out ? $request->date . ' ' . $request->time_out : null,
+            'time_in' => $request->time_in ? $request->date.' '.$request->time_in : null,
+            'time_out' => $request->time_out ? $request->date.' '.$request->time_out : null,
             'notes' => $request->notes,
         ]);
 
@@ -75,14 +75,14 @@ class AttendanceController extends Controller
         // Find the QR code
         $qrCode = AttendanceQrCode::where('code', $code)->first();
 
-        if (!$qrCode) {
+        if (! $qrCode) {
             throw ValidationException::withMessages([
                 'code' => ['Invalid QR code'],
             ]);
         }
 
         // Check if QR code is active and not expired
-        if (!$qrCode->isValid()) {
+        if (! $qrCode->isValid()) {
             throw ValidationException::withMessages([
                 'code' => ['QR code has expired or is inactive'],
             ]);
@@ -93,7 +93,7 @@ class AttendanceController extends Controller
             ->where('team_id', $qrCode->team_id)
             ->first();
 
-        if (!$student) {
+        if (! $student) {
             throw ValidationException::withMessages([
                 'student' => ['You are not a member of this class'],
             ]);
@@ -151,7 +151,7 @@ class AttendanceController extends Controller
             ->whereDate('date', $request->date)
             ->first();
 
-        if (!$attendance) {
+        if (! $attendance) {
             throw ValidationException::withMessages([
                 'attendance' => ['No attendance record found for this date'],
             ]);

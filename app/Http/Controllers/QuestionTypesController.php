@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\QuestionType;
 use App\Models\Question;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use App\Models\QuestionType;
 
 class QuestionTypesController extends Controller
 {

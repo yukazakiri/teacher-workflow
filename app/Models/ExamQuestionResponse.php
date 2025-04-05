@@ -47,7 +47,7 @@ class ExamQuestionResponse extends Model
     {
         $question = $this->question;
 
-        if (!$question) {
+        if (! $question) {
             return false;
         }
 
@@ -56,14 +56,14 @@ class ExamQuestionResponse extends Model
 
         if (is_object($question->correct_answer) && method_exists($question->correct_answer, 'offsetGet')) {
             $correctAnswerArray = $question->correct_answer->getArrayCopy();
-            $correctAnswer = !empty($correctAnswerArray) ? $correctAnswerArray[0] : null;
-        } else if (is_array($question->correct_answer)) {
-            $correctAnswer = !empty($question->correct_answer) ? $question->correct_answer[0] : null;
+            $correctAnswer = ! empty($correctAnswerArray) ? $correctAnswerArray[0] : null;
+        } elseif (is_array($question->correct_answer)) {
+            $correctAnswer = ! empty($question->correct_answer) ? $question->correct_answer[0] : null;
         } else {
             $correctAnswer = $question->correct_answer;
         }
 
-        if (!$correctAnswer) {
+        if (! $correctAnswer) {
             return false;
         }
 
@@ -90,7 +90,7 @@ class ExamQuestionResponse extends Model
     {
         $question = $this->question;
 
-        if (!$question) {
+        if (! $question) {
             return;
         }
 
@@ -101,9 +101,9 @@ class ExamQuestionResponse extends Model
 
             if (is_object($question->correct_answer) && method_exists($question->correct_answer, 'offsetGet')) {
                 $correctAnswerArray = $question->correct_answer->getArrayCopy();
-                $correctAnswer = !empty($correctAnswerArray) ? $correctAnswerArray[0] : null;
-            } else if (is_array($question->correct_answer)) {
-                $correctAnswer = !empty($question->correct_answer) ? $question->correct_answer[0] : null;
+                $correctAnswer = ! empty($correctAnswerArray) ? $correctAnswerArray[0] : null;
+            } elseif (is_array($question->correct_answer)) {
+                $correctAnswer = ! empty($question->correct_answer) ? $question->correct_answer[0] : null;
             } else {
                 $correctAnswer = $question->correct_answer;
             }
@@ -112,13 +112,13 @@ class ExamQuestionResponse extends Model
             if ($this->isCorrect()) {
                 $this->update([
                     'score' => $question->points,
-                    'feedback' => 'Correct answer!'
+                    'feedback' => 'Correct answer!',
                 ]);
             } else {
                 // If incorrect, assign 0 points
                 $this->update([
                     'score' => 0,
-                    'feedback' => 'Incorrect answer. The correct answer is: ' . $correctAnswer
+                    'feedback' => 'Incorrect answer. The correct answer is: '.$correctAnswer,
                 ]);
             }
         }

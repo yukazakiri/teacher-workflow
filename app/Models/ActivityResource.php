@@ -19,15 +19,15 @@ class ActivityResource extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        "activity_id",
-        "user_id",
-        "name",
-        "description",
-        "file_path",
-        "file_name",
-        "file_size",
-        "file_type",
-        "is_public",
+        'activity_id',
+        'user_id',
+        'name',
+        'description',
+        'file_path',
+        'file_name',
+        'file_size',
+        'file_type',
+        'is_public',
     ];
 
     /**
@@ -36,8 +36,8 @@ class ActivityResource extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        "file_size" => "integer",
-        "is_public" => "boolean",
+        'file_size' => 'integer',
+        'is_public' => 'boolean',
     ];
 
     /**

@@ -2,32 +2,28 @@
 
 namespace App\Filament\Pages;
 
-use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Pages\Page;
-use Livewire\Attributes\On;
-use Filament\Facades\Filament;
-use App\Models\ResourceCategory;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
 use App\Filament\Resources\ClassResource;
-use Filament\Support\Facades\FilamentIcon;
 use App\Models\ClassResource as ModelsClassResource;
-use Filament\Forms\Components\FileUpload;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Storage;
+use App\Models\ResourceCategory;
 use Filament\Actions\Action;
-use Filament\Support\Colors\Color;
+use Filament\Facades\Filament;
+use Filament\Forms;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Form;
+use Filament\Notifications\Notification;
+use Filament\Pages\Page;
 use Filament\Support\Enums\ActionSize;
 use Filament\Support\Enums\IconPosition;
-use Filament\Support\Enums\IconSize;
-use Livewire\WithPagination;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Livewire\Attributes\On;
+use Livewire\WithPagination;
 
 class ClassesResources extends Page
 {
@@ -44,15 +40,20 @@ class ClassesResources extends Page
     protected ?string $heading = 'Teaching Resources Hub';
 
     protected ?string $subheading = 'Organize, discover, and share your teaching materials in one central location.';
-    
+
     public ?array $data = [];
-    
+
     // Filter state
     public ?string $selectedType = null;
+
     public ?string $searchQuery = '';
+
     public ?string $selectedAccessLevel = null;
+
     public bool $showArchived = false;
+
     public string $viewingCategory = 'all'; // Default tab
+
     public string $layoutMode = 'grid'; // Default layout: grid, card, list
 
     protected $queryString = [
@@ -76,7 +77,7 @@ class ClassesResources extends Page
         $team = Filament::getTenant();
         $user = Auth::user();
         $isOwner = $team->userIsOwner($user);
-        
+
         return [
             // Quick Upload Action
             Action::make('quick_upload')
@@ -88,16 +89,16 @@ class ClassesResources extends Page
                     FileUpload::make('file')
                         ->label('Upload File')
                         ->disk('public')
-                        ->directory('class-resources/' . $team->id)
+                        ->directory('class-resources/'.$team->id)
                         ->acceptedFileTypes([
-                            'application/pdf', 
+                            'application/pdf',
                             'text/plain',
                             'text/csv',
                             'text/markdown',
                             'image/jpeg',
                             'image/png',
                             'image/gif',
-                            'image/webp'
+                            'image/webp',
                         ])
                         ->helperText('Upload files that can be processed by AI: PDFs, text files, and images')
                         ->required()
@@ -116,8 +117,9 @@ class ClassesResources extends Page
 
                     Select::make('category_id')
                         ->label('Category')
-                        ->options(function() {
+                        ->options(function () {
                             $team = Filament::getTenant();
+
                             return ResourceCategory::where('team_id', $team->id)
                                 ->pluck('name', 'id')
                                 ->toArray();
@@ -140,7 +142,7 @@ class ClassesResources extends Page
                 ->action(function (array $data): void {
                     $team = Filament::getTenant();
                     $user = Auth::user();
-                    
+
                     // Create the resource first without the file
                     $resource = ModelsClassResource::create([
                         'team_id' => $team->id,
@@ -150,30 +152,30 @@ class ClassesResources extends Page
                         'access_level' => $data['access_level'],
                         'created_by' => $user->id,
                     ]);
-                    
+
                     // Add the file to media collection
-                    if (!empty($data['file'])) {
+                    if (! empty($data['file'])) {
                         // Handle the file upload using Spatie Media Library
                         $resource->addMediaFromDisk($data['file'], 'public')
                             ->toMediaCollection('resources');
-                            
+
                         // Try to extract text for AI processing if it's a PDF
                         if (Str::endsWith(strtolower($data['file']), '.pdf')) {
                             try {
                                 $filePath = Storage::disk('public')->path($data['file']);
                                 if (file_exists($filePath)) {
-                                    $parser = new \Smalot\PdfParser\Parser();
+                                    $parser = new \Smalot\PdfParser\Parser;
                                     $pdf = $parser->parseFile($filePath);
                                     $text = $pdf->getText();
-                                    
+
                                     // Store the first 1000 characters of text as description
-                                    if (!empty($text)) {
+                                    if (! empty($text)) {
                                         $resource->description = Str::limit($text, 1000);
                                         $resource->save();
                                     }
                                 }
                             } catch (\Exception $e) {
-                                \Illuminate\Support\Facades\Log::error('PDF parsing error: ' . $e->getMessage());
+                                \Illuminate\Support\Facades\Log::error('PDF parsing error: '.$e->getMessage());
                             }
                         }
                     }
@@ -211,7 +213,7 @@ class ClassesResources extends Page
                                 ->default($this->selectedType)
                                 ->placeholder('All Types')
                                 ->live(),
-                                
+
                             Select::make('access_level')
                                 ->label('Access Level')
                                 ->options([
@@ -223,7 +225,7 @@ class ClassesResources extends Page
                                 ->default($this->selectedAccessLevel)
                                 ->placeholder('All Access Levels')
                                 ->live(),
-                                
+
                             Forms\Components\Toggle::make('show_archived')
                                 ->label('Show Archived Resources')
                                 ->default($this->showArchived)
@@ -236,7 +238,7 @@ class ClassesResources extends Page
                     $this->selectedAccessLevel = $data['access_level'] ?? null;
                     $this->showArchived = $data['show_archived'] ?? false;
                 }),
-                
+
             // Search action
             Action::make('search')
                 ->label('Search')
@@ -255,7 +257,7 @@ class ClassesResources extends Page
                     $this->searchQuery = $data['query'] ?? '';
                     $this->resetPage(); // Reset pagination on search
                 }),
-                
+
             // Manage categories (only for team owners)
             Action::make('manage_categories')
                 ->label('Manage Categories')
@@ -263,7 +265,7 @@ class ClassesResources extends Page
                 ->icon('heroicon-o-tag')
                 ->color('gray')
                 ->visible($isOwner || Gate::allows('manageCategories', ModelsClassResource::class)),
-                
+
         ];
     }
 
@@ -290,118 +292,122 @@ class ClassesResources extends Page
         // This method will be called when resource events are dispatched
         // The blade view will re-render with fresh data
     }
-    
+
     #[On('toggle-pinned')]
     public function togglePinned(string $resourceId): void
     {
         $resource = ModelsClassResource::findOrFail($resourceId);
-        
+
         // Check authorization
-        if (!Gate::allows('update', $resource)) {
+        if (! Gate::allows('update', $resource)) {
             Notification::make()
                 ->title('Permission denied')
                 ->danger()
                 ->send();
+
             return;
         }
-        
-        $resource->is_pinned = !$resource->is_pinned;
+
+        $resource->is_pinned = ! $resource->is_pinned;
         $resource->save();
-        
+
         $status = $resource->is_pinned ? 'pinned' : 'unpinned';
-        
+
         Notification::make()
             ->title("Resource {$status} successfully")
             ->success()
             ->send();
     }
-    
+
     #[On('archive-resource')]
     public function archiveResource(string $resourceId): void
     {
         $resource = ModelsClassResource::findOrFail($resourceId);
-        
+
         // Check authorization
-        if (!Gate::allows('update', $resource)) {
+        if (! Gate::allows('update', $resource)) {
             Notification::make()
                 ->title('Permission denied')
                 ->danger()
                 ->send();
+
             return;
         }
-        
+
         $resource->is_archived = true;
         $resource->save();
-        
+
         Notification::make()
-            ->title("Resource archived successfully")
+            ->title('Resource archived successfully')
             ->success()
             ->send();
-            
+
         $this->dispatch('resource-updated');
     }
-    
+
     #[On('restore-resource')]
     public function restoreResource(string $resourceId): void
     {
         $resource = ModelsClassResource::findOrFail($resourceId);
-        
+
         // Check authorization
-        if (!Gate::allows('update', $resource)) {
+        if (! Gate::allows('update', $resource)) {
             Notification::make()
                 ->title('Permission denied')
                 ->danger()
                 ->send();
+
             return;
         }
-        
+
         $resource->is_archived = false;
         $resource->save();
-        
+
         Notification::make()
-            ->title("Resource restored successfully")
+            ->title('Resource restored successfully')
             ->success()
             ->send();
-            
+
         $this->dispatch('resource-updated');
     }
-    
+
     #[On('delete-resource')]
     public function deleteResource(string $resourceId): void
     {
         $resource = ModelsClassResource::findOrFail($resourceId);
-        
+
         // Check authorization - only owners can delete
         $team = Filament::getTenant();
         $user = Auth::user();
-        
-        if (!$team->userIsOwner($user) && $resource->created_by !== $user->id) {
+
+        if (! $team->userIsOwner($user) && $resource->created_by !== $user->id) {
             Notification::make()
                 ->title('Permission denied')
                 ->body('Only team owners or the resource creator can delete resources.')
                 ->danger()
                 ->send();
+
             return;
         }
-        
+
         // Delete the resource
         $resource->delete();
-        
+
         Notification::make()
-            ->title("Resource deleted successfully")
+            ->title('Resource deleted successfully')
             ->success()
             ->send();
-            
+
         $this->dispatch('resource-deleted');
     }
-    
+
     #[On('filter-changed')]
-    public function applyFilter(string $type = null, string $access = null): void
+    public function applyFilter(?string $type = null, ?string $access = null): void
     {
         $this->selectedType = $type;
         $this->selectedAccessLevel = $access;
     }
-    
+
     #[On('search')]
     public function search(string $query): void
     {
@@ -425,13 +431,13 @@ class ClassesResources extends Page
             $this->resetPage(); // Optionally reset page when changing layout
         }
     }
-    
+
     public function getViewData(): array
     {
         $team = Filament::getTenant();
         $user = Auth::user();
         $isOwner = $team->userIsOwner($user);
-        
+
         // Define resource types (can be simplified if only used for tabs now)
         $resourceTypes = [
             'all' => ['title' => 'All Resources', 'icon' => 'heroicon-o-squares-2x2'],
@@ -445,14 +451,14 @@ class ClassesResources extends Page
         $pinnedQuery = ModelsClassResource::query()
             ->where('team_id', $team->id)
             ->where('is_pinned', true);
-            
+
         // Apply permission filters based on authenticated user to Pinned Resources
-        if (!$isOwner) {
+        if (! $isOwner) {
             if ($user->hasTeamRole($team, 'teacher')) {
                 $pinnedQuery->where(function ($query) use ($user) {
                     $query->where('access_level', 'all')
-                          ->orWhere('access_level', 'teacher')
-                          ->orWhere('created_by', $user->id);
+                        ->orWhere('access_level', 'teacher')
+                        ->orWhere('created_by', $user->id);
                 });
             } else {
                 $pinnedQuery->where('access_level', 'all');
@@ -460,48 +466,47 @@ class ClassesResources extends Page
         }
         $pinnedResources = $pinnedQuery->with(['media', 'category', 'creator', 'team'])->orderBy('updated_at', 'desc')->get();
 
-
         // --- Main Resource Query (Non-Pinned) ---
         $mainResourceQuery = ModelsClassResource::query()
             ->where('team_id', $team->id)
-            ->where(function($q) { 
+            ->where(function ($q) {
                 $q->where('is_pinned', false)->orWhereNull('is_pinned');
             });
 
         // Apply archived filter
         try {
-            if (!$this->showArchived) {
-                $mainResourceQuery->where(function($query) {
+            if (! $this->showArchived) {
+                $mainResourceQuery->where(function ($query) {
                     $query->where('is_archived', false)
-                          ->orWhereNull('is_archived');
+                        ->orWhereNull('is_archived');
                 });
             }
         } catch (\Exception $e) {
-            Log::warning('is_archived filter error: ' . $e->getMessage());
+            Log::warning('is_archived filter error: '.$e->getMessage());
         }
-        
+
         // Apply permission filters to Main Resources
-        if (!$isOwner) {
+        if (! $isOwner) {
             if ($user->hasTeamRole($team, 'teacher')) {
                 $mainResourceQuery->where(function ($query) use ($user) {
                     $query->where('access_level', 'all')
-                          ->orWhere('access_level', 'teacher')
-                          ->orWhere('created_by', $user->id);
+                        ->orWhere('access_level', 'teacher')
+                        ->orWhere('created_by', $user->id);
                 });
             } else {
                 $mainResourceQuery->where('access_level', 'all');
             }
         }
-        
+
         // Apply search filter
-        if (!empty($this->searchQuery)) {
+        if (! empty($this->searchQuery)) {
             $searchQuery = $this->searchQuery;
             $mainResourceQuery->where(function ($query) use ($searchQuery) {
                 $query->where('title', 'like', "%{$searchQuery}%")
-                      ->orWhere('description', 'like', "%{$searchQuery}%");
+                    ->orWhere('description', 'like', "%{$searchQuery}%");
             });
         }
-        
+
         // Apply type filter (from the viewingCategory property)
         if ($this->viewingCategory !== 'all') {
             if ($this->viewingCategory === 'uncategorized') {
@@ -511,37 +516,37 @@ class ClassesResources extends Page
                 $categoryIds = ResourceCategory::where('team_id', $team->id)
                     ->where('type', $this->viewingCategory)
                     ->pluck('id');
-                
+
                 // Ensure categoryIds is not empty before applying whereIn
                 if ($categoryIds->isNotEmpty()) {
                     $mainResourceQuery->whereIn('category_id', $categoryIds);
                 } else {
                     // If no categories exist for this type, return no results
-                    $mainResourceQuery->whereRaw('1 = 0'); 
+                    $mainResourceQuery->whereRaw('1 = 0');
                 }
             }
         }
-        
+
         // Apply access level filter (from header action form)
-        if (!empty($this->selectedAccessLevel)) {
+        if (! empty($this->selectedAccessLevel)) {
             $mainResourceQuery->where('access_level', $this->selectedAccessLevel);
         }
-        
+
         // Fetch main resources with pagination
         $mainResourcesPaginated = $mainResourceQuery
             ->with(['media', 'category', 'creator', 'team'])
-            ->orderBy('updated_at', 'desc') 
+            ->orderBy('updated_at', 'desc')
             ->paginate(12); // Use 12 for grid/card, okay for list too
-            
+
         // --- Stats Calculation Query (independent of main pagination/filters except team/permissions) ---
         $statsBaseQuery = ModelsClassResource::query()->where('team_id', $team->id);
-        if (!$this->showArchived) { // Apply archived filter to stats count
-            $statsBaseQuery->where(function($query) {
+        if (! $this->showArchived) { // Apply archived filter to stats count
+            $statsBaseQuery->where(function ($query) {
                 $query->where('is_archived', false)->orWhereNull('is_archived');
             });
         }
         // Apply permission filter to stats count
-        if (!$isOwner) {
+        if (! $isOwner) {
             if ($user->hasTeamRole($team, 'teacher')) {
                 $statsBaseQuery->where(function ($query) use ($user) {
                     $query->where('access_level', 'all')->orWhere('access_level', 'teacher')->orWhere('created_by', $user->id);
@@ -572,7 +577,7 @@ class ClassesResources extends Page
             'uncategorized' => $uncategorizedCountQuery->whereNull('category_id')->count(),
             'pinned' => $pinnedCountQuery->where('is_pinned', true)->count(), // Count pinned based on permissions/archived status
         ];
-            
+
         return [
             // Keep data needed by the view
             'pinnedResources' => $pinnedResources,
@@ -581,21 +586,21 @@ class ClassesResources extends Page
             'resourceStats' => $resourceStats,
             'viewingCategory' => $this->viewingCategory, // For tab state
             'layoutMode' => $this->layoutMode, // Pass layout mode to view
-            
+
             // Keep data needed by header actions / filter form
-            'selectedType' => $this->selectedType, 
-            'selectedAccessLevel' => $this->selectedAccessLevel, 
-            'searchQuery' => $this->searchQuery, 
+            'selectedType' => $this->selectedType,
+            'selectedAccessLevel' => $this->selectedAccessLevel,
+            'searchQuery' => $this->searchQuery,
             'showArchived' => $this->showArchived,
-            
+
             // Permissions and URLs
             'canManageCategories' => $isOwner || Gate::allows('manageCategories', ModelsClassResource::class),
             'canCreateResources' => Gate::allows('create', ModelsClassResource::class),
             'isTeamOwner' => $isOwner,
             'user' => $user,
             'team' => $team,
-            'resourceViewUrl' => fn($resourceId) => ClassResource::getUrl('view', ['record' => $resourceId]),
-            'resourceEditUrl' => fn($resourceId) => ClassResource::getUrl('edit', ['record' => $resourceId]),
+            'resourceViewUrl' => fn ($resourceId) => ClassResource::getUrl('view', ['record' => $resourceId]),
+            'resourceEditUrl' => fn ($resourceId) => ClassResource::getUrl('edit', ['record' => $resourceId]),
         ];
     }
 }

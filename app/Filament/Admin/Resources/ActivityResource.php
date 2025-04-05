@@ -10,17 +10,15 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ActivityResource extends Resource
 {
     protected static ?string $model = Activity::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
-    
+
     protected static ?string $navigationGroup = 'Learning Management';
-    
+
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
@@ -56,7 +54,7 @@ class ActivityResource extends Resource
                             ->default('draft')
                             ->required(),
                     ])->columns(2),
-                
+
                 Forms\Components\Section::make('Activity Details')
                     ->schema([
                         Forms\Components\RichEditor::make('description')
@@ -95,7 +93,7 @@ class ActivityResource extends Resource
                             ->default(100),
                         Forms\Components\DateTimePicker::make('deadline'),
                     ])->columns(2),
-                
+
                 Forms\Components\Section::make('Submission Settings')
                     ->schema([
                         Forms\Components\Select::make('submission_type')
@@ -120,7 +118,7 @@ class ActivityResource extends Resource
                             ->default(false)
                             ->helperText('Allow teachers to submit on behalf of students'),
                     ])->columns(2),
-                
+
                 Forms\Components\Section::make('Form Structure')
                     ->schema([
                         Forms\Components\Textarea::make('form_structure')
@@ -229,7 +227,7 @@ class ActivityResource extends Resource
             'edit' => Pages\EditActivity::route('/{record}/edit'),
         ];
     }
-    
+
     public static function getNavigationBadge(): ?string
     {
         return static::getModel()::where('status', 'published')->count();

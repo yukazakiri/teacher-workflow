@@ -2,59 +2,48 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Resources\ActivityResource;
+use App\Filament\Resources\StudentResource;
+use App\Filament\Widgets\PendingInvitationsTableWidget;
+use App\Filament\Widgets\TeamMembersTableWidget;
+use App\Models\Student;
 use App\Models\Team;
 use App\Models\User;
-use App\Models\Student;
-use Filament\Forms\Form;
-use Filament\Pages\Page;
+use App\Services\PrismChatService;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
-use App\Livewire\ChatInterface;
-use Laravel\Jetstream\Jetstream;
-use App\Services\PrismChatService;
-use Filament\Actions\CreateAction;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use Prism\Prism\Facades\PrismServer;
-use Filament\Forms\Components\Select;
-use Laravel\Jetstream\TeamInvitation;
 use Filament\Forms\Components\Livewire;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
-use Filament\Support\Enums\IconPosition;
-use Filament\Forms\Components\DatePicker;
-use Illuminate\Database\Eloquent\Builder;
+use Filament\Pages\Dashboard as PagesDashboard;
+use Filament\Pages\Page;
 use Filament\Support\Facades\FilamentIcon;
 use Illuminate\Contracts\Support\Htmlable;
-use Filament\Pages\Dashboard as PagesDashboard;
-use App\Filament\Widgets\TeamMembersTableWidget;
-use App\Filament\Widgets\PendingInvitationsTableWidget;
-use App\Filament\Resources\ActivityResource; // Added import
-use App\Filament\Resources\StudentResource; // Added import
-use App\Models\Activity;
+use Illuminate\Support\Facades\Auth; // Added import
+use Prism\Prism\Facades\PrismServer; // Added import
 
 class Dashboard extends PagesDashboard
 {
-    protected static string $routePath = "/";
+    protected static string $routePath = '/';
 
     protected static ?int $navigationSort = -2;
+
     public const ONBOARDING_STUDENT_THRESHOLD = 5;
-    protected static ?string $navigationLabel = "Home";
+
+    protected static ?string $navigationLabel = 'Home';
+
     /**
      * @var view-string
      */
-    protected static string $view = "filament.pages.dashboard";
+    protected static string $view = 'filament.pages.dashboard';
 
     // Add support for quick actions
 
     public static function getNavigationIcon(): string|Htmlable|null
     {
         return static::$navigationIcon ??
-            (FilamentIcon::resolve("panels::pages.dashboard.navigation-item") ??
+            (FilamentIcon::resolve('panels::pages.dashboard.navigation-item') ??
                 (Filament::hasTopNavigation()
-                    ? "heroicon-m-chat-bubble-oval-left-ellipsis"
-                    : "heroicon-o-chat-bubble-oval-left-ellipsis"));
+                    ? 'heroicon-m-chat-bubble-oval-left-ellipsis'
+                    : 'heroicon-o-chat-bubble-oval-left-ellipsis'));
     }
 
     public static function getRoutePath(): string
@@ -93,7 +82,7 @@ class Dashboard extends PagesDashboard
     public function getTitle(): string|Htmlable
     {
         // Personalized title
-        return "Welcome, " . auth()->user()->name;
+        return 'Welcome, '.auth()->user()->name;
     }
 
     /**
@@ -102,8 +91,10 @@ class Dashboard extends PagesDashboard
     public function getAvailableStyles(): array
     {
         $chatService = app(PrismChatService::class);
+
         return $chatService->getAvailableStyles();
     }
+
     /**
      * Determine the current onboarding state for the user's team.
      * 0 = No onboarding needed / completed
@@ -114,13 +105,14 @@ class Dashboard extends PagesDashboard
     {
         $user = Auth::user();
         // Eager load students count and ensure team exists
-        $team = $user?->currentTeam()->withCount("students")->first();
+        $team = $user?->currentTeam()->withCount('students')->first();
 
-        if (!$team) {
+        if (! $team) {
             \Illuminate\Support\Facades\Log::debug(
-                "getOnboardingState: No current team found.",
-                ["user_id" => $user->id]
+                'getOnboardingState: No current team found.',
+                ['user_id' => $user->id]
             );
+
             return 0; // No team context
         }
 
@@ -129,13 +121,13 @@ class Dashboard extends PagesDashboard
         $studentCount = $team->students_count; // Use eager loaded count
 
         \Illuminate\Support\Facades\Log::debug(
-            "getOnboardingState: Checking state",
+            'getOnboardingState: Checking state',
             [
-                "team_id" => $team->id,
-                "user_id" => $user->id,
-                "current_step" => $currentStep,
-                "student_count" => $studentCount,
-                "threshold" => self::ONBOARDING_STUDENT_THRESHOLD,
+                'team_id' => $team->id,
+                'user_id' => $user->id,
+                'current_step' => $currentStep,
+                'student_count' => $studentCount,
+                'threshold' => self::ONBOARDING_STUDENT_THRESHOLD,
             ]
         );
 
@@ -148,8 +140,9 @@ class Dashboard extends PagesDashboard
         // Note: We might not need teamCreatedRecently if we rely purely on step=0 and count=0
         if ($currentStep === 0 && $studentCount === 0) {
             \Illuminate\Support\Facades\Log::debug(
-                "getOnboardingState: Returning State 1"
+                'getOnboardingState: Returning State 1'
             );
+
             return 1;
         }
 
@@ -160,17 +153,20 @@ class Dashboard extends PagesDashboard
             $studentCount >= self::ONBOARDING_STUDENT_THRESHOLD
         ) {
             \Illuminate\Support\Facades\Log::debug(
-                "getOnboardingState: Returning State 2"
+                'getOnboardingState: Returning State 2'
             );
+
             return 2;
         }
 
         // Default: No onboarding needed for now
         \Illuminate\Support\Facades\Log::debug(
-            "getOnboardingState: Returning State 0"
+            'getOnboardingState: Returning State 0'
         );
+
         return 0;
     }
+
     /**
      * Livewire action to mark an onboarding step as seen/completed.
      */
@@ -183,37 +179,38 @@ class Dashboard extends PagesDashboard
             // Ensure we only move forward, don't accidentally revert
             if ($stepJustCompleted > (int) $team->onboarding_step) {
                 \Illuminate\Support\Facades\Log::info(
-                    "Marking onboarding step complete",
+                    'Marking onboarding step complete',
                     [
-                        "team_id" => $team->id,
-                        "user_id" => $user->id,
-                        "step" => $stepJustCompleted,
+                        'team_id' => $team->id,
+                        'user_id' => $user->id,
+                        'step' => $stepJustCompleted,
                     ]
                 );
-                $team->update(["onboarding_step" => $stepJustCompleted]);
+                $team->update(['onboarding_step' => $stepJustCompleted]);
                 // No need to force refresh usually, Alpine handles UI closure.
                 // $this->dispatch('refresh-dashboard'); // Example if you needed related components to update
             } else {
                 \Illuminate\Support\Facades\Log::info(
-                    "Skipping onboarding step update",
+                    'Skipping onboarding step update',
                     [
-                        "team_id" => $team->id,
-                        "user_id" => $user->id,
-                        "step" => $stepJustCompleted,
-                        "current_step" => $team->onboarding_step,
+                        'team_id' => $team->id,
+                        'user_id' => $user->id,
+                        'step' => $stepJustCompleted,
+                        'current_step' => $team->onboarding_step,
                     ]
                 );
             }
         } else {
             \Illuminate\Support\Facades\Log::warning(
-                "Could not mark onboarding step: No current team found.",
-                ["user_id" => $user->id]
+                'Could not mark onboarding step: No current team found.',
+                ['user_id' => $user->id]
             );
         }
         // We don't necessarily need to close the modal here via Livewire
         // as the Alpine @click='open = false' will handle the UI closure.
         // The next time the page loads, getOnboardingState() will return the updated state.
     }
+
     /**
      * Get the quick actions for the chat.
      */
@@ -221,28 +218,24 @@ class Dashboard extends PagesDashboard
     {
         return [
             [
-                "name" => "Polish prose",
-                "description" => "Improve writing style and clarity",
-                "prompt" =>
-                    "Please polish the following text to improve its clarity, style, and professionalism: ",
+                'name' => 'Polish prose',
+                'description' => 'Improve writing style and clarity',
+                'prompt' => 'Please polish the following text to improve its clarity, style, and professionalism: ',
             ],
             [
-                "name" => "Generate questions",
-                "description" => "Create discussion questions for students",
-                "prompt" =>
-                    "Generate 5 thought-provoking discussion questions for students about the following topic: ",
+                'name' => 'Generate questions',
+                'description' => 'Create discussion questions for students',
+                'prompt' => 'Generate 5 thought-provoking discussion questions for students about the following topic: ',
             ],
             [
-                "name" => "Write a memo",
-                "description" => "Create a professional memo",
-                "prompt" =>
-                    "Write a professional memo about the following topic: ",
+                'name' => 'Write a memo',
+                'description' => 'Create a professional memo',
+                'prompt' => 'Write a professional memo about the following topic: ',
             ],
             [
-                "name" => "Summarize",
-                "description" => "Create a concise summary",
-                "prompt" =>
-                    "Please summarize the following text in a clear and concise manner: ",
+                'name' => 'Summarize',
+                'description' => 'Create a concise summary',
+                'prompt' => 'Please summarize the following text in a clear and concise manner: ',
             ],
         ];
     }
@@ -252,18 +245,18 @@ class Dashboard extends PagesDashboard
      */
     public function getRecentChats(): array
     {
-        $recentChats = \App\Models\Conversation::where("user_id", Auth::id())
-            ->orderBy("last_activity_at", "desc")
+        $recentChats = \App\Models\Conversation::where('user_id', Auth::id())
+            ->orderBy('last_activity_at', 'desc')
             ->limit(5)
             ->get()
             ->map(function ($chat) {
                 return [
-                    "id" => $chat->id,
-                    "title" => $chat->truncated_title,
-                    "model" => $chat->model,
-                    "last_activity" => $chat->last_activity_at->diffForHumans(),
-                    "avatar_letter" => strtoupper(substr($chat->title, 0, 1)),
-                    "color" => $this->getRandomColor(),
+                    'id' => $chat->id,
+                    'title' => $chat->truncated_title,
+                    'model' => $chat->model,
+                    'last_activity' => $chat->last_activity_at->diffForHumans(),
+                    'avatar_letter' => strtoupper(substr($chat->title, 0, 1)),
+                    'color' => $this->getRandomColor(),
                 ];
             })
             ->toArray();
@@ -276,7 +269,8 @@ class Dashboard extends PagesDashboard
      */
     private function getRandomColor(): string
     {
-        $colors = ["primary", "success", "warning", "danger", "info"];
+        $colors = ['primary', 'success', 'warning', 'danger', 'info'];
+
         return $colors[array_rand($colors)];
     }
 
@@ -290,23 +284,23 @@ class Dashboard extends PagesDashboard
         $onboardingState = $this->getOnboardingState();
 
         return [
-            "heading" => $this->getHeading(),
-            "subheading" => $this->getSubheading(),
-            "availableModels" => PrismServer::prisms()->pluck("name"),
-            "availableStyles" => $this->getAvailableStyles(),
-            "quickActions" => $this->getQuickActions(),
-            "recentChats" => $this->getRecentChats(),
-            "conversationId" => request()->get("conversation_id"),
+            'heading' => $this->getHeading(),
+            'subheading' => $this->getSubheading(),
+            'availableModels' => PrismServer::prisms()->pluck('name'),
+            'availableStyles' => $this->getAvailableStyles(),
+            'quickActions' => $this->getQuickActions(),
+            'recentChats' => $this->getRecentChats(),
+            'conversationId' => request()->get('conversation_id'),
             // 'needsOnboarding' => $this->needsOnboarding(), // Remove old flag
-            "onboardingState" => $onboardingState, // Pass the state
-            "studentResourceCreateUrl" => $currentTeam // Changed variable name for clarity
-                ? StudentResource::getUrl("index", ["tenant" => $currentTeam]) // Use Resource URL generation
-                : "#",
+            'onboardingState' => $onboardingState, // Pass the state
+            'studentResourceCreateUrl' => $currentTeam // Changed variable name for clarity
+                ? StudentResource::getUrl('index', ['tenant' => $currentTeam]) // Use Resource URL generation
+                : '#',
             // Add URL for creating activities - Make sure ActivityResource exists and has a 'create' page
-            "activityResourceCreateUrl" => $currentTeam
-                ? ActivityResource::getUrl("create", ["tenant" => $currentTeam])
-                : "#",
-            "studentThreshold" => self::ONBOARDING_STUDENT_THRESHOLD, // Pass threshold for display if needed
+            'activityResourceCreateUrl' => $currentTeam
+                ? ActivityResource::getUrl('create', ['tenant' => $currentTeam])
+                : '#',
+            'studentThreshold' => self::ONBOARDING_STUDENT_THRESHOLD, // Pass threshold for display if needed
         ];
     }
 }

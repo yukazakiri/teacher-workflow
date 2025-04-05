@@ -4,16 +4,15 @@ namespace App\Providers;
 
 use App\Models\Activity;
 use App\Models\Attendance;
+use App\Models\ClassResource;
 use App\Models\ScheduleItem;
 use App\Models\Student;
 use App\Policies\ActivityPolicy;
 use App\Policies\AttendancePolicy;
+use App\Policies\ClassResourcePolicy;
 use App\Policies\ScheduleItemPolicy;
 use App\Policies\StudentPolicy;
-use App\Policies\ClassResourcePolicy;
-use App\Models\ClassResource;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
-use Illuminate\Support\Facades\Gate;
 
 class AuthServiceProvider extends ServiceProvider
 {

@@ -3,7 +3,6 @@
 namespace App\Filament\Admin\Resources\ActivityRoleResource\Pages;
 
 use App\Filament\Admin\Resources\ActivityRoleResource;
-use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
 class EditActivityRole extends EditRecord

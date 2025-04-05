@@ -9,52 +9,56 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Str;
 
 class Activity extends Model
 {
     use HasFactory, HasUuids;
 
-    public const COMPONENT_WRITTEN_WORK = "written_work";
-    public const COMPONENT_PERFORMANCE_TASK = "performance_task";
-    public const COMPONENT_QUARTERLY_ASSESSMENT = "quarterly_assessment";
+    public const COMPONENT_WRITTEN_WORK = 'written_work';
+
+    public const COMPONENT_PERFORMANCE_TASK = 'performance_task';
+
+    public const COMPONENT_QUARTERLY_ASSESSMENT = 'quarterly_assessment';
 
     // College Terms
-    public const TERM_PRELIM = "prelim";
-    public const TERM_MIDTERM = "midterm";
-    public const TERM_FINAL = "final"; // Changed from 'finals' to 'final' for consistency
+    public const TERM_PRELIM = 'prelim';
+
+    public const TERM_MIDTERM = 'midterm';
+
+    public const TERM_FINAL = 'final'; // Changed from 'finals' to 'final' for consistency
+
     /**
      * The attributes that are mass assignable.
      *
      * @var array<int, string>
      */
     protected $fillable = [
-        "team_id",
-        "teacher_id",
-        "activity_type_id",
-        "title",
-        "description",
-        "instructions",
-        "category",
-        "component_type", // SHS
-        "term", // College Term
-        "total_points",
-        "credit_units", // College GWA
-        "due_date",
-        "status",
-        "created_by",
-        "allow_late_submissions",
-        "grading_criteria",
-        "form_config",
-        "mode",
-        "format",
-        "custom_format",
-        "submission_type",
-        "allow_file_uploads",
-        "allow_text_entry",
-        "allowed_file_types",
-        "max_file_size",
-        "allow_teacher_submission",
+        'team_id',
+        'teacher_id',
+        'activity_type_id',
+        'title',
+        'description',
+        'instructions',
+        'category',
+        'component_type', // SHS
+        'term', // College Term
+        'total_points',
+        'credit_units', // College GWA
+        'due_date',
+        'status',
+        'created_by',
+        'allow_late_submissions',
+        'grading_criteria',
+        'form_config',
+        'mode',
+        'format',
+        'custom_format',
+        'submission_type',
+        'allow_file_uploads',
+        'allow_text_entry',
+        'allowed_file_types',
+        'max_file_size',
+        'allow_teacher_submission',
     ];
 
     /**
@@ -63,24 +67,25 @@ class Activity extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        "due_date" => "datetime",
-        "allow_late_submissions" => "boolean",
-        "grading_criteria" => "array",
-        "form_config" => "array",
-        "total_points" => "float", // Ensure it's float/decimal if needed
-        "credit_units" => "float", // Ensure it's float
-        "allow_file_uploads" => "boolean",
-        "allow_text_entry" => "boolean",
-        "allowed_file_types" => "array",
-        "max_file_size" => "integer",
-        "allow_teacher_submission" => "boolean",
+        'due_date' => 'datetime',
+        'allow_late_submissions' => 'boolean',
+        'grading_criteria' => 'array',
+        'form_config' => 'array',
+        'total_points' => 'float', // Ensure it's float/decimal if needed
+        'credit_units' => 'float', // Ensure it's float
+        'allow_file_uploads' => 'boolean',
+        'allow_text_entry' => 'boolean',
+        'allowed_file_types' => 'array',
+        'max_file_size' => 'integer',
+        'allow_teacher_submission' => 'boolean',
     ];
+
     /**
      * Get the teacher that owns the activity.
      */
     public function teacher(): BelongsTo
     {
-        return $this->belongsTo(User::class, "teacher_id");
+        return $this->belongsTo(User::class, 'teacher_id');
     }
 
     /**
@@ -88,50 +93,55 @@ class Activity extends Model
      */
     public function team(): BelongsTo
     {
-        return $this->belongsTo(Team::class, "team_id");
+        return $this->belongsTo(Team::class, 'team_id');
     }
+
     public function getComponentTypeDescriptionAttribute(): string
     {
         return match ($this->component_type) {
-            self::COMPONENT_WRITTEN_WORK => "Written Work (WW)",
-            self::COMPONENT_PERFORMANCE_TASK => "Performance Task (PT)",
-            self::COMPONENT_QUARTERLY_ASSESSMENT => "Quarterly Assessment (QA)",
-            default => "N/A",
+            self::COMPONENT_WRITTEN_WORK => 'Written Work (WW)',
+            self::COMPONENT_PERFORMANCE_TASK => 'Performance Task (PT)',
+            self::COMPONENT_QUARTERLY_ASSESSMENT => 'Quarterly Assessment (QA)',
+            default => 'N/A',
         };
     }
+
     public function getComponentTypeCode(): string
     {
         return match ($this->component_type) {
-            self::COMPONENT_WRITTEN_WORK => "WW",
-            self::COMPONENT_PERFORMANCE_TASK => "PT",
-            self::COMPONENT_QUARTERLY_ASSESSMENT => "QA",
-            default => "",
+            self::COMPONENT_WRITTEN_WORK => 'WW',
+            self::COMPONENT_PERFORMANCE_TASK => 'PT',
+            self::COMPONENT_QUARTERLY_ASSESSMENT => 'QA',
+            default => '',
         };
     }
+
     /**
      * Get a short code for the term.
      */
     public function getTermCode(): string
     {
         return match ($this->term) {
-            self::TERM_PRELIM => "PRE",
-            self::TERM_MIDTERM => "MID",
-            self::TERM_FINAL => "FIN",
-            default => "",
+            self::TERM_PRELIM => 'PRE',
+            self::TERM_MIDTERM => 'MID',
+            self::TERM_FINAL => 'FIN',
+            default => '',
         };
     }
+
     /**
      * Get the term description.
      */
     public function getTermDescriptionAttribute(): string
     {
         return match ($this->term) {
-            self::TERM_PRELIM => "Prelim",
-            self::TERM_MIDTERM => "Midterm",
-            self::TERM_FINAL => "Final",
-            default => "N/A",
+            self::TERM_PRELIM => 'Prelim',
+            self::TERM_MIDTERM => 'Midterm',
+            self::TERM_FINAL => 'Final',
+            default => 'N/A',
         };
     }
+
     /**
      * Get the activity type.
      */
@@ -185,7 +195,7 @@ class Activity extends Model
      */
     public function isDraft(): bool
     {
-        return $this->status === "draft";
+        return $this->status === 'draft';
     }
 
     /**
@@ -193,7 +203,7 @@ class Activity extends Model
      */
     public function isPublished(): bool
     {
-        return $this->status === "published";
+        return $this->status === 'published';
     }
 
     /**
@@ -201,7 +211,7 @@ class Activity extends Model
      */
     public function isArchived(): bool
     {
-        return $this->status === "archived";
+        return $this->status === 'archived';
     }
 
     /**
@@ -209,7 +219,7 @@ class Activity extends Model
      */
     public function isGroupActivity(): bool
     {
-        return $this->mode === "group";
+        return $this->mode === 'group';
     }
 
     /**
@@ -217,7 +227,7 @@ class Activity extends Model
      */
     public function isIndividualActivity(): bool
     {
-        return $this->mode === "individual";
+        return $this->mode === 'individual';
     }
 
     /**
@@ -225,7 +235,7 @@ class Activity extends Model
      */
     public function isTakeHomeActivity(): bool
     {
-        return $this->mode === "take_home";
+        return $this->mode === 'take_home';
     }
 
     /**
@@ -233,7 +243,7 @@ class Activity extends Model
      */
     public function isWrittenActivity(): bool
     {
-        return $this->category === "written";
+        return $this->category === 'written';
     }
 
     /**
@@ -241,7 +251,7 @@ class Activity extends Model
      */
     public function isPerformanceActivity(): bool
     {
-        return $this->category === "performance";
+        return $this->category === 'performance';
     }
 
     /**
@@ -265,7 +275,7 @@ class Activity extends Model
      */
     public function isFormActivity(): bool
     {
-        return $this->submission_type === "form";
+        return $this->submission_type === 'form';
     }
 
     /**
@@ -273,7 +283,7 @@ class Activity extends Model
      */
     public function isResourceActivity(): bool
     {
-        return $this->submission_type === "resource";
+        return $this->submission_type === 'resource';
     }
 
     /**
@@ -281,6 +291,6 @@ class Activity extends Model
      */
     public function isManualActivity(): bool
     {
-        return $this->submission_type === "manual";
+        return $this->submission_type === 'manual';
     }
 }

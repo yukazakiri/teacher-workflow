@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Helpers;
 
-use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Illuminate\Support\Facades\Log;
@@ -14,9 +14,9 @@ class QrCodeHelper
 {
     /**
      * Generate a QR code using BaconQrCode directly
-     * 
-     * @param string $data The data to encode in the QR code
-     * @param int $size The size of the QR code
+     *
+     * @param  string  $data  The data to encode in the QR code
+     * @param  int  $size  The size of the QR code
      * @return string SVG content of the QR code
      */
     public static function generateSvg(string $data, int $size = 200): string
@@ -25,30 +25,32 @@ class QrCodeHelper
             // Sanitize and clean data for UTF-8 issues
             $sanitizedData = preg_replace('/[\x00-\x1F\x7F]/u', '', $data);
             $cleanData = mb_convert_encoding($sanitizedData, 'UTF-8', 'UTF-8');
-            
+
             // Ensure the string is valid UTF-8 - if not, convert to ASCII
-            if (!mb_check_encoding($cleanData, 'UTF-8')) {
+            if (! mb_check_encoding($cleanData, 'UTF-8')) {
                 $cleanData = mb_convert_encoding($sanitizedData, 'ASCII', 'UTF-8');
             }
-            
+
             // Create a renderer with specific options
             $renderer = new ImageRenderer(
                 new RendererStyle($size, 4), // Just set size and margin
-                new SvgImageBackEnd()
+                new SvgImageBackEnd
             );
-            
+
             $writer = new Writer($renderer);
+
             return $writer->writeString($cleanData);
         } catch (\Throwable $e) {
-            Log::error('QR code generation failed: ' . $e->getMessage());
+            Log::error('QR code generation failed: '.$e->getMessage());
+
             return self::fallbackQrCodeSvg($size);
         }
     }
-    
+
     /**
      * Generate a fallback QR code SVG when the actual generation fails
-     * 
-     * @param int $size The size of the SVG
+     *
+     * @param  int  $size  The size of the SVG
      * @return string An SVG representation of a "failed" QR code
      */
     private static function fallbackQrCodeSvg(int $size = 200): string
@@ -63,4 +65,4 @@ class QrCodeHelper
         </svg>
         SVG;
     }
-} 
+}

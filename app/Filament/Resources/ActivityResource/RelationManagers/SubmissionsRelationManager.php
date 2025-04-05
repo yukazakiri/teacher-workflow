@@ -4,35 +4,29 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\ActivityResource\RelationManagers;
 
-use Filament\Forms;
+use App\Models\ActivitySubmission;
+use App\Models\User;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
-use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use App\Models\ActivitySubmission;
-use App\Models\User;
-use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\RichEditor;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Card;
-use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
-use Illuminate\Support\Str;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class SubmissionsRelationManager extends RelationManager
 {
@@ -109,7 +103,7 @@ class SubmissionsRelationManager extends RelationManager
                                     ->numeric()
                                     ->minValue(0)
                                     ->maxValue(fn () => $this->getOwnerRecord()->total_points)
-                                    ->suffix(fn () => '/ ' . $this->getOwnerRecord()->total_points),
+                                    ->suffix(fn () => '/ '.$this->getOwnerRecord()->total_points),
 
                                 RichEditor::make('feedback')
                                     ->label('Feedback')
@@ -157,16 +151,14 @@ class SubmissionsRelationManager extends RelationManager
 
                 TextColumn::make('score')
                     ->label('Score')
-                    ->formatStateUsing(fn ($state, ActivitySubmission $record) =>
-                        $state !== null ? "{$state} / {$this->getOwnerRecord()->total_points}" : 'Not graded'
+                    ->formatStateUsing(fn ($state, ActivitySubmission $record) => $state !== null ? "{$state} / {$this->getOwnerRecord()->total_points}" : 'Not graded'
                     )
                     ->sortable(),
 
                 IconColumn::make('has_attachments')
                     ->label('Attachments')
                     ->boolean()
-                    ->getStateUsing(fn (ActivitySubmission $record): bool =>
-                        $record->attachments !== null && count($record->attachments) > 0
+                    ->getStateUsing(fn (ActivitySubmission $record): bool => $record->attachments !== null && count($record->attachments) > 0
                     ),
 
                 TextColumn::make('submitted_at')
@@ -191,8 +183,7 @@ class SubmissionsRelationManager extends RelationManager
 
                 Filter::make('graded')
                     ->label('Graded Status')
-                    ->query(fn (Builder $query, array $data): Builder =>
-                        $data['isActive'] ? $query->whereNotNull('graded_at') : $query->whereNull('graded_at')
+                    ->query(fn (Builder $query, array $data): Builder => $data['isActive'] ? $query->whereNotNull('graded_at') : $query->whereNull('graded_at')
                     )
                     ->toggle(),
 
@@ -226,7 +217,7 @@ class SubmissionsRelationManager extends RelationManager
                             ->numeric()
                             ->minValue(0)
                             ->maxValue(fn () => $this->getOwnerRecord()->total_points)
-                            ->suffix(fn () => '/ ' . $this->getOwnerRecord()->total_points)
+                            ->suffix(fn () => '/ '.$this->getOwnerRecord()->total_points)
                             ->required(),
 
                         RichEditor::make('feedback')
@@ -250,8 +241,7 @@ class SubmissionsRelationManager extends RelationManager
                         // This would typically create a zip file with all attachments
                         // and return a download response
                     })
-                    ->visible(fn (ActivitySubmission $record): bool =>
-                        $record->attachments !== null && count($record->attachments) > 0
+                    ->visible(fn (ActivitySubmission $record): bool => $record->attachments !== null && count($record->attachments) > 0
                     ),
             ])
             ->bulkActions([
@@ -267,7 +257,7 @@ class SubmissionsRelationManager extends RelationManager
                                 ->numeric()
                                 ->minValue(0)
                                 ->maxValue(fn () => $this->getOwnerRecord()->total_points)
-                                ->suffix(fn () => '/ ' . $this->getOwnerRecord()->total_points)
+                                ->suffix(fn () => '/ '.$this->getOwnerRecord()->total_points)
                                 ->required(),
 
                             RichEditor::make('feedback')

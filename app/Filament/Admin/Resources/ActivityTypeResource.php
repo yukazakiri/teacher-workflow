@@ -3,24 +3,21 @@
 namespace App\Filament\Admin\Resources;
 
 use App\Filament\Admin\Resources\ActivityTypeResource\Pages;
-use App\Filament\Admin\Resources\ActivityTypeResource\RelationManagers;
 use App\Models\ActivityType;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ActivityTypeResource extends Resource
 {
     protected static ?string $model = ActivityType::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-tag';
-    
+
     protected static ?string $navigationGroup = 'Learning Management';
-    
+
     protected static ?int $navigationSort = 10;
 
     public static function form(Form $form): Form

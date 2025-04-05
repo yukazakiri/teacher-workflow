@@ -3,24 +3,21 @@
 namespace App\Filament\Admin\Resources;
 
 use App\Filament\Admin\Resources\QuestionTypeResource\Pages;
-use App\Filament\Admin\Resources\QuestionTypeResource\RelationManagers;
 use App\Models\QuestionType;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class QuestionTypeResource extends Resource
 {
     protected static ?string $model = QuestionType::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-question-mark-circle';
-    
+
     protected static ?string $navigationGroup = 'Exam Management';
-    
+
     protected static ?int $navigationSort = 10;
 
     public static function form(Form $form): Form

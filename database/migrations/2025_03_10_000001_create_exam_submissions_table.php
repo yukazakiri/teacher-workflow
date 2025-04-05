@@ -21,7 +21,7 @@ return new class extends Migration
             $table->timestamp('started_at')->nullable();
             $table->timestamp('submitted_at')->nullable();
             $table->timestamps();
-            
+
             $table->foreign('exam_id')->references('id')->on('exams')->onDelete('cascade');
             $table->foreign('student_id')->references('id')->on('users')->onDelete('cascade');
         });
@@ -34,7 +34,7 @@ return new class extends Migration
             $table->integer('score')->nullable();
             $table->text('feedback')->nullable();
             $table->timestamps();
-            
+
             $table->foreign('exam_submission_id')->references('id')->on('exam_submissions')->onDelete('cascade');
             $table->foreign('question_id')->references('id')->on('questions')->onDelete('cascade');
         });

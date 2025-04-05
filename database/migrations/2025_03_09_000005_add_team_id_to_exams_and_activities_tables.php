@@ -14,9 +14,9 @@ return new class extends Migration
     public function up(): void
     {
         // Skip adding team_id to exams as it already exists
-        
+
         // Only add team_id to activities if it doesn't exist
-        if (!Schema::hasColumn('activities', 'team_id')) {
+        if (! Schema::hasColumn('activities', 'team_id')) {
             Schema::table('activities', function (Blueprint $table) {
                 $table->foreignUuid('team_id')->nullable()->after('teacher_id')->constrained()->cascadeOnDelete();
             });

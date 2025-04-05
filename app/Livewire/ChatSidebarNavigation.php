@@ -6,15 +6,15 @@ namespace App\Livewire;
 
 use App\Models\Chat;
 use Illuminate\Support\Facades\Auth;
-use Livewire\Component;
 use Livewire\Attributes\Computed;
+use Livewire\Component;
 
 class ChatSidebarNavigation extends Component
 {
     public function render()
     {
         $tenant = Auth::user()->currentTeam->id;
-        
+
         return <<<HTML
         <div class="px-2 py-3">
             <div class="flex items-center justify-between mb-2 px-2">
@@ -54,7 +54,7 @@ class ChatSidebarNavigation extends Component
         </div>
         HTML;
     }
-    
+
     #[Computed]
     public function recentChats()
     {
@@ -64,7 +64,7 @@ class ChatSidebarNavigation extends Component
             ->limit(5)
             ->get();
     }
-    
+
     #[Computed]
     public function hasMoreChats()
     {

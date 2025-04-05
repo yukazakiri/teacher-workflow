@@ -11,29 +11,33 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
 use Filament\Pages\Page;
-use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\CreateAction;
 use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Columns\ColorColumn;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Filament\Notifications\Notification;
 
 class WeeklySchedule extends Page implements HasTable
 {
     use InteractsWithTable;
-    
+
     protected static ?string $navigationIcon = 'heroicon-o-calendar';
+
     protected static ?string $navigationLabel = 'Class Schedule';
+
     protected static ?string $navigationGroup = 'Classroom Tools';
+
     protected static ?int $navigationSort = 3;
+
     protected static string $view = 'filament.pages.weekly-schedule';
-    
+
     public ?string $teamId = null;
+
     public array $weekdays = [
         'Monday',
         'Tuesday',
@@ -48,8 +52,8 @@ class WeeklySchedule extends Page implements HasTable
     {
         $user = Auth::user();
         $this->teamId = $user->currentTeam->id;
-    } 
-  
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -76,17 +80,15 @@ class WeeklySchedule extends Page implements HasTable
                     ->label('Location/Room')
                     ->searchable(),
                 ColorColumn::make('color')
-                    ->label('Color')
+                    ->label('Color'),
             ])
             ->actions([
                 EditAction::make()
                     ->form($this->getScheduleItemForm())
-                    ->visible(fn (ScheduleItem $record): bool => 
-                        Auth::user()->can('update', $record)
+                    ->visible(fn (ScheduleItem $record): bool => Auth::user()->can('update', $record)
                     ),
                 DeleteAction::make()
-                    ->visible(fn (ScheduleItem $record): bool => 
-                        Auth::user()->can('delete', $record)
+                    ->visible(fn (ScheduleItem $record): bool => Auth::user()->can('delete', $record)
                     ),
             ])
             ->headerActions([
@@ -94,18 +96,18 @@ class WeeklySchedule extends Page implements HasTable
                     ->form($this->getScheduleItemForm())
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['team_id'] = $this->teamId;
+
                         return $data;
                     })
-                    ->visible(fn (): bool => 
-                        Auth::user()->can('create', ScheduleItem::class)
+                    ->visible(fn (): bool => Auth::user()->can('create', ScheduleItem::class)
                     ),
             ]);
     }
-    
+
     protected function getScheduleItemForm(): array
     {
         $teamName = Auth::user()->currentTeam->name;
-        
+
         return [
             Select::make('day_of_week')
                 ->label('Day of Week')
@@ -122,7 +124,7 @@ class WeeklySchedule extends Page implements HasTable
                 ->after('start_time'),
             TextInput::make('title')
                 ->label('Class Name')
-                ->default($teamName . ' Class')
+                ->default($teamName.' Class')
                 ->required()
                 ->maxLength(255),
             TextInput::make('location')
@@ -133,7 +135,7 @@ class WeeklySchedule extends Page implements HasTable
                 ->default('#4f46e5'),
         ];
     }
-    
+
     public function getScheduleItemsByDay(string $day): Collection
     {
         return ScheduleItem::where('team_id', $this->teamId)
@@ -141,7 +143,7 @@ class WeeklySchedule extends Page implements HasTable
             ->orderBy('start_time')
             ->get();
     }
-    
+
     public static function getNavigationItems(): array
     {
         return [
@@ -154,22 +156,22 @@ class WeeklySchedule extends Page implements HasTable
                 ->url(static::getNavigationUrl()),
         ];
     }
-    
+
     public static function getNavigationUrl(): string
     {
         // Get the current team ID
         $teamId = Auth::user()?->currentTeam?->id;
-        
-        if (!$teamId) {
+
+        if (! $teamId) {
             return '';
         }
-        
+
         return route('filament.app.pages.weekly-schedule', ['tenant' => $teamId]);
     }
-    
+
     public static function shouldRegisterNavigation(): bool
     {
         // Only show for team members
         return Auth::user()?->currentTeam !== null;
     }
-} 
+}

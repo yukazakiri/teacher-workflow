@@ -3,17 +3,14 @@
 namespace App\Filament\Admin\Resources;
 
 use App\Filament\Admin\Resources\ExamResource\Pages;
-use App\Filament\Admin\Resources\ExamResource\RelationManagers;
 use App\Models\Exam;
+use App\Models\QuestionType;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use App\Models\QuestionType;
-use Illuminate\Database\Eloquent\Model;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Database\Eloquent\Model;
 
 class ExamResource extends Resource
 {
@@ -117,6 +114,7 @@ class ExamResource extends Resource
 
         return $data;
     }
+
     public static function getRelations(): array
     {
         return [

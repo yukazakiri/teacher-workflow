@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Smalot\PdfParser\Parser;
@@ -67,37 +67,38 @@ class ClassResource extends Model implements HasMedia
                     try {
                         $filePath = $media->getPath();
                         if (file_exists($filePath)) {
-                            $parser = new Parser();
+                            $parser = new Parser;
                             $pdf = $parser->parseFile($filePath);
-                            
+
                             // Try to get content
                             $text = $pdf->getText();
-                            if (!empty($text)) {
+                            if (! empty($text)) {
                                 $resource->description = Str::limit($text, 1000);
                                 $resource->saveQuietly(); // Save without triggering events
+
                                 return;
                             }
-                            
+
                             // If no content, try metadata
                             $details = $pdf->getDetails();
                             $descriptionParts = [];
-                            if (isset($details['Subject']) && !empty($details['Subject'])) {
+                            if (isset($details['Subject']) && ! empty($details['Subject'])) {
                                 $descriptionParts[] = $details['Subject'];
                             }
-                            if (isset($details['Keywords']) && !empty($details['Keywords'])) {
-                                $descriptionParts[] = "Keywords: " . $details['Keywords'];
+                            if (isset($details['Keywords']) && ! empty($details['Keywords'])) {
+                                $descriptionParts[] = 'Keywords: '.$details['Keywords'];
                             }
-                            if (isset($details['Author']) && !empty($details['Author'])) {
-                                $descriptionParts[] = "Author: " . $details['Author'];
+                            if (isset($details['Author']) && ! empty($details['Author'])) {
+                                $descriptionParts[] = 'Author: '.$details['Author'];
                             }
-                            
-                            if (!empty($descriptionParts)) {
+
+                            if (! empty($descriptionParts)) {
                                 $resource->description = implode("\n", $descriptionParts);
                                 $resource->saveQuietly(); // Save without triggering events
                             }
                         }
                     } catch (\Exception $e) {
-                        \Illuminate\Support\Facades\Log::error('PDF parsing error on create: ' . $e->getMessage());
+                        \Illuminate\Support\Facades\Log::error('PDF parsing error on create: '.$e->getMessage());
                     }
                 }
             }
@@ -114,21 +115,21 @@ class ClassResource extends Model implements HasMedia
         $this->addMediaCollection('resources')
             ->singleFile() // Only one file per resource
             ->acceptsMimeTypes([
-                'application/pdf', 
+                'application/pdf',
                 'text/plain',
                 'text/csv',
                 'text/markdown',
                 'image/jpeg',
                 'image/png',
                 'image/gif',
-                'image/webp'
+                'image/webp',
             ]);
     }
-    
+
     /**
      * Register any media conversions.
      */
-    public function registerMediaConversions(Media $media = null): void
+    public function registerMediaConversions(?Media $media = null): void
     {
         // Generate thumbnails for images
         $this->addMediaConversion('thumb')
@@ -168,6 +169,7 @@ class ClassResource extends Model implements HasMedia
     public function getFileUrlAttribute(): ?string
     {
         $media = $this->getMedia('resources')->first();
+
         return $media ? $media->getUrl() : null;
     }
 
@@ -177,11 +179,11 @@ class ClassResource extends Model implements HasMedia
     public function getFileMetadataAttribute(): ?object
     {
         $media = $this->getMedia('resources')->first();
-        
-        if (!$media) {
+
+        if (! $media) {
             return null;
         }
-        
+
         try {
             return (object) [
                 'size' => $media->size,
@@ -194,7 +196,8 @@ class ClassResource extends Model implements HasMedia
                 'thumb_url' => $media->hasGeneratedConversion('thumb') ? $media->getUrl('thumb') : null,
             ];
         } catch (\Exception $e) {
-             \Illuminate\Support\Facades\Log::error('Error getting media metadata: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Error getting media metadata: '.$e->getMessage());
+
             return null;
         }
     }
@@ -206,9 +209,9 @@ class ClassResource extends Model implements HasMedia
     {
         // Get the team
         $team = $this->team;
-        
+
         // Check if user is a member of the team
-        if (!$team || !$user || !$team->hasUser($user)) {
+        if (! $team || ! $user || ! $team->hasUser($user)) {
             return false;
         }
 

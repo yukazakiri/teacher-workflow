@@ -23,7 +23,7 @@ return new class extends Migration
             $table->text('feedback')->nullable();
             $table->timestamp('submitted_at')->nullable();
             $table->timestamps();
-            
+
             $table->foreign('activity_id')->references('id')->on('activities')->onDelete('cascade');
             $table->foreign('student_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('activity_group_id')->references('id')->on('activity_groups')->onDelete('cascade');
@@ -37,7 +37,7 @@ return new class extends Migration
             $table->integer('progress_percentage')->default(0);
             $table->timestamp('last_activity')->nullable();
             $table->timestamps();
-            
+
             $table->foreign('activity_id')->references('id')->on('activities')->onDelete('cascade');
             $table->foreign('student_id')->references('id')->on('users')->onDelete('cascade');
         });

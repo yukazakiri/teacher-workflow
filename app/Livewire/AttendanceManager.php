@@ -6,7 +6,6 @@ namespace App\Livewire;
 
 use App\Models\Attendance;
 use App\Models\AttendanceQrCode;
-use App\Models\Student;
 use App\Models\Team;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -19,15 +18,25 @@ class AttendanceManager extends Component
     use WithPagination;
 
     public Team $team;
+
     public string $date;
+
     public Collection $students;
+
     public array $attendance = [];
+
     public string $selectedStatus = 'present';
+
     public ?string $notes = null;
+
     public bool $showQrCode = false;
+
     public ?AttendanceQrCode $activeQrCode = null;
+
     public int $qrCodeExpiryMinutes = 30;
+
     public string $qrCodeDescription = '';
+
     public array $stats = [
         'total_students' => 0,
         'present' => 0,
@@ -175,8 +184,8 @@ class AttendanceManager extends Component
             ->whereDate('date', $this->date)
             ->first();
 
-        $timeIn = $data['time_in'] ? Carbon::parse($this->date . ' ' . $data['time_in']) : ($data['status'] === 'present' ? now() : null);
-        $timeOut = $data['time_out'] ? Carbon::parse($this->date . ' ' . $data['time_out']) : null;
+        $timeIn = $data['time_in'] ? Carbon::parse($this->date.' '.$data['time_in']) : ($data['status'] === 'present' ? now() : null);
+        $timeOut = $data['time_out'] ? Carbon::parse($this->date.' '.$data['time_out']) : null;
 
         if ($existingRecord) {
             $existingRecord->update([
@@ -211,7 +220,7 @@ class AttendanceManager extends Component
 
     public function toggleShowQrCode()
     {
-        $this->showQrCode = !$this->showQrCode;
+        $this->showQrCode = ! $this->showQrCode;
     }
 
     public function generateQrCode()
@@ -225,7 +234,7 @@ class AttendanceManager extends Component
             Auth::user(),
             Carbon::parse($this->date),
             $this->qrCodeExpiryMinutes,
-            $this->qrCodeDescription ?: 'Attendance for ' . $this->date
+            $this->qrCodeDescription ?: 'Attendance for '.$this->date
         );
 
         $this->showQrCode = true;
@@ -256,12 +265,12 @@ class AttendanceManager extends Component
             // First sanitize the URL to ensure proper UTF-8 encoding
             $sanitizedUrl = preg_replace('/[\x00-\x1F\x7F]/u', '', $url);
             $cleanUrl = mb_convert_encoding($sanitizedUrl, 'UTF-8', 'UTF-8');
-            
+
             // Use BaconQrCode directly as it's more reliable with special characters
             return \App\Helpers\QrCodeHelper::generateSvg($cleanUrl, 200);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('QR code generation failed: ' . $e->getMessage());
-            
+            \Illuminate\Support\Facades\Log::error('QR code generation failed: '.$e->getMessage());
+
             // Return a fallback message when generation fails
             return '<div class="flex items-center justify-center w-48 h-48 bg-gray-100 rounded-lg">
                 <div class="text-center p-4">

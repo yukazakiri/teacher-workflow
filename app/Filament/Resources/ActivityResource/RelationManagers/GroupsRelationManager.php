@@ -6,32 +6,31 @@ namespace App\Filament\Resources\ActivityResource\RelationManagers;
 
 use App\Models\Activity; // Use Activity model
 use App\Models\Group;
-use App\Models\User;
-use App\Models\Student; // Use Student model for options
+use App\Models\Student;
+use App\Models\User; // Use Student model for options
 use Filament\Forms;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
+use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Repeater;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Notifications\Notification;
-use Illuminate\Support\Collection;
 
 class GroupsRelationManager extends RelationManager
 {
-    protected static string $relationship = "groups";
+    protected static string $relationship = 'groups';
 
     // Conditionally display this relation manager
     public static function canViewForRecord(
@@ -40,7 +39,7 @@ class GroupsRelationManager extends RelationManager
     ): bool {
         // Only show this manager if the Activity mode is 'group'
         return $ownerRecord instanceof Activity &&
-            $ownerRecord->mode === "group";
+            $ownerRecord->mode === 'group';
     }
 
     public function form(Form $form): Form
@@ -49,47 +48,47 @@ class GroupsRelationManager extends RelationManager
         $teamId = Auth::user()->currentTeam->id;
 
         return $form->schema([
-            TextInput::make("name")
+            TextInput::make('name')
                 ->required()
                 ->maxLength(255)
-                ->placeholder("Enter group name (e.g., Group Alpha)"),
+                ->placeholder('Enter group name (e.g., Group Alpha)'),
 
-            Textarea::make("description")
+            Textarea::make('description')
                 ->rows(3)
                 ->placeholder(
-                    "Optional: Add a short description for the group"
+                    'Optional: Add a short description for the group'
                 ),
 
-            Select::make("members")
-                ->label("Group Members")
+            Select::make('members')
+                ->label('Group Members')
                 ->multiple()
                 ->relationship(
-                    "members",
-                    "name",
-                    modifyQueryUsing: fn(
+                    'members',
+                    'name',
+                    modifyQueryUsing: fn (
                         Builder $query // Ensure we only select students from the current team
                     ) => $query
                         ->whereHas(
-                            "teams",
-                            fn($q) => $q->where(
-                                "team_id",
+                            'teams',
+                            fn ($q) => $q->where(
+                                'team_id',
                                 Auth::user()->currentTeam->id
                             )
                         )
-                        ->where("id", "!=", Auth::id()) // Exclude teacher
+                        ->where('id', '!=', Auth::id()) // Exclude teacher
                     // Optional: Add role check if needed (e.g., only users with 'student' role)
                     // ->whereHas('teamRoles', fn($q) => $q->where('role', 'student'))
                 )
                 ->options(
                     // Provide options directly for better performance if list isn't huge
-                    Student::where("team_id", $teamId) // Assuming Student model exists and is relevant
-                        ->where("status", "active")
-                        ->orderBy("name")
-                        ->pluck("name", "id")
+                    Student::where('team_id', $teamId) // Assuming Student model exists and is relevant
+                        ->where('status', 'active')
+                        ->orderBy('name')
+                        ->pluck('name', 'id')
                 )
                 ->preload()
                 ->searchable()
-                ->helperText("Select the students who belong to this group."),
+                ->helperText('Select the students who belong to this group.'),
 
             // Simplified Role Assignment (if needed directly on group, otherwise handle via submissions maybe?)
             // If roles are defined on Activity, maybe assign them per student submission?
@@ -126,29 +125,29 @@ class GroupsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->recordTitleAttribute("name")
+            ->recordTitleAttribute('name')
             ->columns([
-                TextColumn::make("name")
+                TextColumn::make('name')
                     ->searchable()
                     ->sortable()
                     ->description(
-                        fn(Group $record): ?string => $record->description
+                        fn (Group $record): ?string => $record->description
                     ),
 
-                TextColumn::make("members_count")
-                    ->label("Members")
-                    ->counts("members") // Make sure the 'members' relationship exists on Group model
+                TextColumn::make('members_count')
+                    ->label('Members')
+                    ->counts('members') // Make sure the 'members' relationship exists on Group model
                     ->sortable()
                     ->alignCenter(),
 
-                TextColumn::make("submissions_count") // Requires Group hasMany Submissions relation
-                    ->label("Submissions")
-                    ->counts("submissions") // Make sure the 'submissions' relationship exists on Group model
+                TextColumn::make('submissions_count') // Requires Group hasMany Submissions relation
+                    ->label('Submissions')
+                    ->counts('submissions') // Make sure the 'submissions' relationship exists on Group model
                     ->sortable()
                     ->alignCenter(),
 
-                TextColumn::make("created_at")
-                    ->dateTime("M d, Y")
+                TextColumn::make('created_at')
+                    ->dateTime('M d, Y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -158,22 +157,22 @@ class GroupsRelationManager extends RelationManager
             ->headerActions([
                 Tables\Actions\CreateAction::make(),
 
-                Action::make("auto_assign")
-                    ->label("Auto-Assign Students")
-                    ->icon("heroicon-o-user-group")
-                    ->color("secondary")
+                Action::make('auto_assign')
+                    ->label('Auto-Assign Students')
+                    ->icon('heroicon-o-user-group')
+                    ->color('secondary')
                     ->requiresConfirmation()
-                    ->modalHeading("Auto-Assign Students to Groups")
+                    ->modalHeading('Auto-Assign Students to Groups')
                     ->modalDescription(
-                        "This will distribute all active students in the class evenly among the specified number of groups. Existing groups and assignments might be affected or removed. Are you sure?"
+                        'This will distribute all active students in the class evenly among the specified number of groups. Existing groups and assignments might be affected or removed. Are you sure?'
                     )
                     ->form([
-                        TextInput::make("group_count")
-                            ->label("Desired Number of Groups")
+                        TextInput::make('group_count')
+                            ->label('Desired Number of Groups')
                             ->numeric()
                             ->minValue(2)
                             ->default(
-                                fn() => $this->getOwnerRecord()->group_count ??
+                                fn () => $this->getOwnerRecord()->group_count ??
                                     4
                             ) // Use value from activity if set
                             ->required(),
@@ -185,20 +184,21 @@ class GroupsRelationManager extends RelationManager
                     ->action(function (array $data) {
                         $activity = $this->getOwnerRecord();
                         $teamId = Auth::user()->currentTeam->id;
-                        $students = Student::where("team_id", $teamId)
-                            ->where("status", "active")
+                        $students = Student::where('team_id', $teamId)
+                            ->where('status', 'active')
                             ->inRandomOrder() // Shuffle for randomness
                             ->get();
 
                         if ($students->isEmpty()) {
                             Notification::make()
-                                ->title("No active students found to assign.")
+                                ->title('No active students found to assign.')
                                 ->warning()
                                 ->send();
+
                             return;
                         }
 
-                        $groupCount = max(2, (int) $data["group_count"]); // Ensure at least 2 groups
+                        $groupCount = max(2, (int) $data['group_count']); // Ensure at least 2 groups
                         $studentsPerGroup = max(
                             1,
                             floor($students->count() / $groupCount)
@@ -232,17 +232,16 @@ class GroupsRelationManager extends RelationManager
                             }
 
                             $group = $activity->groups()->create([
-                                "name" => "Group " . ($index + 1),
-                                "description" =>
-                                    "Auto-assigned for " . $activity->title,
-                                "team_id" => $teamId, // Ensure team_id is set if needed
+                                'name' => 'Group '.($index + 1),
+                                'description' => 'Auto-assigned for '.$activity->title,
+                                'team_id' => $teamId, // Ensure team_id is set if needed
                             ]);
 
-                            $group->members()->sync($studentGroup->pluck("id")); // Sync members
+                            $group->members()->sync($studentGroup->pluck('id')); // Sync members
                         }
 
                         Notification::make()
-                            ->title("Students Auto-Assigned")
+                            ->title('Students Auto-Assigned')
                             ->body(
                                 "Created {$groupCount} groups and assigned {$students->count()} students."
                             )
@@ -268,7 +267,7 @@ class GroupsRelationManager extends RelationManager
                 //     ),
             ])
             ->bulkActions([BulkActionGroup::make([DeleteBulkAction::make()])])
-            ->emptyStateHeading("No groups created yet")
+            ->emptyStateHeading('No groups created yet')
             ->emptyStateDescription(
                 'Create groups manually or use the "Auto-Assign" action.'
             );

@@ -4,12 +4,11 @@ namespace App\Filament\Resources\ExamResource\Pages;
 
 use App\Filament\Resources\ExamResource;
 use App\Models\Question;
-use Filament\Actions;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
-use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\DB;
 
 class CreateExam extends CreateRecord
 {
@@ -19,18 +18,18 @@ class CreateExam extends CreateRecord
     {
         $user = Auth::user();
         $team = $user?->currentTeam;
-        
-        if (!$team || !$team->userIsOwner($user)) {
+
+        if (! $team || ! $team->userIsOwner($user)) {
             Notification::make()
                 ->title('Access Denied')
                 ->body('Only team owners can create exams.')
                 ->danger()
                 ->send();
-                
+
             redirect()->route('filament.app.pages.dashboard', ['tenant' => $team->id ?? 1])->send();
             exit;
         }
-        
+
         parent::mount();
     }
 
@@ -74,7 +73,7 @@ class CreateExam extends CreateRecord
             // Process each question in the section
             foreach ($section['data']['questions'] as $questionData) {
                 // Create question record
-                $question = new Question();
+                $question = new Question;
                 $question->fill([
                     'teacher_id' => Auth::id(),
                     'exam_id' => $exam->id,

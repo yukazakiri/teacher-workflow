@@ -26,12 +26,12 @@ return new class extends Migration
                 ->references('id')
                 ->on('teams')
                 ->onDelete('cascade');
-                
+
             $table->foreign('category_id')
                 ->references('id')
                 ->on('resource_categories')
                 ->onDelete('set null');
-                
+
             $table->foreign('created_by')
                 ->references('id')
                 ->on('users')
@@ -46,4 +46,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('class_resources');
     }
-}; 
+};

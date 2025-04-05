@@ -2,29 +2,42 @@
 
 namespace App\Filament\Pages;
 
-use Filament\Pages\Page;
-use Devonab\FilamentEasyFooter\Services\GitHubService;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
+use Devonab\FilamentEasyFooter\Services\GitHubService;
+use Filament\Pages\Page;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 
 class Changelogs extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
+
     protected static string $view = 'filament.pages.changelogs';
+
     protected static ?string $navigationLabel = 'Changelogs';
+
     protected static ?string $title = 'Release History & Changelogs';
 
     public array $releases = [];
+
     public ?string $currentVersion = null;
+
     public ?string $repository = null;
+
     public array $releaseStats = [];
+
     public array $releasesByYear = [];
+
     public ?string $selectedRelease = null;
+
     public ?string $latestReleaseDate = null;
+
     public int $totalReleases = 0;
+
     public int $majorReleases = 0;
+
     public int $minorReleases = 0;
+
     public int $patchReleases = 0;
 
     public function mount(): void
@@ -39,6 +52,7 @@ class Changelogs extends Page
     protected function getCurrentVersion(): ?string
     {
         $githubService = app(GitHubService::class);
+
         return $githubService->getLatestTag($this->repository);
     }
 
@@ -63,6 +77,7 @@ class Changelogs extends Page
                     return [];
                 } catch (\Exception $e) {
                     report($e);
+
                     return [];
                 }
             }
@@ -89,7 +104,7 @@ class Changelogs extends Page
             }
 
             // Group by year
-            if (!isset($releasesByYear[$year])) {
+            if (! isset($releasesByYear[$year])) {
                 $releasesByYear[$year] = [];
             }
             $releasesByYear[$year][] = $release;
@@ -127,7 +142,7 @@ class Changelogs extends Page
 
     public function getSelectedReleaseData(): ?array
     {
-        if (!$this->selectedRelease) {
+        if (! $this->selectedRelease) {
             return null;
         }
 

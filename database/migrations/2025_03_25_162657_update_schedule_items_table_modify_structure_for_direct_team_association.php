@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Step 1 of the UUID migration sequence:
      * Add team_id (UUID) to schedule_items table
      */

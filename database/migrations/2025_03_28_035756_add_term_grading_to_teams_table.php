@@ -4,26 +4,27 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        Schema::table("teams", function (Blueprint $table) {
+        Schema::table('teams', function (Blueprint $table) {
             // Add term weights (nullable if not using term system)
             $table
-                ->unsignedTinyInteger("college_prelim_weight")
+                ->unsignedTinyInteger('college_prelim_weight')
                 ->nullable()
-                ->after("college_grading_scale");
+                ->after('college_grading_scale');
             $table
-                ->unsignedTinyInteger("college_midterm_weight")
+                ->unsignedTinyInteger('college_midterm_weight')
                 ->nullable()
-                ->after("college_prelim_weight");
+                ->after('college_prelim_weight');
             $table
-                ->unsignedTinyInteger("college_final_weight")
+                ->unsignedTinyInteger('college_final_weight')
                 ->nullable()
-                ->after("college_midterm_weight");
+                ->after('college_midterm_weight');
 
             // Add a specific scale for term calculation if needed, or assume the main college_grading_scale applies
             // Let's assume college_grading_scale applies to term grades AND final grade for now.
@@ -42,11 +43,11 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::table("teams", function (Blueprint $table) {
+        Schema::table('teams', function (Blueprint $table) {
             $table->dropColumn([
-                "college_prelim_weight",
-                "college_midterm_weight",
-                "college_final_weight",
+                'college_prelim_weight',
+                'college_midterm_weight',
+                'college_final_weight',
             ]);
         });
     }

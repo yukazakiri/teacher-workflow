@@ -2,13 +2,11 @@
 
 namespace App\Filament\Resources\StudentResource\Pages;
 
+use App\Filament\Pages\Dashboard;
 use App\Filament\Resources\StudentResource;
-use Filament\Actions;
-use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
-use App\Filament\Pages\Dashboard; // Import Dashboard
-use App\Models\Team; // Import Team
+use App\Models\Team;
+use Filament\Resources\Pages\CreateRecord; // Import Dashboard
+use Illuminate\Support\Facades\Auth; // Import Team
 
 class CreateStudent extends CreateRecord
 {
@@ -25,7 +23,7 @@ class CreateStudent extends CreateRecord
             $currentStudentCount = $team->students()->count();
             if ($currentStudentCount > 0) {
                 // Or >= threshold if step 1 had a threshold
-                $team->update(["onboarding_step" => 1]); // Optionally mark step 1 done here
+                $team->update(['onboarding_step' => 1]); // Optionally mark step 1 done here
             }
         }
     }
@@ -36,9 +34,10 @@ class CreateStudent extends CreateRecord
      */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        if (empty($data["team_id"]) && Auth::user()?->currentTeam) {
-            $data["team_id"] = Auth::user()->currentTeam->id;
+        if (empty($data['team_id']) && Auth::user()?->currentTeam) {
+            $data['team_id'] = Auth::user()->currentTeam->id;
         }
+
         return $data;
     }
 }

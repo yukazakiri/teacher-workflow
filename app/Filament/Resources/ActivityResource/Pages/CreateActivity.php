@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\ActivityResource\Pages;
 
 use App\Filament\Resources\ActivityResource;
-use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
 
@@ -24,11 +23,11 @@ class CreateActivity extends CreateRecord
     protected function getRedirectUrl(): string
     {
         // Redirect back to index after creation
-        return $this->getResource()::getUrl("index");
+        return $this->getResource()::getUrl('index');
     }
 
     protected function getCreatedNotificationTitle(): ?string
     {
-        return "Activity created";
+        return 'Activity created';
     }
 }

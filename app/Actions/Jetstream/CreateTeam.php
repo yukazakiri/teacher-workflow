@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Validator;
 use Laravel\Jetstream\Contracts\CreatesTeams;
 use Laravel\Jetstream\Events\AddingTeam;
 use Laravel\Jetstream\Jetstream;
-use Illuminate\Support\Str;
 
 class CreateTeam implements CreatesTeams
 {

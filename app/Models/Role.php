@@ -11,5 +11,6 @@ class Role extends SpatieRole
 
     // Ensure the model knows it's using a string primary key
     public $incrementing = false;
-    protected $keyType = "string";
+
+    protected $keyType = 'string';
 }

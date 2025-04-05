@@ -4,9 +4,9 @@ namespace App\Filament\Resources\ExamResource\Pages;
 
 use App\Filament\Resources\ExamResource;
 use Filament\Actions;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Support\Facades\Auth;
-use Filament\Notifications\Notification;
 
 class ListExams extends ListRecords
 {
@@ -16,18 +16,18 @@ class ListExams extends ListRecords
     {
         $user = Auth::user();
         $team = $user?->currentTeam;
-        
-        if (!$team || !$team->userIsOwner($user)) {
+
+        if (! $team || ! $team->userIsOwner($user)) {
             Notification::make()
                 ->title('Access Denied')
                 ->body('Only team owners can access the exam management.')
                 ->danger()
                 ->send();
-                
-            redirect()->route('filament.app.pages.dashboard', ['tenant' => $team->id ]);
-            
+
+            redirect()->route('filament.app.pages.dashboard', ['tenant' => $team->id]);
+
         }
-        
+
         parent::mount();
     }
 

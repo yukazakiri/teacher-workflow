@@ -21,7 +21,7 @@ class AttendancePolicy
         if ($user->hasTeamRole($user->currentTeam, 'teacher')) {
             return true;
         }
-        
+
         // Students can only view their own attendance records
         return $user->hasTeamRole($user->currentTeam, 'student');
     }
@@ -32,7 +32,7 @@ class AttendancePolicy
     public function view(User $user, Attendance $attendance): bool
     {
         // Ensure they're on the same team
-        if (!$user->belongsToTeam($attendance->team)) {
+        if (! $user->belongsToTeam($attendance->team)) {
             return false;
         }
 
@@ -64,7 +64,7 @@ class AttendancePolicy
     public function update(User $user, Attendance $attendance): bool
     {
         // Only teachers can update attendance records and they must be on the same team
-        return $user->belongsToTeam($attendance->team) && 
+        return $user->belongsToTeam($attendance->team) &&
                $user->hasTeamRole($attendance->team, 'teacher');
     }
 
@@ -74,7 +74,7 @@ class AttendancePolicy
     public function delete(User $user, Attendance $attendance): bool
     {
         // Only team owners can delete attendance records
-        return $user->belongsToTeam($attendance->team) && 
+        return $user->belongsToTeam($attendance->team) &&
                $user->ownsTeam($attendance->team);
     }
 
@@ -84,7 +84,7 @@ class AttendancePolicy
     public function restore(User $user, Attendance $attendance): bool
     {
         // Only team owners can restore attendance records
-        return $user->belongsToTeam($attendance->team) && 
+        return $user->belongsToTeam($attendance->team) &&
                $user->ownsTeam($attendance->team);
     }
 
@@ -94,17 +94,17 @@ class AttendancePolicy
     public function forceDelete(User $user, Attendance $attendance): bool
     {
         // Only team owners can permanently delete attendance records
-        return $user->belongsToTeam($attendance->team) && 
+        return $user->belongsToTeam($attendance->team) &&
                $user->ownsTeam($attendance->team);
     }
-    
+
     /**
      * Determine whether the user can update attendance status in bulk.
      */
     public function updateStatus(User $user, Attendance $attendance): bool
     {
         // Only teachers can update attendance status
-        return $user->belongsToTeam($attendance->team) && 
+        return $user->belongsToTeam($attendance->team) &&
                $user->hasTeamRole($attendance->team, 'teacher');
     }
-} 
+}

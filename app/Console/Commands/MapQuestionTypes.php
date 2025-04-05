@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\Question;
 use App\Models\QuestionType;
+use Illuminate\Console\Command;
 
 class MapQuestionTypes extends Command
 {

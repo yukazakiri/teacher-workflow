@@ -13,7 +13,7 @@ return new class extends Migration
     {
 
         // Add question_type_id to questions table if it doesn't exist
-        if (!Schema::hasColumn('questions', 'question_type_id')) {
+        if (! Schema::hasColumn('questions', 'question_type_id')) {
             Schema::table('questions', function (Blueprint $table) {
                 $table->uuid('question_type_id')->nullable();
                 $table->foreign('question_type_id')->references('id')->on('question_types');

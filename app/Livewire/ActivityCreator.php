@@ -14,10 +14,10 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB; // Import DB facade
 use Illuminate\Support\Facades\Log; // Import Log facade
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Component;
-use Illuminate\Support\Str;
 
 // Make sure Activity model uses HasUuids if your IDs are UUIDs
 // use Illuminate\Database\Eloquent\Concerns\HasUuids; // If needed
@@ -28,43 +28,72 @@ class ActivityCreator extends Component implements HasForms
 
     // State Management
     public int $currentStep = 1; // 1: Template Selection, 2: Details, 3: Config, 4: Submission, 5: Review
+
     public bool $isSubmitting = false; // Prevent double clicks
+
     public bool $previewMode = false; // Toggle between edit and preview modes
+
     public bool $showHelpTips = true; // Show/hide contextual help
+
     public array $stepProgress = [1 => true, 2 => false, 3 => false, 4 => false, 5 => false]; // Track completed steps
 
     // Activity Properties (camelCase for Livewire, map to snake_case on save)
     public ?string $selectedTemplateKey = null;
+
     public ?string $title = null;
+
     public ?string $description = null;
+
     public ?string $instructions = null;
+
     public ?string $activityTypeId = null;
+
     public string $status = 'draft';
+
     public ?string $dueDate = null; // Renamed from deadline
+
     public string $mode = 'individual';
+
     public string $category = 'written';
+
     public ?float $totalPoints = 10.0; // Changed to float to match model cast potentially
+
     public ?string $format = null; // Quiz, Assignment, etc.
+
     public ?string $customFormat = null;
+
     public ?int $groupCount = null;
+
     public array $roles = []; // Structure: [['name' => '', 'description' => '']]
+
     public string $submissionType = 'resource';
+
     public bool $allowFileUploads = true;
+
     public bool $allowTextEntry = false;
+
     public array $allowedFileTypes = [];
+
     public ?int $maxFileSize = 10; // MB
+
     public array $formStructure = []; // Builder structure, align name with model ($casts -> form_config?)
+
     public bool $allowTeacherSubmission = false;
-    
+
     // --- NEW Properties for Grading System ---
     public ?string $componentType = null; // SHS: written_work, performance_task, quarterly_assessment
+
     public ?string $term = null; // College: prelim, midterm, final
+
     public ?float $creditUnits = null; // College: GWA units
 
     // Visual Builder Options
     public array $activeQuestion = []; // Current question being edited in form builder
+
     public string $currentPanel = 'edit'; // edit, preview, or help
+
     public array $visualElements = []; // Visual elements for drag-and-drop functionality
+
     public array $colorThemes = [
         'default' => ['bg' => 'bg-white dark:bg-gray-800', 'accent' => 'primary'],
         'blue' => ['bg' => 'bg-blue-50 dark:bg-blue-900', 'accent' => 'blue'],
@@ -72,10 +101,12 @@ class ActivityCreator extends Component implements HasForms
         'purple' => ['bg' => 'bg-purple-50 dark:bg-purple-900', 'accent' => 'purple'],
         'amber' => ['bg' => 'bg-amber-50 dark:bg-amber-900', 'accent' => 'amber'],
     ];
+
     public string $selectedTheme = 'default';
 
     // Data for Selects
     public array $activityTypes = [];
+
     public ?Team $currentTeam = null; // Store current team info
 
     // Template Definitions
@@ -87,17 +118,18 @@ class ActivityCreator extends Component implements HasForms
         'togglePreviewMode',
         'addVisualElement',
         'removeVisualElement',
-        'updateVisualElement'
+        'updateVisualElement',
     ];
 
     public function mount(): void
     {
         $this->currentTeam = Auth::user()?->currentTeam; // Get current team
-        if (!$this->currentTeam) {
-             // Handle error: No team context
-             Notification::make()->title('Error')->body('Cannot create activity without an active team.')->danger()->send();
-             // Potentially redirect or disable component
-             return;
+        if (! $this->currentTeam) {
+            // Handle error: No team context
+            Notification::make()->title('Error')->body('Cannot create activity without an active team.')->danger()->send();
+
+            // Potentially redirect or disable component
+            return;
         }
 
         $this->activityTypes = ActivityType::query()
@@ -130,7 +162,7 @@ class ActivityCreator extends Component implements HasForms
                     'description' => '<p>Short assessment on [Topic].</p>',
                     'formStructure' => [
                         ['type' => 'multiple_choice', 'question' => 'Sample Question 1?', 'options' => ['Option A', 'Option B', 'Option C']],
-                        ['type' => 'short_answer', 'question' => 'Sample Question 2?', 'max_length' => 250]
+                        ['type' => 'short_answer', 'question' => 'Sample Question 2?', 'max_length' => 250],
                     ],
                     'componentType' => Activity::COMPONENT_WRITTEN_WORK, // Default for SHS
                     'term' => null, // No default term for College
@@ -146,7 +178,7 @@ class ActivityCreator extends Component implements HasForms
                     'mode' => 'individual', 'category' => 'written', 'format' => 'assignment',
                     'submissionType' => 'resource', 'title' => 'Assignment: ', 'totalPoints' => 20.0,
                     'allowFileUploads' => true, 'allowTextEntry' => true,
-                     'description' => '<p>Complete the following task(s) based on [Topic/Lesson].</p>',
+                    'description' => '<p>Complete the following task(s) based on [Topic/Lesson].</p>',
                     'instructions' => '<p>1. Review materials.</p><p>2. Complete work.</p><p>3. Submit file(s)/text.</p>',
                     'componentType' => Activity::COMPONENT_WRITTEN_WORK, // Default for SHS
                     'term' => null, // No default term for College
@@ -174,7 +206,7 @@ class ActivityCreator extends Component implements HasForms
                     'creditUnits' => 5.0, // Default units for College
                 ],
             ],
-             'reporting' => [
+            'reporting' => [
                 'name' => 'Reporting / Presentation',
                 'description' => 'Students present findings, often graded manually.',
                 'icon' => 'heroicon-o-presentation-chart-bar',
@@ -183,7 +215,7 @@ class ActivityCreator extends Component implements HasForms
                     'mode' => 'group', 'category' => 'performance', 'format' => 'reporting',
                     'submissionType' => 'manual', 'title' => 'Report/Presentation: ', 'totalPoints' => 50.0,
                     'allowFileUploads' => false, 'allowTextEntry' => false,
-                     'description' => '<p>Present findings on [Topic].</p>',
+                    'description' => '<p>Present findings on [Topic].</p>',
                     'instructions' => '<p>Prepare presentation covering [Key Points].</p>',
                     'componentType' => Activity::COMPONENT_PERFORMANCE_TASK, // Default for SHS
                     'term' => Activity::TERM_MIDTERM, // Default term for College Reporting
@@ -206,7 +238,7 @@ class ActivityCreator extends Component implements HasForms
                     'creditUnits' => 0.5, // Default units for College
                 ],
             ],
-             'blank' => [
+            'blank' => [
                 'name' => 'Start from Scratch',
                 'description' => 'Build your activity with no pre-filled settings.',
                 'icon' => 'heroicon-o-document-plus',
@@ -221,8 +253,8 @@ class ActivityCreator extends Component implements HasForms
                     'componentType' => null,
                     'term' => null,
                     'creditUnits' => null,
-                ]
-            ]
+                ],
+            ],
         ];
     }
 
@@ -234,31 +266,31 @@ class ActivityCreator extends Component implements HasForms
                     'type' => 'multiple_choice',
                     'name' => 'Multiple Choice',
                     'icon' => 'heroicon-o-check-circle',
-                    'description' => 'Create a question with multiple choice options'
+                    'description' => 'Create a question with multiple choice options',
                 ],
                 [
                     'type' => 'short_answer',
                     'name' => 'Short Answer',
                     'icon' => 'heroicon-o-chat-bubble-bottom-center-text',
-                    'description' => 'Create a question with a text field for short responses'
+                    'description' => 'Create a question with a text field for short responses',
                 ],
                 [
                     'type' => 'essay',
                     'name' => 'Essay/Long Answer',
                     'icon' => 'heroicon-o-document-text',
-                    'description' => 'Create a question with a large text area for longer responses'
+                    'description' => 'Create a question with a large text area for longer responses',
                 ],
                 [
                     'type' => 'file_upload',
                     'name' => 'File Upload',
                     'icon' => 'heroicon-o-paper-clip',
-                    'description' => 'Add a file upload field'
+                    'description' => 'Add a file upload field',
                 ],
                 [
                     'type' => 'section_break',
                     'name' => 'Section Break',
                     'icon' => 'heroicon-o-bars-3',
-                    'description' => 'Add a section divider with optional title and description'
+                    'description' => 'Add a section divider with optional title and description',
                 ],
             ],
             'content_elements' => [
@@ -266,34 +298,35 @@ class ActivityCreator extends Component implements HasForms
                     'type' => 'rich_text',
                     'name' => 'Rich Text',
                     'icon' => 'heroicon-o-document-text',
-                    'description' => 'Add formatted text, images, and links'
+                    'description' => 'Add formatted text, images, and links',
                 ],
                 [
                     'type' => 'image',
                     'name' => 'Image',
                     'icon' => 'heroicon-o-photo',
-                    'description' => 'Add an image with optional caption'
+                    'description' => 'Add an image with optional caption',
                 ],
                 [
                     'type' => 'video',
                     'name' => 'Video',
                     'icon' => 'heroicon-o-play',
-                    'description' => 'Embed a video from YouTube, Vimeo, etc.'
+                    'description' => 'Embed a video from YouTube, Vimeo, etc.',
                 ],
                 [
                     'type' => 'document',
                     'name' => 'Document',
                     'icon' => 'heroicon-o-document',
-                    'description' => 'Embed a document or provide as a download'
+                    'description' => 'Embed a document or provide as a download',
                 ],
-            ]
+            ],
         ];
     }
 
     public function selectTemplate(string $key): void
     {
-        if (!isset($this->templates[$key])) {
+        if (! isset($this->templates[$key])) {
             Notification::make()->title('Error')->body('Selected template not found.')->danger()->send();
+
             return;
         }
         $this->selectedTemplateKey = $key;
@@ -308,21 +341,21 @@ class ActivityCreator extends Component implements HasForms
         $baseline = $this->defineTemplates()['blank']['defaults'];
         foreach ($baseline as $prop => $value) {
             $camelCaseProp = Str::camel($prop);
-             if (property_exists($this, $camelCaseProp)) {
+            if (property_exists($this, $camelCaseProp)) {
                 $this->$camelCaseProp = $value;
             }
         }
 
         // Apply selected template's defaults only if not 'blank'
         if ($key !== 'blank' && isset($this->templates[$key])) {
-             $defaults = $this->templates[$key]['defaults'] ?? [];
+            $defaults = $this->templates[$key]['defaults'] ?? [];
             foreach ($defaults as $prop => $value) {
-                 $camelCaseProp = Str::camel($prop);
-                 if (property_exists($this, $camelCaseProp)) {
+                $camelCaseProp = Str::camel($prop);
+                if (property_exists($this, $camelCaseProp)) {
                     $this->$camelCaseProp = $value;
                 }
             }
-             // Explicitly set arrays/complex types from defaults
+            // Explicitly set arrays/complex types from defaults
             $this->roles = $defaults['roles'] ?? [];
             $this->formStructure = $defaults['formStructure'] ?? [];
             // Apply new fields from defaults
@@ -333,7 +366,6 @@ class ActivityCreator extends Component implements HasForms
 
         $this->resetValidation(); // Clear errors on template change
     }
-
 
     public function nextStep(): void
     {
@@ -355,7 +387,9 @@ class ActivityCreator extends Component implements HasForms
 
     public function goToStep(int $step): void
     {
-        if ($step === $this->currentStep) return; // Do nothing if clicking current step
+        if ($step === $this->currentStep) {
+            return;
+        } // Do nothing if clicking current step
 
         if ($step < $this->currentStep) {
             // Allow jumping back freely
@@ -363,18 +397,19 @@ class ActivityCreator extends Component implements HasForms
         } else {
             // Validate all steps *up to* the target step before jumping forward
             for ($i = 2; $i < $step; $i++) { // Start validation from step 2
-                if (!$this->validateStep($i, false)) { // Don't show notification on intermediate checks
+                if (! $this->validateStep($i, false)) { // Don't show notification on intermediate checks
                     $this->currentStep = $i; // Stop at the step that failed validation
                     Notification::make()
-                         ->title('Incomplete Step')
-                         ->body("Please complete step {$i} before proceeding.")
-                         ->warning()
-                         ->send();
+                        ->title('Incomplete Step')
+                        ->body("Please complete step {$i} before proceeding.")
+                        ->warning()
+                        ->send();
+
                     return; // Prevent jumping forward
                 }
             }
             // If all previous steps are valid, jump to the target step
-             $this->currentStep = $step;
+            $this->currentStep = $step;
         }
     }
 
@@ -387,12 +422,12 @@ class ActivityCreator extends Component implements HasForms
 
     public function togglePreviewMode(): void
     {
-        $this->previewMode = !$this->previewMode;
+        $this->previewMode = ! $this->previewMode;
     }
 
     public function toggleHelpTips(): void
     {
-        $this->showHelpTips = !$this->showHelpTips;
+        $this->showHelpTips = ! $this->showHelpTips;
     }
 
     public function setTheme(string $theme): void
@@ -406,7 +441,7 @@ class ActivityCreator extends Component implements HasForms
     {
         if ($this->submissionType === 'form') {
             $this->formStructure[] = $element;
-            $this->updateStepProgress(4, !empty($this->formStructure));
+            $this->updateStepProgress(4, ! empty($this->formStructure));
         }
     }
 
@@ -415,7 +450,7 @@ class ActivityCreator extends Component implements HasForms
         if (isset($this->formStructure[$index])) {
             unset($this->formStructure[$index]);
             $this->formStructure = array_values($this->formStructure);
-            $this->updateStepProgress(4, !empty($this->formStructure));
+            $this->updateStepProgress(4, ! empty($this->formStructure));
         }
     }
 
@@ -429,7 +464,7 @@ class ActivityCreator extends Component implements HasForms
     public function updateFormStructure(array $structure): void
     {
         $this->formStructure = $structure;
-        $this->updateStepProgress(4, !empty($this->formStructure));
+        $this->updateStepProgress(4, ! empty($this->formStructure));
     }
 
     public function editQuestion(int $index): void
@@ -491,14 +526,14 @@ class ActivityCreator extends Component implements HasForms
                 'allowTextEntry' => ['required_if:submissionType,resource', 'boolean'],
                 // Custom rule: Ensure at least one is true if submission type is 'resource'
                 'allowFileUploads' => ['required_if:submissionType,resource', 'boolean', function ($attribute, $value, $fail) {
-                    if ($this->submissionType === 'resource' && !$this->allowFileUploads && !$this->allowTextEntry) {
+                    if ($this->submissionType === 'resource' && ! $this->allowFileUploads && ! $this->allowTextEntry) {
                         $fail('If submission type is "File Upload / Text Entry", you must allow at least one of file uploads or text entry.');
                     }
                 }],
-                'allowedFileTypes' => ['nullable','array', Rule::requiredIf( $this->submissionType === 'resource' && $this->allowFileUploads)],
-                'maxFileSize' => ['nullable','integer','min:1','max:100', Rule::requiredIf( $this->submissionType === 'resource' && $this->allowFileUploads)], // Example max 100MB
+                'allowedFileTypes' => ['nullable', 'array', Rule::requiredIf($this->submissionType === 'resource' && $this->allowFileUploads)],
+                'maxFileSize' => ['nullable', 'integer', 'min:1', 'max:100', Rule::requiredIf($this->submissionType === 'resource' && $this->allowFileUploads)], // Example max 100MB
                 // --- Form Specific ---
-                 // Need more specific validation based on builder structure?
+                // Need more specific validation based on builder structure?
                 'formStructure' => ['array', Rule::requiredIf($this->submissionType === 'form')],
                 // --- General ---
                 'allowTeacherSubmission' => ['boolean'], // Allow teacher submission shouldn't prevent saving
@@ -508,49 +543,52 @@ class ActivityCreator extends Component implements HasForms
         return $rules[$step] ?? [];
     }
 
-     // Validation logic
+    // Validation logic
     protected function validateStep(int $step, bool $notify = true): bool
     {
         try {
             $rules = $this->getValidationRules($step);
-            if (!empty($rules)) {
-                 // Validate only the properties relevant to the current step
-                 $this->validate($rules);
+            if (! empty($rules)) {
+                // Validate only the properties relevant to the current step
+                $this->validate($rules);
             }
-             return true; // Passed validation
+
+            return true; // Passed validation
         } catch (\Illuminate\Validation\ValidationException $e) {
-             if ($notify) {
-                 Notification::make()
+            if ($notify) {
+                Notification::make()
                     ->title('Check Your Input')
                     ->body("There are errors in step {$step}. Please review the fields.")
                     ->danger()
                     ->send();
-             }
+            }
+
             // Optionally, dispatch browser event to focus on first error
             // $this->dispatchBrowserEvent('validation-failed', ['step' => $step]);
             return false; // Failed validation
         }
     }
 
-
-     // Final Save action
-     public function save(): void
+    // Final Save action
+    public function save(): void
     {
-        if ($this->isSubmitting) return;
+        if ($this->isSubmitting) {
+            return;
+        }
         $this->isSubmitting = true;
 
         // Fetch fresh team settings before validation/saving
         $team = Auth::user()?->currentTeam;
-        if (!$team) {
-             Notification::make()->title('Error')->body('Cannot save activity: Team context lost.')->danger()->send();
-             $this->isSubmitting = false;
-             return;
+        if (! $team) {
+            Notification::make()->title('Error')->body('Cannot save activity: Team context lost.')->danger()->send();
+            $this->isSubmitting = false;
+
+            return;
         }
         $isCollege = $team->usesCollegeGrading();
         $isShs = $team->usesShsGrading();
         $isCollegeTerm = $team->usesCollegeTermGrading();
         $isCollegeGwa = $team->usesCollegeGwaGrading();
-
 
         // Final validation across all relevant steps
         $allRules = array_merge(
@@ -560,13 +598,14 @@ class ActivityCreator extends Component implements HasForms
         );
 
         try {
-             // Manually inject team settings into validation context if needed,
-             // or ensure getValidationRules uses $this->currentTeam correctly.
-             // $this->validate($allRules); // Assuming getValidationRules uses $this->currentTeam correctly
-             $validatedData = $this->validate($allRules); // Validate and get validated data
+            // Manually inject team settings into validation context if needed,
+            // or ensure getValidationRules uses $this->currentTeam correctly.
+            // $this->validate($allRules); // Assuming getValidationRules uses $this->currentTeam correctly
+            $validatedData = $this->validate($allRules); // Validate and get validated data
         } catch (\Illuminate\Validation\ValidationException $e) {
             // ... existing error handling ...
-             $this->isSubmitting = false;
+            $this->isSubmitting = false;
+
             return;
         }
 
@@ -598,7 +637,7 @@ class ActivityCreator extends Component implements HasForms
         ];
 
         // Prepare roles only if mode is group
-        $activityRoles = ($this->mode === 'group' && !empty($this->roles)) ? $this->roles : [];
+        $activityRoles = ($this->mode === 'group' && ! empty($this->roles)) ? $this->roles : [];
 
         try {
             DB::beginTransaction();
@@ -606,7 +645,7 @@ class ActivityCreator extends Component implements HasForms
             $activity = Activity::create($activityData);
 
             // Save roles if it's a group activity and roles are defined
-            if ($activity->mode === 'group' && !empty($activityRoles)) {
+            if ($activity->mode === 'group' && ! empty($activityRoles)) {
                 // ... existing role saving logic ...
             }
 
@@ -614,7 +653,7 @@ class ActivityCreator extends Component implements HasForms
 
             Notification::make()
                 ->title('Activity Created')
-                ->body("'" . $activity->title . "' has been created successfully.")
+                ->body("'".$activity->title."' has been created successfully.")
                 ->success()
                 ->send();
 
@@ -624,11 +663,11 @@ class ActivityCreator extends Component implements HasForms
             DB::rollBack();
             Notification::make()
                 ->title('Error Creating Activity')
-                ->body('An unexpected error occurred: ' . $e->getMessage())
+                ->body('An unexpected error occurred: '.$e->getMessage())
                 ->danger()
                 ->send();
-             Log::error('Error creating activity: ' . $e->getMessage(), ['exception' => $e]);
-             $this->isSubmitting = false;
+            Log::error('Error creating activity: '.$e->getMessage(), ['exception' => $e]);
+            $this->isSubmitting = false;
         }
     }
 
@@ -639,17 +678,17 @@ class ActivityCreator extends Component implements HasForms
         return ActivityResource::getCommonFileTypeOptions();
     }
 
-     public function getFormBuilderBlocks(): array
+    public function getFormBuilderBlocks(): array
     {
-         return ActivityResource::getFormBuilderBlocks();
+        return ActivityResource::getFormBuilderBlocks();
     }
 
-     // Methods for Repeater (Roles)
+    // Methods for Repeater (Roles)
     public function addRole(): void
     {
         $this->roles[] = ['name' => '', 'description' => ''];
-         // Reset validation for the roles array potentially
-         // $this->resetValidation('roles'); // Check Livewire docs for specifics
+        // Reset validation for the roles array potentially
+        // $this->resetValidation('roles'); // Check Livewire docs for specifics
     }
 
     public function removeRole(int $index): void
@@ -673,7 +712,7 @@ class ActivityCreator extends Component implements HasForms
             'templatesData' => $this->templates,
             'activityTypeOptions' => $this->activityTypes,
             'commonFileTypeOptions' => $this->getCommonFileTypeOptions(),
-             'formBuilderBlocks' => $this->getFormBuilderBlocks(),
+            'formBuilderBlocks' => $this->getFormBuilderBlocks(),
             'visualElements' => $this->visualElements,
             'colorThemes' => $this->colorThemes,
             // Pass team settings
@@ -687,20 +726,21 @@ class ActivityCreator extends Component implements HasForms
     }
 
     // Add helpers for SHS/College options if needed for selects in the view
-     public static function getShsComponentOptions(): array
-     {
-         return [
-             Activity::COMPONENT_WRITTEN_WORK => 'Written Work (WW)',
-             Activity::COMPONENT_PERFORMANCE_TASK => 'Performance Task (PT)',
-             Activity::COMPONENT_QUARTERLY_ASSESSMENT => 'Quarterly Assessment (QA)',
-         ];
-     }
-     public static function getCollegeTermOptions(): array
-     {
-         return [
-             Activity::TERM_PRELIM => 'Prelim',
-             Activity::TERM_MIDTERM => 'Midterm',
-             Activity::TERM_FINAL => 'Final',
-         ];
-     }
+    public static function getShsComponentOptions(): array
+    {
+        return [
+            Activity::COMPONENT_WRITTEN_WORK => 'Written Work (WW)',
+            Activity::COMPONENT_PERFORMANCE_TASK => 'Performance Task (PT)',
+            Activity::COMPONENT_QUARTERLY_ASSESSMENT => 'Quarterly Assessment (QA)',
+        ];
+    }
+
+    public static function getCollegeTermOptions(): array
+    {
+        return [
+            Activity::TERM_PRELIM => 'Prelim',
+            Activity::TERM_MIDTERM => 'Midterm',
+            Activity::TERM_FINAL => 'Final',
+        ];
+    }
 }

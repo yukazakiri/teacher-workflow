@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class ScheduleItem extends Model
 {
     use HasFactory, HasUuids;
-    
+
     /**
      * The attributes that are mass assignable.
      *
@@ -31,7 +31,7 @@ class ScheduleItem extends Model
         'is_recurring',
         'activity_id',
     ];
-    
+
     /**
      * Get the attributes that should be cast.
      *
@@ -42,7 +42,7 @@ class ScheduleItem extends Model
         'start_time' => 'datetime',
         'end_time' => 'datetime',
     ];
-    
+
     /**
      * Get the schedule that owns the schedule item.
      */
@@ -50,7 +50,7 @@ class ScheduleItem extends Model
     {
         return $this->belongsTo(Schedule::class);
     }
-    
+
     /**
      * Get the activity related to this schedule item.
      */
@@ -58,7 +58,7 @@ class ScheduleItem extends Model
     {
         return $this->belongsTo(Activity::class);
     }
-    
+
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);

@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Models\Chat;
-use App\Models\ChatMessage;
-use App\Models\Team;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Prism\Prism\Enums\Provider;
@@ -18,8 +16,11 @@ class ChatInterface extends Component
     use WithFileUploads;
 
     public ?Chat $currentChat = null;
+
     public string $message = '';
+
     public string $model = 'gpt-4-turbo-preview';
+
     public array $availableModels = [
         'gpt-4-turbo-preview' => 'GPT-4 Turbo',
         'gpt-3.5-turbo' => 'GPT-3.5 Turbo',
@@ -29,12 +30,12 @@ class ChatInterface extends Component
     public function mount(?Chat $chat = null)
     {
         $this->currentChat = $chat;
-        if ($this->currentChat && !empty($this->currentChat->model)) {
+        if ($this->currentChat && ! empty($this->currentChat->model)) {
             $this->model = $this->currentChat->model;
         }
-        
+
         // Ensure we always have a valid model selected
-        if (empty($this->model) || !array_key_exists($this->model, $this->availableModels)) {
+        if (empty($this->model) || ! array_key_exists($this->model, $this->availableModels)) {
             $this->model = 'gpt-4-turbo-preview';
         }
     }
@@ -42,8 +43,8 @@ class ChatInterface extends Component
     public function createNewChat()
     {
         $now = now();
-        $defaultTitle = 'New conversation ' . $now->format('M d, g:i A');
-        
+        $defaultTitle = 'New conversation '.$now->format('M d, g:i A');
+
         $this->currentChat = Chat::create([
             'user_id' => Auth::id(),
             'team_id' => Auth::user()->currentTeam->id,
@@ -57,7 +58,7 @@ class ChatInterface extends Component
     public function switchChat(Chat $chat)
     {
         $this->currentChat = $chat;
-        if (!empty($chat->model) && array_key_exists($chat->model, $this->availableModels)) {
+        if (! empty($chat->model) && array_key_exists($chat->model, $this->availableModels)) {
             $this->model = $chat->model;
         }
     }
@@ -68,7 +69,7 @@ class ChatInterface extends Component
             return;
         }
 
-        if (!$this->currentChat) {
+        if (! $this->currentChat) {
             $this->createNewChat();
         }
 
@@ -96,7 +97,7 @@ class ChatInterface extends Component
         }
 
         $this->message = '';
-        
+
         // Dispatch event for scrolling
         $this->dispatch('message-sent');
     }
@@ -105,10 +106,10 @@ class ChatInterface extends Component
     {
         // Create a title based on the first message
         $title = Str::limit($firstMessage, 40);
-        
+
         // Update the chat title
         $this->currentChat->update([
-            'title' => $title
+            'title' => $title,
         ]);
     }
 
@@ -124,7 +125,7 @@ class ChatInterface extends Component
             ->toArray();
 
         $providerType = str_starts_with($this->model, 'gpt') ? Provider::OpenAI : Provider::Gemini;
-        
+
         try {
             $response = app('prism')
                 ->resolve($providerType)
@@ -132,10 +133,10 @@ class ChatInterface extends Component
                     'model' => $this->model,
                     'messages' => $messages,
                 ]);
-                
+
             return $response->content ?? 'No response generated. Please try again.';
         } catch (\Exception $e) {
-            return 'Error: ' . $e->getMessage();
+            return 'Error: '.$e->getMessage();
         }
     }
 
@@ -150,4 +151,4 @@ class ChatInterface extends Component
             'chats' => $chats,
         ]);
     }
-} 
+}

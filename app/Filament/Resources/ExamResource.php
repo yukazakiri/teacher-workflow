@@ -8,38 +8,28 @@ use App\Filament\Resources\ExamResource\Pages;
 use App\Filament\Resources\ExamResource\RelationManagers;
 use App\Models\Exam;
 use App\Models\Question;
-use App\Models\ExamQuestion;
 use Filament\Forms;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\KeyValue;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Wizard;
+use Filament\Forms\Components\Wizard\Step;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\Actions\Action;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Tabs;
-use Filament\Forms\Components\Tabs\Tab;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Card;
-use Filament\Forms\Components\Placeholder;
-use Filament\Forms\Components\Wizard;
-use Filament\Forms\Components\Wizard\Step;
-use Filament\Forms\Components\RichEditor;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Radio;
-use Filament\Forms\Components\KeyValue;
-use Filament\Forms\Get;
-use Filament\Forms\Set;
-use Illuminate\Support\Facades\DB;
-use Filament\Notifications\Notification;
 
 class ExamResource extends Resource
 {
@@ -51,14 +41,14 @@ class ExamResource extends Resource
     {
         $user = Auth::user();
         $team = $user?->currentTeam;
-        
-        if (!$team) {
+
+        if (! $team) {
             return false;
         }
-        
+
         return $team->userIsOwner($user);
     }
-    
+
     /**
      * Determine if this resource's navigation item should be displayed.
      * Only show it for team owners.
@@ -67,19 +57,17 @@ class ExamResource extends Resource
     {
         return static::canAccess();
     }
-    
+
     /**
      * Get the navigation items for this resource.
      * Only team owners should see these navigation items.
-     * 
-     * @return array
      */
     public static function getNavigationItems(): array
     {
-        if (!static::canAccess()) {
+        if (! static::canAccess()) {
             return [];
         }
-        
+
         return parent::getNavigationItems();
     }
 
@@ -92,7 +80,7 @@ class ExamResource extends Resource
             ->where(function (Builder $query) {
                 // Show all exams for the team owner, but only their own exams for other team members
                 $isOwner = Auth::user()->currentTeam->user_id === Auth::id();
-                if (!$isOwner) {
+                if (! $isOwner) {
                     $query->where('teacher_id', Auth::id());
                 }
             });
@@ -101,8 +89,11 @@ class ExamResource extends Resource
     protected static ?string $model = Exam::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
+
     protected static ?string $navigationGroup = 'Assessments';
+
     protected static ?string $navigationLabel = 'Exams';
+
     protected static ?int $navigationSort = 1;
 
     protected static function getQuestionTypes(): array
@@ -117,21 +108,21 @@ class ExamResource extends Resource
                 ->label('Question')
                 ->required()
                 ->columnSpanFull(),
-                KeyValue::make('choices')
-                    ->label('Choices')
-                    ->addButtonLabel('Add Choice')
-                    ->keyLabel('Choice Label (e.g., A, B, C)')
-                    ->valueLabel('Choice Content')
-                    ->required()
-                    ->default([
-                        'A' => '',
-                        'B' => '',
-                        'C' => '',
-                        'D' => '',
-                    ])
-                    ->addable(false)
-                    ->editableKeys(false)
-                    ->columnSpanFull(),
+            KeyValue::make('choices')
+                ->label('Choices')
+                ->addButtonLabel('Add Choice')
+                ->keyLabel('Choice Label (e.g., A, B, C)')
+                ->valueLabel('Choice Content')
+                ->required()
+                ->default([
+                    'A' => '',
+                    'B' => '',
+                    'C' => '',
+                    'D' => '',
+                ])
+                ->addable(false)
+                ->editableKeys(false)
+                ->columnSpanFull(),
             Select::make('correct_answer')
                 ->label('Correct Answer')
                 ->options(fn (Get $get) => collect($get('choices'))->mapWithKeys(fn ($value, $key) => [$key => $key]))
@@ -141,9 +132,9 @@ class ExamResource extends Resource
                     // Convert from ArrayObject to string if needed
                     if (is_object($state) && method_exists($state, 'offsetGet')) {
                         $arrayState = $state->getArrayCopy();
-                        $set('correct_answer', !empty($arrayState) ? $arrayState[0] : '');
-                    } else if (is_array($state)) {
-                        $set('correct_answer', !empty($state) ? $state[0] : '');
+                        $set('correct_answer', ! empty($arrayState) ? $arrayState[0] : '');
+                    } elseif (is_array($state)) {
+                        $set('correct_answer', ! empty($state) ? $state[0] : '');
                     }
                 })
                 ->dehydrateStateUsing(fn ($state) => $state),
@@ -175,9 +166,9 @@ class ExamResource extends Resource
                             // Convert from ArrayObject to string if needed
                             if (is_object($state) && method_exists($state, 'offsetGet')) {
                                 $arrayState = $state->getArrayCopy();
-                                $set('correct_answer', !empty($arrayState) ? $arrayState[0] : '');
-                            } else if (is_array($state)) {
-                                $set('correct_answer', !empty($state) ? $state[0] : '');
+                                $set('correct_answer', ! empty($arrayState) ? $arrayState[0] : '');
+                            } elseif (is_array($state)) {
+                                $set('correct_answer', ! empty($state) ? $state[0] : '');
                             }
                         })
                         ->dehydrateStateUsing(fn ($state) => $state),
@@ -206,9 +197,9 @@ class ExamResource extends Resource
                     // Convert from ArrayObject to string if needed
                     if (is_object($state) && method_exists($state, 'offsetGet')) {
                         $arrayState = $state->getArrayCopy();
-                        $set('correct_answer', !empty($arrayState) ? $arrayState[0] : '');
-                    } else if (is_array($state)) {
-                        $set('correct_answer', !empty($state) ? $state[0] : '');
+                        $set('correct_answer', ! empty($arrayState) ? $arrayState[0] : '');
+                    } elseif (is_array($state)) {
+                        $set('correct_answer', ! empty($state) ? $state[0] : '');
                     }
                 })
                 ->dehydrateStateUsing(fn ($state) => $state),
@@ -338,12 +329,11 @@ class ExamResource extends Resource
                                                 ->label('Multiple Choice Questions')
                                                 ->schema(static::getMultipleChoiceFields())
                                                 ->collapsible()
-                                                ->itemLabel(fn (array $state): ?string =>
-                                                    $state['content'] ? 'Q: ' . substr(strip_tags($state['content']), 0, 40) . '...' : 'New Multiple Choice Question'
+                                                ->itemLabel(fn (array $state): ?string => $state['content'] ? 'Q: '.substr(strip_tags($state['content']), 0, 40).'...' : 'New Multiple Choice Question'
                                                 )
                                                 ->addActionLabel('Add Multiple Choice Question')
                                                 ->defaultItems(1)
-                                                ->columnSpanFull()
+                                                ->columnSpanFull(),
                                         ]),
 
                                     Forms\Components\Builder\Block::make('true_false_section')
@@ -358,12 +348,11 @@ class ExamResource extends Resource
                                                 ->label('True/False Questions')
                                                 ->schema(static::getTrueFalseFields())
                                                 ->collapsible()
-                                                ->itemLabel(fn (array $state): ?string =>
-                                                    $state['content'] ? 'Q: ' . substr(strip_tags($state['content']), 0, 40) . '...' : 'New True/False Question'
+                                                ->itemLabel(fn (array $state): ?string => $state['content'] ? 'Q: '.substr(strip_tags($state['content']), 0, 40).'...' : 'New True/False Question'
                                                 )
                                                 ->addActionLabel('Add True/False Question')
                                                 ->defaultItems(1)
-                                                ->columnSpanFull()
+                                                ->columnSpanFull(),
                                         ]),
 
                                     Forms\Components\Builder\Block::make('short_answer_section')
@@ -378,12 +367,11 @@ class ExamResource extends Resource
                                                 ->label('Short Answer Questions')
                                                 ->schema(static::getShortAnswerFields())
                                                 ->collapsible()
-                                                ->itemLabel(fn (array $state): ?string =>
-                                                    $state['content'] ? 'Q: ' . substr(strip_tags($state['content']), 0, 40) . '...' : 'New Short Answer Question'
+                                                ->itemLabel(fn (array $state): ?string => $state['content'] ? 'Q: '.substr(strip_tags($state['content']), 0, 40).'...' : 'New Short Answer Question'
                                                 )
                                                 ->addActionLabel('Add Short Answer Question')
                                                 ->defaultItems(1)
-                                                ->columnSpanFull()
+                                                ->columnSpanFull(),
                                         ]),
 
                                     Forms\Components\Builder\Block::make('essay_section')
@@ -398,12 +386,11 @@ class ExamResource extends Resource
                                                 ->label('Essay Questions')
                                                 ->schema(static::getEssayFields())
                                                 ->collapsible()
-                                                ->itemLabel(fn (array $state): ?string =>
-                                                    $state['content'] ? 'Q: ' . substr(strip_tags($state['content']), 0, 40) . '...' : 'New Essay Question'
+                                                ->itemLabel(fn (array $state): ?string => $state['content'] ? 'Q: '.substr(strip_tags($state['content']), 0, 40).'...' : 'New Essay Question'
                                                 )
                                                 ->addActionLabel('Add Essay Question')
                                                 ->defaultItems(1)
-                                                ->columnSpanFull()
+                                                ->columnSpanFull(),
                                         ]),
 
                                     Forms\Components\Builder\Block::make('matching_section')
@@ -418,12 +405,11 @@ class ExamResource extends Resource
                                                 ->label('Matching Questions')
                                                 ->schema(static::getMatchingFields())
                                                 ->collapsible()
-                                                ->itemLabel(fn (array $state): ?string =>
-                                                    $state['content'] ? 'Q: ' . substr(strip_tags($state['content']), 0, 40) . '...' : 'New Matching Question'
+                                                ->itemLabel(fn (array $state): ?string => $state['content'] ? 'Q: '.substr(strip_tags($state['content']), 0, 40).'...' : 'New Matching Question'
                                                 )
                                                 ->addActionLabel('Add Matching Question')
                                                 ->defaultItems(1)
-                                                ->columnSpanFull()
+                                                ->columnSpanFull(),
                                         ]),
 
                                     Forms\Components\Builder\Block::make('fill_in_blank_section')
@@ -438,12 +424,11 @@ class ExamResource extends Resource
                                                 ->label('Fill in the Blank Questions')
                                                 ->schema(static::getFillInBlankFields())
                                                 ->collapsible()
-                                                ->itemLabel(fn (array $state): ?string =>
-                                                    $state['content'] ? 'Q: ' . substr(strip_tags($state['content']), 0, 40) . '...' : 'New Fill in the Blank Question'
+                                                ->itemLabel(fn (array $state): ?string => $state['content'] ? 'Q: '.substr(strip_tags($state['content']), 0, 40).'...' : 'New Fill in the Blank Question'
                                                 )
                                                 ->addActionLabel('Add Fill in the Blank Question')
                                                 ->defaultItems(1)
-                                                ->columnSpanFull()
+                                                ->columnSpanFull(),
                                         ]),
                                 ])
                                 ->addActionLabel('Add Question Type')
@@ -539,9 +524,9 @@ class ExamResource extends Resource
                                 ->columns(2),
                         ]),
                 ])
-                ->skippable()
-                ->persistStepInQueryString()
-                ->columnSpanFull(),
+                    ->skippable()
+                    ->persistStepInQueryString()
+                    ->columnSpanFull(),
             ]);
     }
 

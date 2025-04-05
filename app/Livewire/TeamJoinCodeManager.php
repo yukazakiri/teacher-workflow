@@ -2,21 +2,20 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
-use Livewire\Attributes\On;
 use App\Models\Team;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Component;
 
 class TeamJoinCodeManager extends Component
 {
     public Team $team;
+
     public bool $isLoading = false;
 
     /**
      * Mount the component
      *
-     * @param Team $team
      * @return void
      */
     public function mount(Team $team)
@@ -26,8 +25,6 @@ class TeamJoinCodeManager extends Component
 
     /**
      * Regenerate the team's join code
-     *
-     * @return void
      */
     public function regenerateJoinCode(): void
     {
@@ -42,6 +39,7 @@ class TeamJoinCodeManager extends Component
                 ->send();
 
             $this->isLoading = false;
+
             return;
         }
 
@@ -60,8 +58,6 @@ class TeamJoinCodeManager extends Component
 
     /**
      * Copy join code to clipboard
-     *
-     * @return void
      */
     public function copyJoinCode(): void
     {

@@ -3,67 +3,84 @@
 declare(strict_types=1);
 
 namespace App\Filament\Pages;
-use App\Services\GradingService;
+
 use App\Models\Activity;
 use App\Models\ActivitySubmission;
 use App\Models\Student;
 use App\Models\Team;
-use Filament\Forms\Components\Select; // Added
-use Filament\Forms\Components\Placeholder; // Added
-use Filament\Forms\Components\Fieldset;
-use Filament\Forms\Components\Grid;
+use App\Services\GradingService;
+use Filament\Actions\Action; // Added
+use Filament\Forms\Components\Fieldset; // Added
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Support\Enums\ActionSize;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Filament\Actions\Action;
-use Filament\Support\Enums\ActionSize;
-use Illuminate\Support\Facades\Response;
-use Illuminate\Support\HtmlString;
-use Filament\Notifications\Notification;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Facades\DB; // Added for transaction
+use Illuminate\Support\Facades\Response;
+use Illuminate\Support\HtmlString; // Added for transaction
 use Illuminate\Validation\ValidationException;
+
 class Gradesheet extends Page
 {
-    protected static ?string $navigationIcon = "heroicon-o-document-chart-bar";
-    protected static ?string $navigationLabel = "Gradesheet";
-    protected static ?string $navigationGroup = "Classroom Tools";
+    protected static ?string $navigationIcon = 'heroicon-o-document-chart-bar';
+
+    protected static ?string $navigationLabel = 'Gradesheet';
+
+    protected static ?string $navigationGroup = 'Classroom Tools';
+
     protected static ?int $navigationSort = 2;
-    protected static string $view = "filament.pages.gradesheet";
+
+    protected static string $view = 'filament.pages.gradesheet';
 
     public ?array $data = []; // Holds form data
+
     public ?Team $team = null; // Hold the team model
+
     public ?string $teamId = null;
+
     public ?string $gradingSystemType = null;
+
     public ?string $collegeGradingScale = null;
 
     // SHS Weights
     public ?int $shsWrittenWorkWeight = null;
+
     public ?int $shsPerformanceTaskWeight = null;
+
     public ?int $shsQuarterlyAssessmentWeight = null;
 
     // Add Term Weights properties
     public ?int $collegePrelimWeight = null;
+
     public ?int $collegeMidtermWeight = null;
+
     public ?int $collegeFinalWeight = null;
+
     public array $studentTermGrades = [];
+
     // Display Toggle
     public bool $showFinalGrades = true; // Rename this? Maybe showOverallGrade?
 
     // Store activity scores (student_id => activity_id => score)
     public array $activityScores = [];
+
     // Store calculated overall grades (student_id => grade_value) - calculated dynamically
     public array $studentOverallGrades = [];
+
     // Store fetched activities and students to avoid repeated queries in view
     public Collection $students;
+
     public Collection $activities;
 
     protected GradingService $gradingService; // Inject service
@@ -76,12 +93,15 @@ class Gradesheet extends Page
     {
         $user = Auth::user();
         $team = $user?->currentTeam;
+
         return $team && $team->userIsOwner($user);
     }
+
     public function boot(GradingService $gradingService): void
     {
         $this->gradingService = $gradingService;
     }
+
     /**
      * Determine if this page's navigation item should be displayed.
      * Only show it for team owners.
@@ -94,12 +114,10 @@ class Gradesheet extends Page
     /**
      * Get the navigation items for this page.
      * Only team owners should see these navigation items.
-     *
-     * @return array
      */
     public static function getNavigationItems(): array
     {
-        if (!static::canAccess()) {
+        if (! static::canAccess()) {
             return [];
         }
 
@@ -109,14 +127,14 @@ class Gradesheet extends Page
     public function mount(): void
     {
         $user = Auth::user();
-        if (!$user || !$user->currentTeam) {
+        if (! $user || ! $user->currentTeam) {
             // Redirect or handle appropriately if no current team
             Notification::make()
-                ->title("Error")
-                ->body("No active team selected.")
+                ->title('Error')
+                ->body('No active team selected.')
                 ->danger()
                 ->send();
-            redirect()->route("filament.app.pages.dashboard")->send(); // Adjust route if needed
+            redirect()->route('filament.app.pages.dashboard')->send(); // Adjust route if needed
             exit();
         }
 
@@ -125,16 +143,16 @@ class Gradesheet extends Page
         $this->gradingSystemType = $this->team->grading_system_type;
         $this->collegeGradingScale = $this->team->college_grading_scale;
 
-        if (!$this->team->userIsOwner($user)) {
+        if (! $this->team->userIsOwner($user)) {
             Notification::make()
-                ->title("Access Denied")
-                ->body("Only team owners can access the gradesheet.")
+                ->title('Access Denied')
+                ->body('Only team owners can access the gradesheet.')
                 ->danger()
                 ->send();
             // Use Filament's tenant routing helper if applicable, otherwise standard route
             redirect()
-                ->route("filament.app.pages.dashboard", [
-                    "tenant" => $this->teamId,
+                ->route('filament.app.pages.dashboard', [
+                    'tenant' => $this->teamId,
                 ])
                 ->send();
             exit();
@@ -164,40 +182,39 @@ class Gradesheet extends Page
 
         // Fill form with current settings
         $this->form->fill([
-            "gradingSystemType" => $this->gradingSystemType,
-            "collegeGradingScale" => $this->collegeGradingScale, // This now includes term/gwa type
+            'gradingSystemType' => $this->gradingSystemType,
+            'collegeGradingScale' => $this->collegeGradingScale, // This now includes term/gwa type
             // SHS Weights
-            "shsWrittenWorkWeight" => $this->shsWrittenWorkWeight,
-            "shsPerformanceTaskWeight" => $this->shsPerformanceTaskWeight,
-            "shsQuarterlyAssessmentWeight" =>
-                $this->shsQuarterlyAssessmentWeight,
+            'shsWrittenWorkWeight' => $this->shsWrittenWorkWeight,
+            'shsPerformanceTaskWeight' => $this->shsPerformanceTaskWeight,
+            'shsQuarterlyAssessmentWeight' => $this->shsQuarterlyAssessmentWeight,
             // College Term Weights
-            "collegePrelimWeight" => $this->collegePrelimWeight,
-            "collegeMidtermWeight" => $this->collegeMidtermWeight,
-            "collegeFinalWeight" => $this->collegeFinalWeight,
+            'collegePrelimWeight' => $this->collegePrelimWeight,
+            'collegeMidtermWeight' => $this->collegeMidtermWeight,
+            'collegeFinalWeight' => $this->collegeFinalWeight,
             // Display Toggle
-            "showFinalGrades" => $this->showFinalGrades,
+            'showFinalGrades' => $this->showFinalGrades,
         ]);
     }
 
     protected function loadActivityScores(): void
     {
-        if (!$this->students || !$this->activities) {
+        if (! $this->students || ! $this->activities) {
             return;
         } // Ensure data is loaded
 
         $submissions = ActivitySubmission::whereIn(
-            "student_id",
-            $this->students->pluck("id")
+            'student_id',
+            $this->students->pluck('id')
         )
-            ->whereIn("activity_id", $this->activities->pluck("id"))
+            ->whereIn('activity_id', $this->activities->pluck('id'))
             ->get()
-            ->keyBy(fn($item) => $item->student_id . "-" . $item->activity_id);
+            ->keyBy(fn ($item) => $item->student_id.'-'.$item->activity_id);
 
         $newScores = [];
         foreach ($this->students as $student) {
             foreach ($this->activities as $activity) {
-                $key = $student->id . "-" . $activity->id;
+                $key = $student->id.'-'.$activity->id;
                 $newScores[$student->id][$activity->id] = $submissions->has(
                     $key
                 )
@@ -209,31 +226,32 @@ class Gradesheet extends Page
         // Recalculate overall grades whenever scores are loaded/reloaded
         $this->calculateAllStudentOverallGrades();
     }
+
     protected function loadInitialData(): void
     {
-        $this->students = Student::where("team_id", $this->teamId)
-            ->where("status", "active")
-            ->orderBy("name")
+        $this->students = Student::where('team_id', $this->teamId)
+            ->where('status', 'active')
+            ->orderBy('name')
             ->get();
 
         // Start building the activities query
-        $activitiesQuery = Activity::where("team_id", $this->teamId)->where(
-            "status",
-            "published"
+        $activitiesQuery = Activity::where('team_id', $this->teamId)->where(
+            'status',
+            'published'
         ); // Only include published activities
 
         // Apply sorting based on the TEAM's grading system type
         if ($this->team->usesCollegeGrading()) {
             // If College, order primarily by Term (Prelim, Midterm, Final)
             $activitiesQuery->orderByRaw(
-                "
+                '
                     CASE term
                         WHEN ? THEN 1 -- Prelim first
                         WHEN ? THEN 2 -- Midterm second
                         WHEN ? THEN 3 -- Final third
                         ELSE 4       -- Activities without a term come after specific terms
                     END ASC
-                ",
+                ',
                 [
                     Activity::TERM_PRELIM,
                     Activity::TERM_MIDTERM,
@@ -243,14 +261,14 @@ class Gradesheet extends Page
         } elseif ($this->team->usesShsGrading()) {
             // If SHS, order primarily by Component Type (WW, PT, QA)
             $activitiesQuery->orderByRaw(
-                "
+                '
                     CASE component_type
                         WHEN ? THEN 1 -- Written Work first
                         WHEN ? THEN 2 -- Performance Task second
                         WHEN ? THEN 3 -- Quarterly Assessment third
                         ELSE 4       -- Activities without a component come after specific components
                     END ASC
-                ",
+                ',
                 [
                     Activity::COMPONENT_WRITTEN_WORK,
                     Activity::COMPONENT_PERFORMANCE_TASK,
@@ -259,7 +277,7 @@ class Gradesheet extends Page
             );
         }
         // Always apply a secondary sort by creation date for consistent ordering within groups
-        $activitiesQuery->orderBy("created_at", "asc");
+        $activitiesQuery->orderBy('created_at', 'asc');
 
         // Execute the query
         $this->activities = $activitiesQuery->get();
@@ -267,22 +285,21 @@ class Gradesheet extends Page
         // Load scores after activities are fetched
         $this->loadActivityScores();
     }
+
     public function form(Form $form): Form
     {
         return $form
             ->schema([
-                Section::make("Grading System Configuration")
+                Section::make('Grading System Configuration')
                     ->description(
-                        "Select and configure the grading system for this team."
+                        'Select and configure the grading system for this team.'
                     )
                     ->schema([
-                        Select::make("gradingSystemType")
-                            ->label("Grading System")
+                        Select::make('gradingSystemType')
+                            ->label('Grading System')
                             ->options([
-                                Team::GRADING_SYSTEM_SHS =>
-                                    "K-12 SHS (Written, Performance, Quarterly)",
-                                Team::GRADING_SYSTEM_COLLEGE =>
-                                    "College/University (GWA/GPA)",
+                                Team::GRADING_SYSTEM_SHS => 'K-12 SHS (Written, Performance, Quarterly)',
+                                Team::GRADING_SYSTEM_COLLEGE => 'College/University (GWA/GPA)',
                             ])
                             ->required()
                             ->live()
@@ -292,53 +309,47 @@ class Gradesheet extends Page
                                 ?string $state
                             ) {
                                 // Reset specifics when system type changes
-                                $set("collegeGradingScale", null); // Reset college scale/type
-                                $set("collegePrelimWeight", null);
-                                $set("collegeMidtermWeight", null);
-                                $set("collegeFinalWeight", null);
+                                $set('collegeGradingScale', null); // Reset college scale/type
+                                $set('collegePrelimWeight', null);
+                                $set('collegeMidtermWeight', null);
+                                $set('collegeFinalWeight', null);
                                 // Reset SHS weights
                                 $isShs = $state === Team::GRADING_SYSTEM_SHS;
                                 $set(
-                                    "shsWrittenWorkWeight",
+                                    'shsWrittenWorkWeight',
                                     $isShs ? 30 : null
                                 );
                                 $set(
-                                    "shsPerformanceTaskWeight",
+                                    'shsPerformanceTaskWeight',
                                     $isShs ? 50 : null
                                 );
                                 $set(
-                                    "shsQuarterlyAssessmentWeight",
+                                    'shsQuarterlyAssessmentWeight',
                                     $isShs ? 20 : null
                                 );
                                 $this->updateTeamGradingSystem($state, null); // Persist change
                             }),
 
                         // --- College Specific ---
-                        Select::make("collegeGradingScale")
-                            ->label("College Calculation & Scale")
+                        Select::make('collegeGradingScale')
+                            ->label('College Calculation & Scale')
                             ->options([
                                 // Group options for clarity
-                                "GWA Based" => [
-                                    Team::COLLEGE_SCALE_GWA_5_POINT =>
-                                        "GWA - 5 Point Scale (1.00 Highest)",
-                                    Team::COLLEGE_SCALE_GWA_4_POINT =>
-                                        "GWA - 4 Point Scale (4.00 Highest)",
-                                    Team::COLLEGE_SCALE_GWA_PERCENTAGE =>
-                                        "GWA - Percentage (0-100%)",
+                                'GWA Based' => [
+                                    Team::COLLEGE_SCALE_GWA_5_POINT => 'GWA - 5 Point Scale (1.00 Highest)',
+                                    Team::COLLEGE_SCALE_GWA_4_POINT => 'GWA - 4 Point Scale (4.00 Highest)',
+                                    Team::COLLEGE_SCALE_GWA_PERCENTAGE => 'GWA - Percentage (0-100%)',
                                 ],
-                                "Term Based (Prelim, Midterm, Final)" => [
-                                    Team::COLLEGE_SCALE_TERM_5_POINT =>
-                                        "Term Weighted - 5 Point Scale",
-                                    Team::COLLEGE_SCALE_TERM_4_POINT =>
-                                        "Term Weighted - 4 Point Scale",
-                                    Team::COLLEGE_SCALE_TERM_PERCENTAGE =>
-                                        "Term Weighted - Percentage Scale",
+                                'Term Based (Prelim, Midterm, Final)' => [
+                                    Team::COLLEGE_SCALE_TERM_5_POINT => 'Term Weighted - 5 Point Scale',
+                                    Team::COLLEGE_SCALE_TERM_4_POINT => 'Term Weighted - 4 Point Scale',
+                                    Team::COLLEGE_SCALE_TERM_PERCENTAGE => 'Term Weighted - Percentage Scale',
                                 ],
                             ])
                             ->required()
                             ->live()
                             ->visible(
-                                fn(Get $get) => $get("gradingSystemType") ===
+                                fn (Get $get) => $get('gradingSystemType') ===
                                     Team::GRADING_SYSTEM_COLLEGE
                             )
                             ->afterStateUpdated(function (
@@ -349,85 +360,86 @@ class Gradesheet extends Page
                                 // Reset term weights if switching away from term-based
                                 if (
                                     $state &&
-                                    !in_array($state, Team::COLLEGE_TERM_SCALES)
+                                    ! in_array($state, Team::COLLEGE_TERM_SCALES)
                                 ) {
-                                    $set("collegePrelimWeight", null);
-                                    $set("collegeMidtermWeight", null);
-                                    $set("collegeFinalWeight", null);
+                                    $set('collegePrelimWeight', null);
+                                    $set('collegeMidtermWeight', null);
+                                    $set('collegeFinalWeight', null);
                                 } elseif (
                                     $state &&
                                     in_array($state, Team::COLLEGE_TERM_SCALES)
                                 ) {
                                     // Set default term weights if switching TO term-based and they are null
                                     $set(
-                                        "collegePrelimWeight",
-                                        $get("collegePrelimWeight") ?? 30
+                                        'collegePrelimWeight',
+                                        $get('collegePrelimWeight') ?? 30
                                     );
                                     $set(
-                                        "collegeMidtermWeight",
-                                        $get("collegeMidtermWeight") ?? 30
+                                        'collegeMidtermWeight',
+                                        $get('collegeMidtermWeight') ?? 30
                                     );
                                     $set(
-                                        "collegeFinalWeight",
-                                        $get("collegeFinalWeight") ?? 40
+                                        'collegeFinalWeight',
+                                        $get('collegeFinalWeight') ?? 40
                                     );
                                 }
                                 $this->updateTeamGradingSystem(
-                                    $get("gradingSystemType"),
+                                    $get('gradingSystemType'),
                                     $state
                                 );
                             }),
 
                         // --- College Term Weights ---
-                        Fieldset::make("College Term Weights (%)")
+                        Fieldset::make('College Term Weights (%)')
                             ->schema([
-                                TextInput::make("collegePrelimWeight")
-                                    ->label("Prelim")
+                                TextInput::make('collegePrelimWeight')
+                                    ->label('Prelim')
                                     ->numeric()
                                     ->minValue(0)
                                     ->maxValue(100)
                                     ->required()
                                     ->live(debounce: 500)
                                     ->afterStateUpdated(
-                                        fn(
+                                        fn (
                                             $state
                                         ) => ($this->collegePrelimWeight = (int) $state)
                                     ),
-                                TextInput::make("collegeMidtermWeight")
-                                    ->label("Midterm")
+                                TextInput::make('collegeMidtermWeight')
+                                    ->label('Midterm')
                                     ->numeric()
                                     ->minValue(0)
                                     ->maxValue(100)
                                     ->required()
                                     ->live(debounce: 500)
                                     ->afterStateUpdated(
-                                        fn(
+                                        fn (
                                             $state
                                         ) => ($this->collegeMidtermWeight = (int) $state)
                                     ),
-                                TextInput::make("collegeFinalWeight")
-                                    ->label("Final")
+                                TextInput::make('collegeFinalWeight')
+                                    ->label('Final')
                                     ->numeric()
                                     ->minValue(0)
                                     ->maxValue(100)
                                     ->required()
                                     ->live(debounce: 500)
                                     ->afterStateUpdated(
-                                        fn(
+                                        fn (
                                             $state
                                         ) => ($this->collegeFinalWeight = (int) $state)
                                     ),
-                                Placeholder::make("college_total_weight")
-                                    ->label("Total")
+                                Placeholder::make('college_total_weight')
+                                    ->label('Total')
                                     ->content(function (Get $get): HtmlString {
                                         $total =
-                                            (int) $get("collegePrelimWeight") +
-                                            (int) $get("collegeMidtermWeight") +
-                                            (int) $get("collegeFinalWeight");
+                                            (int) $get('collegePrelimWeight') +
+                                            (int) $get('collegeMidtermWeight') +
+                                            (int) $get('collegeFinalWeight');
                                         $color =
                                             $total === 100
-                                                ? "text-success-600"
-                                                : "text-danger-600";
+                                                ? 'text-success-600'
+                                                : 'text-danger-600';
+
                                         return new HtmlString(
                                             "<span class='text-lg font-bold {$color}'>{$total}%</span>"
                                         );
@@ -435,71 +447,72 @@ class Gradesheet extends Page
                             ])
                             ->columns(4)
                             ->visible(
-                                fn(Get $get): bool => $get(
-                                    "gradingSystemType"
+                                fn (Get $get): bool => $get(
+                                    'gradingSystemType'
                                 ) === Team::GRADING_SYSTEM_COLLEGE &&
                                     in_array(
-                                        $get("collegeGradingScale"),
+                                        $get('collegeGradingScale'),
                                         Team::COLLEGE_TERM_SCALES
                                     )
                             ), // Show only for term-based college systems
                         // --- SHS Specific (Keep Existing) ---
-                        Fieldset::make("SHS Component Weights (%)")
+                        Fieldset::make('SHS Component Weights (%)')
                             ->schema([
-                                TextInput::make("shsWrittenWorkWeight")
-                                    ->label("Written Work (WW)")
+                                TextInput::make('shsWrittenWorkWeight')
+                                    ->label('Written Work (WW)')
                                     ->numeric()
                                     ->minValue(0)
                                     ->maxValue(100)
                                     ->required()
                                     ->live(debounce: 500) // Use live() for reactivity
                                     ->afterStateUpdated(
-                                        fn(
+                                        fn (
                                             $state
                                         ) => ($this->shsWrittenWorkWeight = (int) $state)
                                     ) // Update property
-                                    ->rules(["integer", "min:0", "max:100"]), // Add validation rules
-                                TextInput::make("shsPerformanceTaskWeight")
-                                    ->label("Performance Task (PT)")
+                                    ->rules(['integer', 'min:0', 'max:100']), // Add validation rules
+                                TextInput::make('shsPerformanceTaskWeight')
+                                    ->label('Performance Task (PT)')
                                     ->numeric()
                                     ->minValue(0)
                                     ->maxValue(100)
                                     ->required()
                                     ->live(debounce: 500)
                                     ->afterStateUpdated(
-                                        fn(
+                                        fn (
                                             $state
                                         ) => ($this->shsPerformanceTaskWeight = (int) $state)
                                     )
-                                    ->rules(["integer", "min:0", "max:100"]),
-                                TextInput::make("shsQuarterlyAssessmentWeight")
-                                    ->label("Quarterly Assessment (QA)")
+                                    ->rules(['integer', 'min:0', 'max:100']),
+                                TextInput::make('shsQuarterlyAssessmentWeight')
+                                    ->label('Quarterly Assessment (QA)')
                                     ->numeric()
                                     ->minValue(0)
                                     ->maxValue(100)
                                     ->required()
                                     ->live(debounce: 500)
                                     ->afterStateUpdated(
-                                        fn(
+                                        fn (
                                             $state
                                         ) => ($this->shsQuarterlyAssessmentWeight = (int) $state)
                                     )
-                                    ->rules(["integer", "min:0", "max:100"]),
-                                Placeholder::make("total_weight")
-                                    ->label("Total Weight")
+                                    ->rules(['integer', 'min:0', 'max:100']),
+                                Placeholder::make('total_weight')
+                                    ->label('Total Weight')
                                     ->content(function (Get $get): HtmlString {
                                         $total =
-                                            (int) $get("shsWrittenWorkWeight") +
+                                            (int) $get('shsWrittenWorkWeight') +
                                             (int) $get(
-                                                "shsPerformanceTaskWeight"
+                                                'shsPerformanceTaskWeight'
                                             ) +
                                             (int) $get(
-                                                "shsQuarterlyAssessmentWeight"
+                                                'shsQuarterlyAssessmentWeight'
                                             );
                                         $color =
                                             $total === 100
-                                                ? "text-success-600"
-                                                : "text-danger-600";
+                                                ? 'text-success-600'
+                                                : 'text-danger-600';
+
                                         return new HtmlString(
                                             "<span class='text-lg font-bold {$color}'>{$total}%</span>"
                                         );
@@ -507,18 +520,18 @@ class Gradesheet extends Page
                             ])
                             ->columns(4)
                             ->visible(
-                                fn(Get $get) => $get("gradingSystemType") ===
+                                fn (Get $get) => $get('gradingSystemType') ===
                                     Team::GRADING_SYSTEM_SHS
                             ),
 
                         // --- General Display ---
-                        Toggle::make("showFinalGrades") // Keep name for now, represents 'Show Overall Grade Column'
-                            ->label("Show Overall Grade Column")
+                        Toggle::make('showFinalGrades') // Keep name for now, represents 'Show Overall Grade Column'
+                            ->label('Show Overall Grade Column')
                             ->default(true)
                             ->inline(false)
                             ->live() // Make it live
                             ->afterStateUpdated(
-                                fn(
+                                fn (
                                     $state
                                 ) => ($this->showFinalGrades = (bool) $state)
                             ), // Update property
@@ -526,7 +539,7 @@ class Gradesheet extends Page
                     ->columns(1)
                     ->collapsible(),
             ])
-            ->statePath("data");
+            ->statePath('data');
     }
 
     public function saveAllScores(): void
@@ -539,10 +552,11 @@ class Gradesheet extends Page
                 $this->shsQuarterlyAssessmentWeight;
             if ($totalShsWeight !== 100) {
                 Notification::make()
-                    ->title("Cannot Save")
-                    ->body("SHS weights must sum to 100%.")
+                    ->title('Cannot Save')
+                    ->body('SHS weights must sum to 100%.')
                     ->danger()
                     ->send();
+
                 return;
             }
             // Persist SHS weights if changed
@@ -556,10 +570,11 @@ class Gradesheet extends Page
                 $this->collegeFinalWeight;
             if ($totalTermWeight !== 100) {
                 Notification::make()
-                    ->title("Cannot Save")
-                    ->body("College term weights must sum to 100%.")
+                    ->title('Cannot Save')
+                    ->body('College term weights must sum to 100%.')
                     ->danger()
                     ->send();
+
                 return;
             }
             // Persist term weights if changed
@@ -584,15 +599,15 @@ class Gradesheet extends Page
             foreach ($this->activityScores as $studentId => $scores) {
                 foreach ($scores as $activityId => $score) {
                     $activity = $this->activities->firstWhere(
-                        "id",
+                        'id',
                         $activityId
                     );
-                    if (!$activity) {
+                    if (! $activity) {
                         continue;
                     }
 
                     $scoreValue =
-                        $score === "" || $score === null
+                        $score === '' || $score === null
                             ? null
                             : (float) $score;
 
@@ -608,34 +623,31 @@ class Gradesheet extends Page
                     }
                     if ($scoreValue !== null && $scoreValue < 0) {
                         throw ValidationException::withMessages([
-                            "activityScores.{$studentId}.{$activityId}" => "Min: 0",
+                            "activityScores.{$studentId}.{$activityId}" => 'Min: 0',
                         ]);
                     }
 
                     $submission = ActivitySubmission::updateOrCreate(
                         [
-                            "activity_id" => $activityId,
-                            "student_id" => $studentId,
+                            'activity_id' => $activityId,
+                            'student_id' => $studentId,
                         ],
                         [
-                            "score" => $scoreValue,
-                            "status" =>
-                                $scoreValue !== null
-                                    ? "graded"
-                                    : $submission->status ?? "pending",
-                            "graded_by" =>
-                                $scoreValue !== null
+                            'score' => $scoreValue,
+                            'status' => $scoreValue !== null
+                                    ? 'graded'
+                                    : $submission->status ?? 'pending',
+                            'graded_by' => $scoreValue !== null
                                     ? $userId
                                     : $submission->graded_by ?? null,
-                            "graded_at" =>
-                                $scoreValue !== null
+                            'graded_at' => $scoreValue !== null
                                     ? $now
                                     : $submission->graded_at ?? null,
-                            "final_grade" => null, // Ensure final_grade is always cleared/null
+                            'final_grade' => null, // Ensure final_grade is always cleared/null
                         ]
                     );
                     if (
-                        $submission->wasChanged(["score"]) ||
+                        $submission->wasChanged(['score']) ||
                         $submission->wasRecentlyCreated
                     ) {
                         $updatedCount++;
@@ -645,7 +657,7 @@ class Gradesheet extends Page
 
             DB::commit();
             Notification::make()
-                ->title("Grades Saved")
+                ->title('Grades Saved')
                 ->body("Successfully saved/updated {$updatedCount} scores.")
                 ->success()
                 ->send();
@@ -653,28 +665,30 @@ class Gradesheet extends Page
         } catch (ValidationException $e) {
             DB::rollBack();
             Notification::make()
-                ->title("Validation Error")
-                ->body("Please correct score errors.")
+                ->title('Validation Error')
+                ->body('Please correct score errors.')
                 ->danger()
                 ->send();
             throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error(
-                "Error saving scores: " .
-                    $e->getMessage() .
-                    "\n" .
+                'Error saving scores: '.
+                    $e->getMessage().
+                    "\n".
                     $e->getTraceAsString()
             );
             Notification::make()
-                ->title("Error")
-                ->body("Error saving scores.")
+                ->title('Error')
+                ->body('Error saving scores.')
                 ->danger()
                 ->send();
         }
     }
+
     /**
      * Update a single score for a student's activity
+     *
      * @deprecated Use saveAllScores() instead
      */
     public function updateScore($studentId, $activityId): void
@@ -688,15 +702,15 @@ class Gradesheet extends Page
             );
 
             $submission = ActivitySubmission::firstOrNew([
-                "activity_id" => $activityId,
-                "student_id" => $studentId,
+                'activity_id' => $activityId,
+                'student_id' => $studentId,
             ]);
 
             $submission->score =
-                $score !== "" && $score !== null ? (float) $score : null;
+                $score !== '' && $score !== null ? (float) $score : null;
 
-            if (!$submission->exists || $submission->score !== null) {
-                $submission->status = "graded";
+            if (! $submission->exists || $submission->score !== null) {
+                $submission->status = 'graded';
                 $submission->graded_by = Auth::id();
                 $submission->graded_at = now();
             }
@@ -705,8 +719,8 @@ class Gradesheet extends Page
             // No need to update $this->activityScores, it's already up-to-date
 
             // Calculate and save the final grade for this student
-            $activities = Activity::where("team_id", $this->teamId)
-                ->where("status", "published")
+            $activities = Activity::where('team_id', $this->teamId)
+                ->where('status', 'published')
                 ->get();
 
             $finalGrade = $this->calculateFinalGradeValue(
@@ -716,9 +730,9 @@ class Gradesheet extends Page
 
             if ($finalGrade !== null) {
                 // Update all submissions for this student with the final grade
-                ActivitySubmission::where("student_id", $studentId)
-                    ->whereIn("activity_id", $activities->pluck("id"))
-                    ->update(["final_grade" => $finalGrade]);
+                ActivitySubmission::where('student_id', $studentId)
+                    ->whereIn('activity_id', $activities->pluck('id'))
+                    ->update(['final_grade' => $finalGrade]);
             }
 
             Log::info(
@@ -727,27 +741,28 @@ class Gradesheet extends Page
 
             // Send Filament notification
             Notification::make()
-                ->title("Score Updated")
+                ->title('Score Updated')
                 ->body(
                     "Score updated for {$submission->student->name} on {$submission->activity->title}."
                 )
                 ->success()
                 ->send();
         } catch (\Exception $e) {
-            Log::error("Error updating score: " . $e->getMessage());
+            Log::error('Error updating score: '.$e->getMessage());
             Notification::make()
-                ->title("Error")
-                ->body("Error updating score. Please try again.")
+                ->title('Error')
+                ->body('Error updating score. Please try again.')
                 ->danger()
                 ->send();
         }
     }
+
     // --- Update Team Settings ---
     protected function updateTeamGradingSystem(
         ?string $systemType,
         ?string $collegeScale
     ): void {
-        if (!$this->team) {
+        if (! $this->team) {
             return;
         }
 
@@ -771,8 +786,8 @@ class Gradesheet extends Page
                     $this->collegeFinalWeight;
                 if ($totalTermWeight !== 100) {
                     Notification::make()
-                        ->title("Invalid Weights")
-                        ->body("College term weights must sum to 100%.")
+                        ->title('Invalid Weights')
+                        ->body('College term weights must sum to 100%.')
                         ->danger()
                         ->send();
                     // Don't save invalid weights, but allow system type change
@@ -804,8 +819,8 @@ class Gradesheet extends Page
                 $this->shsQuarterlyAssessmentWeight;
             if ($totalShsWeight !== 100) {
                 Notification::make()
-                    ->title("Invalid Weights")
-                    ->body("SHS component weights must sum to 100%.")
+                    ->title('Invalid Weights')
+                    ->body('SHS component weights must sum to 100%.')
                     ->danger()
                     ->send();
             } else {
@@ -824,13 +839,14 @@ class Gradesheet extends Page
         if ($this->team->isDirty()) {
             $this->team->save();
             Notification::make()
-                ->title("Settings Updated")
-                ->body("Grading system configuration saved.")
+                ->title('Settings Updated')
+                ->body('Grading system configuration saved.')
                 ->success()
                 ->send();
             $this->calculateAllStudentOverallGrades(); // Recalculate
         }
     }
+
     /**
      * Calculate the overall grade value for a single student.
      * Returns an array: ['final_grade' => float|null, 'term_grades' => array|null]
@@ -839,12 +855,12 @@ class Gradesheet extends Page
         string $studentId
     ): array {
         $studentScores = $this->activityScores[$studentId] ?? [];
-        $defaultResult = ["final_grade" => null, "term_grades" => null];
+        $defaultResult = ['final_grade' => null, 'term_grades' => null];
 
         if (
             empty($studentScores) ||
             $this->activities->isEmpty() ||
-            !$this->gradingSystemType
+            ! $this->gradingSystemType
         ) {
             return $defaultResult;
         }
@@ -858,8 +874,9 @@ class Gradesheet extends Page
                     $this->shsPerformanceTaskWeight,
                     $this->shsQuarterlyAssessmentWeight
                 );
+
                 // For SHS, 'final_grade' holds the initial grade before transmutation for display logic
-                return ["final_grade" => $initialGrade, "term_grades" => null];
+                return ['final_grade' => $initialGrade, 'term_grades' => null];
             } elseif (
                 $this->gradingSystemType === Team::GRADING_SYSTEM_COLLEGE
             ) {
@@ -882,7 +899,8 @@ class Gradesheet extends Page
                         $this->activities,
                         $numericScale // Pass numeric scale only
                     );
-                    return ["final_grade" => $gwa, "term_grades" => null];
+
+                    return ['final_grade' => $gwa, 'term_grades' => null];
                 } else {
                     // College type selected but scale/subtype configuration is incomplete
                     return $defaultResult;
@@ -890,14 +908,16 @@ class Gradesheet extends Page
             }
         } catch (\Exception $e) {
             Log::error(
-                "Error calculating grade for student {$studentId}: " .
+                "Error calculating grade for student {$studentId}: ".
                     $e->getMessage()
             );
+
             return $defaultResult;
         }
 
         return $defaultResult;
     }
+
     /**
      * Get the formatted overall grade display string for a student.
      */
@@ -923,7 +943,7 @@ class Gradesheet extends Page
             );
             $color = $this->gradingService->getShsGradeColor($transmutedGrade);
 
-            return new HtmlString(/* ... same SHS HTML ... */); // Keep existing SHS display logic
+            return new HtmlString/* ... same SHS HTML ... */; // Keep existing SHS display logic
         } elseif (
             $this->gradingSystemType === Team::GRADING_SYSTEM_COLLEGE &&
             $numericScale
@@ -948,15 +968,17 @@ class Gradesheet extends Page
             '<span class="text-gray-400 dark:text-gray-500">N/A</span>'
         );
     }
+
     public function calculateAllStudentOverallGrades(): void
     {
         if (
-            !$this->students ||
-            !$this->activities ||
-            !$this->gradingSystemType
+            ! $this->students ||
+            ! $this->activities ||
+            ! $this->gradingSystemType
         ) {
             $this->studentOverallGrades = [];
             $this->studentTermGrades = []; // Clear term grades too
+
             return;
         }
 
@@ -967,17 +989,18 @@ class Gradesheet extends Page
             $overallResult = $this->calculateStudentOverallGradeValue(
                 $student->id
             );
-            $newOverallGrades[$student->id] = $overallResult["final_grade"]; // Store final grade
+            $newOverallGrades[$student->id] = $overallResult['final_grade']; // Store final grade
             // Store term grades if calculated (only for term-based college)
-            if (!empty($overallResult["term_grades"])) {
-                $newTermGrades[$student->id] = $overallResult["term_grades"];
+            if (! empty($overallResult['term_grades'])) {
+                $newTermGrades[$student->id] = $overallResult['term_grades'];
             }
         }
         $this->studentOverallGrades = $newOverallGrades;
         $this->studentTermGrades = $newTermGrades; // Assign term grades
 
-        $this->dispatch("gradesCalculated");
+        $this->dispatch('gradesCalculated');
     }
+
     protected function calculateCategoryAverage(
         string $studentId,
         Collection $activities,
@@ -990,7 +1013,7 @@ class Gradesheet extends Page
         });
 
         if ($categoryActivities->isEmpty()) {
-            return "N/A";
+            return 'N/A';
         }
 
         $totalPoints = 0;
@@ -1008,11 +1031,12 @@ class Gradesheet extends Page
         }
 
         if ($submissionCount === 0 || $totalPoints === 0) {
-            return "N/A";
+            return 'N/A';
         }
 
         $average = ($earnedPoints / $totalPoints) * 100;
-        return number_format($average, 2) . "%";
+
+        return number_format($average, 2).'%';
     }
 
     protected function calculateFinalGrade(
@@ -1022,20 +1046,20 @@ class Gradesheet extends Page
         $finalGrade = $this->calculateFinalGradeValue($studentId, $activities);
 
         if ($finalGrade === null) {
-            return "N/A";
+            return 'N/A';
         }
 
         // Apply grade coloring based on score
         $color = match (true) {
-            $finalGrade >= 90 => "text-success-600",
-            $finalGrade >= 80 => "text-primary-600",
-            $finalGrade >= 70 => "text-warning-600",
-            default => "text-danger-600",
+            $finalGrade >= 90 => 'text-success-600',
+            $finalGrade >= 80 => 'text-primary-600',
+            $finalGrade >= 70 => 'text-warning-600',
+            default => 'text-danger-600',
         };
 
-        return "<span class=\"{$color} font-bold\">" .
-            number_format($finalGrade, 2) .
-            "%</span>";
+        return "<span class=\"{$color} font-bold\">".
+            number_format($finalGrade, 2).
+            '%</span>';
     }
 
     protected function calculateFinalGradeValue(
@@ -1047,10 +1071,10 @@ class Gradesheet extends Page
         }
 
         $writtenActivities = $activities->filter(
-            fn($activity) => $activity->category === "written"
+            fn ($activity) => $activity->category === 'written'
         );
         $performanceActivities = $activities->filter(
-            fn($activity) => $activity->category === "performance"
+            fn ($activity) => $activity->category === 'performance'
         );
 
         $writtenTotal = 0;
@@ -1091,6 +1115,7 @@ class Gradesheet extends Page
         $finalGrade =
             $writtenPercentage * $writtenWeight +
             $performancePercentage * $performanceWeight;
+
         return round($finalGrade, 2);
     }
 
@@ -1098,12 +1123,12 @@ class Gradesheet extends Page
     {
         return [
             // Removed 'Calculate Final Grades' as it's now dynamic or part of Save
-            Action::make("export")
-                ->label("Export Grades")
-                ->icon("heroicon-o-arrow-down-tray")
+            Action::make('export')
+                ->label('Export Grades')
+                ->icon('heroicon-o-arrow-down-tray')
                 ->size(ActionSize::Large)
-                ->color("success")
-                ->action(fn() => $this->exportGrades()),
+                ->color('success')
+                ->action(fn () => $this->exportGrades()),
         ];
     }
 
@@ -1111,37 +1136,37 @@ class Gradesheet extends Page
     protected function exportGrades()
     {
         if (
-            !$this->team ||
+            ! $this->team ||
             $this->students->isEmpty() ||
             $this->activities->isEmpty()
         ) {
             return null; // Or show notification
         }
 
-        $headers = ["Student Name"];
+        $headers = ['Student Name'];
         $isShs = $this->team->usesShsGrading();
         $isCollegeTerm = $this->team->usesCollegeTermGrading();
         $isCollegeGwa = $this->team->usesCollegeGwaGrading();
         $numericScale = $this->team->getCollegeNumericScale();
 
         foreach ($this->activities as $activity) {
-            $header = "";
+            $header = '';
             if ($isShs && $activity->component_type) {
-                $header .= "[" . $activity->component_type_code . "] ";
+                $header .= '['.$activity->component_type_code.'] ';
             } elseif ($isCollegeTerm && $activity->term) {
-                $header .= "[" . $activity->getTermCode() . "] "; // e.g., [PRE]
+                $header .= '['.$activity->getTermCode().'] '; // e.g., [PRE]
             }
             $header .= $activity->title;
-            $header .= " (" . ($activity->total_points ?? "N/A") . " pts";
+            $header .= ' ('.($activity->total_points ?? 'N/A').' pts';
             if ($isCollegeGwa && $activity->credit_units > 0) {
-                $header .= " / " . $activity->credit_units . " units";
+                $header .= ' / '.$activity->credit_units.' units';
             }
-            $header .= ")";
+            $header .= ')';
             $headers[] = $header;
         }
 
         if ($this->showFinalGrades) {
-            $headers[] = $isShs ? "Overall (Transmuted)" : "Final Grade";
+            $headers[] = $isShs ? 'Overall (Transmuted)' : 'Final Grade';
         }
 
         $data = [];
@@ -1152,13 +1177,13 @@ class Gradesheet extends Page
             $studentScores = $this->activityScores[$student->id] ?? [];
 
             foreach ($this->activities as $activity) {
-                $row[] = $studentScores[$activity->id] ?? "";
+                $row[] = $studentScores[$activity->id] ?? '';
             }
 
             if ($this->showFinalGrades) {
                 $overallGradeValue =
                     $this->studentOverallGrades[$student->id] ?? null;
-                $formattedOverall = "N/A";
+                $formattedOverall = 'N/A';
                 if ($overallGradeValue !== null) {
                     if ($isShs) {
                         $formattedOverall = $this->gradingService->transmuteShsGrade(
@@ -1186,33 +1211,36 @@ class Gradesheet extends Page
         }
 
         // ... (CSV generation logic remains the same) ...
-        $callback = function () use ($data) {
+        $callback = function () {
             /* ... */
         };
         $filename =
             Str::slug(
-                $this->team->name . " Gradesheet " . now()->format("Y-m-d")
-            ) . ".csv";
+                $this->team->name.' Gradesheet '.now()->format('Y-m-d')
+            ).'.csv';
+
         return Response::stream($callback, 200, [
             /* ... headers ... */
         ]);
     }
+
     public function openFinalGradeModal(string $studentId): void
     {
         // Ensure data is up-to-date before opening modal
         $this->calculateAllStudentOverallGrades();
         // Dispatch event for AlpineJS/Livewire listener
         $this->dispatch(
-            "open-modal",
-            id: "final-grade-modal",
+            'open-modal',
+            id: 'final-grade-modal',
             studentId: $studentId
         );
     }
+
     public function getStudentGradeBreakdown(string $studentId): array
     {
-        $student = $this->students->firstWhere("id", $studentId);
-        if (!$student) {
-            return ["error" => "Student not found"];
+        $student = $this->students->firstWhere('id', $studentId);
+        if (! $student) {
+            return ['error' => 'Student not found'];
         }
 
         $studentScores = $this->activityScores[$studentId] ?? [];
@@ -1237,9 +1265,9 @@ class Gradesheet extends Page
             // Add formatted percentage and color based on scale
             $activityFormattedPercentage =
                 $percentage !== null
-                    ? number_format($percentage, 1) . "%"
-                    : "-";
-            $activityColor = "text-gray-500 dark:text-gray-400";
+                    ? number_format($percentage, 1).'%'
+                    : '-';
+            $activityColor = 'text-gray-500 dark:text-gray-400';
             if ($percentage !== null && $numericScale) {
                 // Use numericScale for consistency
                 $tempScaleGrade = $this->gradingService->convertPercentageToCollegeScale(
@@ -1253,27 +1281,27 @@ class Gradesheet extends Page
             } elseif ($percentage !== null && $this->team->usesShsGrading()) {
                 // SHS Specific Percentage Coloring
                 if ($percentage >= 90) {
-                    $activityColor = "text-success-600 dark:text-success-400";
+                    $activityColor = 'text-success-600 dark:text-success-400';
                 } elseif ($percentage >= 75) {
-                    $activityColor = "text-warning-600 dark:text-warning-400";
+                    $activityColor = 'text-warning-600 dark:text-warning-400';
                 } else {
-                    $activityColor = "text-danger-600 dark:text-danger-400";
+                    $activityColor = 'text-danger-600 dark:text-danger-400';
                 }
             }
 
             $activitiesData[] = [
-                "id" => $activity->id,
-                "title" => $activity->title,
-                "component_type" => $activity->component_type,
-                "component_code" => $activity->component_type_code,
-                "term" => $activity->term,
-                "term_code" => $activity->getTermCode(),
-                "total_points" => $activity->total_points,
-                "credit_units" => $activity->credit_units,
-                "score" => $score,
-                "percentage" => $percentage, // Keep raw percentage if needed
-                "formatted_percentage" => $activityFormattedPercentage, // Add formatted
-                "color_class" => $activityColor, // Add color class
+                'id' => $activity->id,
+                'title' => $activity->title,
+                'component_type' => $activity->component_type,
+                'component_code' => $activity->component_type_code,
+                'term' => $activity->term,
+                'term_code' => $activity->getTermCode(),
+                'total_points' => $activity->total_points,
+                'credit_units' => $activity->credit_units,
+                'score' => $score,
+                'percentage' => $percentage, // Keep raw percentage if needed
+                'formatted_percentage' => $activityFormattedPercentage, // Add formatted
+                'color_class' => $activityColor, // Add color class
             ];
         }
 
@@ -1289,11 +1317,11 @@ class Gradesheet extends Page
                     ? $this->gradingService->getShsGradeDescriptor(
                         $transmutedGrade
                     )
-                    : "N/A";
+                    : 'N/A';
             $colorClass =
                 $transmutedGrade !== null
                     ? $this->gradingService->getShsGradeColor($transmutedGrade)
-                    : "text-gray-400";
+                    : 'text-gray-400';
 
             // Recalculate component details for the modal
             $wwDetails = $this->gradingService->calculateShsComponentDetails(
@@ -1314,53 +1342,53 @@ class Gradesheet extends Page
 
             // Add formatted scores to component details
             $formatComponent = function ($details, $weight) {
-                $ps = $details["percentage_score"];
-                $details["formatted_ps"] =
-                    $ps !== null ? number_format($ps, 2) . "%" : "N/A";
-                $details["formatted_ws"] =
+                $ps = $details['percentage_score'];
+                $details['formatted_ps'] =
+                    $ps !== null ? number_format($ps, 2).'%' : 'N/A';
+                $details['formatted_ws'] =
                     $ps !== null
                         ? number_format($ps * ($weight / 100), 2)
-                        : "N/A";
-                $details["formatted_raw"] =
-                    $details["total_raw_score"] !== null
-                        ? $details["total_raw_score"] .
-                            " / " .
-                            $details["total_highest_possible_score"]
-                        : "N/A";
+                        : 'N/A';
+                $details['formatted_raw'] =
+                    $details['total_raw_score'] !== null
+                        ? $details['total_raw_score'].
+                            ' / '.
+                            $details['total_highest_possible_score']
+                        : 'N/A';
+
                 return $details;
             };
 
             $breakdown = [
-                "type" => "shs",
-                "weights" => [
-                    "ww" => $this->shsWrittenWorkWeight,
-                    "pt" => $this->shsPerformanceTaskWeight,
-                    "qa" => $this->shsQuarterlyAssessmentWeight,
+                'type' => 'shs',
+                'weights' => [
+                    'ww' => $this->shsWrittenWorkWeight,
+                    'pt' => $this->shsPerformanceTaskWeight,
+                    'qa' => $this->shsQuarterlyAssessmentWeight,
                 ],
-                "components" => [
+                'components' => [
                     // Add formatted data here
-                    "ww" => $formatComponent(
+                    'ww' => $formatComponent(
                         $wwDetails,
                         $this->shsWrittenWorkWeight
                     ),
-                    "pt" => $formatComponent(
+                    'pt' => $formatComponent(
                         $ptDetails,
                         $this->shsPerformanceTaskWeight
                     ),
-                    "qa" => $formatComponent(
+                    'qa' => $formatComponent(
                         $qaDetails,
                         $this->shsQuarterlyAssessmentWeight
                     ),
                 ],
-                "initial_grade" => $initialGrade,
-                "formatted_initial_grade" =>
-                    $initialGrade !== null
+                'initial_grade' => $initialGrade,
+                'formatted_initial_grade' => $initialGrade !== null
                         ? number_format($initialGrade, 2)
-                        : "N/A",
-                "transmuted_grade" => $transmutedGrade, // Keep raw value
-                "formatted_transmuted_grade" => $transmutedGrade ?? "N/A", // Formatted (just the number)
-                "descriptor" => $descriptor,
-                "color_class" => $colorClass, // Pass color class
+                        : 'N/A',
+                'transmuted_grade' => $transmutedGrade, // Keep raw value
+                'formatted_transmuted_grade' => $transmutedGrade ?? 'N/A', // Formatted (just the number)
+                'descriptor' => $descriptor,
+                'color_class' => $colorClass, // Pass color class
             ];
         } elseif ($this->team->usesCollegeTermGrading() && $numericScale) {
             // Format term grades and final grade
@@ -1373,14 +1401,14 @@ class Gradesheet extends Page
                             $grade,
                             $numericScale
                         )
-                        : "N/A";
+                        : 'N/A';
                 $termGradeColors[$termKey] =
                     $grade !== null
                         ? $this->gradingService->getCollegeGradeColor(
                             $grade,
                             $numericScale
                         )
-                        : "text-gray-400";
+                        : 'text-gray-400';
             }
 
             $formattedFinalGrade =
@@ -1389,30 +1417,30 @@ class Gradesheet extends Page
                         $overallGradeValue,
                         $numericScale
                     )
-                    : "N/A";
+                    : 'N/A';
             $finalGradeColor =
                 $overallGradeValue !== null
                     ? $this->gradingService->getCollegeGradeColor(
                         $overallGradeValue,
                         $numericScale
                     )
-                    : "text-gray-400";
+                    : 'text-gray-400';
 
             $breakdown = [
-                "type" => "college_term",
-                "scale" => $numericScale,
-                "scale_description" => $this->team->grading_system_description,
-                "weights" => [
-                    "prelim" => $this->collegePrelimWeight,
-                    "midterm" => $this->collegeMidtermWeight,
-                    "final" => $this->collegeFinalWeight,
+                'type' => 'college_term',
+                'scale' => $numericScale,
+                'scale_description' => $this->team->grading_system_description,
+                'weights' => [
+                    'prelim' => $this->collegePrelimWeight,
+                    'midterm' => $this->collegeMidtermWeight,
+                    'final' => $this->collegeFinalWeight,
                 ],
-                "term_grades" => $termGrades, // Keep raw term grades if needed
-                "formatted_term_grades" => $formattedTermGrades, // Add formatted
-                "term_grade_colors" => $termGradeColors, // Add colors
-                "final_grade" => $overallGradeValue, // Keep raw final grade
-                "formatted_final_grade" => $formattedFinalGrade, // Add formatted
-                "final_grade_color" => $finalGradeColor, // Add final color
+                'term_grades' => $termGrades, // Keep raw term grades if needed
+                'formatted_term_grades' => $formattedTermGrades, // Add formatted
+                'term_grade_colors' => $termGradeColors, // Add colors
+                'final_grade' => $overallGradeValue, // Keep raw final grade
+                'formatted_final_grade' => $formattedFinalGrade, // Add formatted
+                'final_grade_color' => $finalGradeColor, // Add final color
             ];
         } elseif ($this->team->usesCollegeGwaGrading() && $numericScale) {
             $collegeGradeDetails = $this->gradingService->calculateCollegeGwaDetails(
@@ -1426,71 +1454,70 @@ class Gradesheet extends Page
                         $overallGradeValue,
                         $numericScale
                     )
-                    : "N/A";
+                    : 'N/A';
             $gwaColor =
                 $overallGradeValue !== null
                     ? $this->gradingService->getCollegeGradeColor(
                         $overallGradeValue,
                         $numericScale
                     )
-                    : "text-gray-400";
+                    : 'text-gray-400';
             // Format activity scale grades included in GWA
             $formattedActivityGrades = [];
             foreach (
-                $collegeGradeDetails["activity_grades"] ?? []
-                as $actId => $gradeInfo
+                $collegeGradeDetails['activity_grades'] ?? [] as $actId => $gradeInfo
             ) {
                 $formattedActivityGrades[$actId] = $gradeInfo; // Copy existing
                 $formattedActivityGrades[$actId][
-                    "formatted_scale_grade"
+                    'formatted_scale_grade'
                 ] = $this->gradingService->formatCollegeGrade(
-                    $gradeInfo["scale_grade"],
+                    $gradeInfo['scale_grade'],
                     $numericScale
                 );
                 $formattedActivityGrades[$actId][
-                    "color_class"
+                    'color_class'
                 ] = $this->gradingService->getCollegeGradeColor(
-                    $gradeInfo["scale_grade"],
+                    $gradeInfo['scale_grade'],
                     $numericScale
                 );
                 $formattedActivityGrades[$actId][
-                    "formatted_weighted_part"
+                    'formatted_weighted_part'
                 ] = number_format(
-                    $gradeInfo["scale_grade"] * $gradeInfo["units"],
+                    $gradeInfo['scale_grade'] * $gradeInfo['units'],
                     2
                 );
             }
 
             $breakdown = [
-                "type" => "college_gwa",
-                "scale" => $numericScale,
-                "scale_description" => $this->team->grading_system_description,
-                "gwa" => $overallGradeValue, // Raw GWA
-                "formatted_gwa" => $formattedGwa, // Formatted GWA
-                "gwa_color" => $gwaColor, // GWA Color
-                "total_units" => $collegeGradeDetails["total_units"] ?? 0,
-                "formatted_total_units" => number_format(
-                    $collegeGradeDetails["total_units"] ?? 0,
+                'type' => 'college_gwa',
+                'scale' => $numericScale,
+                'scale_description' => $this->team->grading_system_description,
+                'gwa' => $overallGradeValue, // Raw GWA
+                'formatted_gwa' => $formattedGwa, // Formatted GWA
+                'gwa_color' => $gwaColor, // GWA Color
+                'total_units' => $collegeGradeDetails['total_units'] ?? 0,
+                'formatted_total_units' => number_format(
+                    $collegeGradeDetails['total_units'] ?? 0,
                     2
                 ),
-                "weighted_grade_sum" =>
-                    $collegeGradeDetails["weighted_grade_sum"] ?? 0,
-                "formatted_weighted_grade_sum" => number_format(
-                    $collegeGradeDetails["weighted_grade_sum"] ?? 0,
+                'weighted_grade_sum' => $collegeGradeDetails['weighted_grade_sum'] ?? 0,
+                'formatted_weighted_grade_sum' => number_format(
+                    $collegeGradeDetails['weighted_grade_sum'] ?? 0,
                     2
                 ),
-                "activity_grades" => $formattedActivityGrades, // Pass formatted activity grades
+                'activity_grades' => $formattedActivityGrades, // Pass formatted activity grades
             ];
         } else {
-            $breakdown = ["type" => "none"];
+            $breakdown = ['type' => 'none'];
         }
 
         return [
-            "student" => $student->only(["id", "name"]),
-            "activities" => $activitiesData,
-            "breakdown" => $breakdown,
+            'student' => $student->only(['id', 'name']),
+            'activities' => $activitiesData,
+            'breakdown' => $breakdown,
         ];
     }
+
     /**
      * Get all scores and activities for a specific student
      */
@@ -1499,9 +1526,9 @@ class Gradesheet extends Page
         $student = Student::findOrFail($studentId);
 
         // Get all activities for the team
-        $activities = Activity::where("team_id", $this->teamId)
-            ->orderBy("category")
-            ->orderBy("created_at")
+        $activities = Activity::where('team_id', $this->teamId)
+            ->orderBy('category')
+            ->orderBy('created_at')
             ->get();
 
         // Get the scores
@@ -1512,9 +1539,9 @@ class Gradesheet extends Page
         }
 
         return [
-            "student" => $student,
-            "activities" => $activities,
-            "scores" => $scores,
+            'student' => $student,
+            'activities' => $activities,
+            'scores' => $scores,
         ];
     }
 
@@ -1526,7 +1553,7 @@ class Gradesheet extends Page
         $termGradeValue = $this->studentTermGrades[$studentId][$termKey] ?? null;
         $numericScale = $this->team?->getCollegeNumericScale();
 
-        if ($termGradeValue === null || !$numericScale) {
+        if ($termGradeValue === null || ! $numericScale) {
             return new HtmlString('<span class="text-gray-400 dark:text-gray-500">-</span>');
         }
 

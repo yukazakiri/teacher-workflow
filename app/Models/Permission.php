@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -10,5 +11,6 @@ class Permission extends SpatiePermission
 
     // Ensure the model knows it's using a string primary key
     public $incrementing = false;
-    protected $keyType = "string";
+
+    protected $keyType = 'string';
 }

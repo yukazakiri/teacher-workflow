@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -26,15 +26,15 @@ return new class extends Migration
                   AND kcu.column_name = 'student_id'
             ");
 
-            if (!empty($foreignKeyExists)) {
+            if (! empty($foreignKeyExists)) {
                 $table->dropForeign(['student_id']);
             }
 
             // Add the correct foreign key constraint
             $table->foreign('student_id')
-                  ->references('id')
-                  ->on('students')
-                  ->onDelete('cascade');
+                ->references('id')
+                ->on('students')
+                ->onDelete('cascade');
         });
 
         // Log the change for debugging
@@ -49,11 +49,11 @@ return new class extends Migration
         Schema::table('activity_progress', function (Blueprint $table) {
             // Drop the foreign key added in up()
             $table->dropForeign(['student_id']);
-            
+
             // Recreate original foreign key (assuming it was previously without onDelete)
             $table->foreign('student_id')
-                  ->references('id')
-                  ->on('students');
+                ->references('id')
+                ->on('students');
         });
     }
 };

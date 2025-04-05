@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Activity;
-use App\Models\Team;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log; // Keep Log import
 
@@ -20,11 +19,13 @@ class GradingService
         ?int $qaWeight
     ): ?float {
         if ($wwWeight === null || $ptWeight === null || $qaWeight === null) {
-            Log::warning("SHS weights not fully configured.");
+            Log::warning('SHS weights not fully configured.');
+
             return null; // Weights must be set
         }
         if ($wwWeight + $ptWeight + $qaWeight !== 100) {
-            Log::warning("SHS weights do not sum to 100.");
+            Log::warning('SHS weights do not sum to 100.');
+
             return null; // Weights must sum to 100
         }
 
@@ -47,21 +48,21 @@ class GradingService
         $initialGrade = 0;
         $hasScores = false; // Track if any component has scores
 
-        if ($wwDetails["percentage_score"] !== null) {
-            $initialGrade += $wwDetails["percentage_score"] * ($wwWeight / 100);
+        if ($wwDetails['percentage_score'] !== null) {
+            $initialGrade += $wwDetails['percentage_score'] * ($wwWeight / 100);
             $hasScores = true;
         }
-        if ($ptDetails["percentage_score"] !== null) {
-            $initialGrade += $ptDetails["percentage_score"] * ($ptWeight / 100);
+        if ($ptDetails['percentage_score'] !== null) {
+            $initialGrade += $ptDetails['percentage_score'] * ($ptWeight / 100);
             $hasScores = true;
         }
-        if ($qaDetails["percentage_score"] !== null) {
-            $initialGrade += $qaDetails["percentage_score"] * ($qaWeight / 100);
+        if ($qaDetails['percentage_score'] !== null) {
+            $initialGrade += $qaDetails['percentage_score'] * ($qaWeight / 100);
             $hasScores = true;
         }
 
         // If no scores were found in any component, return null
-        if (!$hasScores) {
+        if (! $hasScores) {
             return null;
         }
 
@@ -78,7 +79,7 @@ class GradingService
         string $componentType
     ): array {
         $componentActivities = $activities->where(
-            "component_type",
+            'component_type',
             $componentType
         );
         $totalRawScore = 0;
@@ -110,11 +111,11 @@ class GradingService
         }
 
         return [
-            "total_raw_score" => $hasScoreInComponent ? $totalRawScore : null,
-            "total_highest_possible_score" => $hasScoreInComponent
+            'total_raw_score' => $hasScoreInComponent ? $totalRawScore : null,
+            'total_highest_possible_score' => $hasScoreInComponent
                 ? $totalHighestPossibleScore
                 : null,
-            "percentage_score" => $percentageScore,
+            'percentage_score' => $percentageScore,
         ];
     }
 
@@ -183,6 +184,7 @@ class GradingService
                 break; // Since keys are ordered descending
             }
         }
+
         return $transmutedGrade;
     }
 
@@ -192,14 +194,15 @@ class GradingService
     public function getShsGradeDescriptor(?int $transmutedGrade): string
     {
         if ($transmutedGrade === null) {
-            return "N/A";
+            return 'N/A';
         }
+
         return match (true) {
-            $transmutedGrade >= 90 => "Outstanding",
-            $transmutedGrade >= 85 => "Very Satisfactory",
-            $transmutedGrade >= 80 => "Satisfactory",
-            $transmutedGrade >= 75 => "Fairly Satisfactory",
-            default => "Did Not Meet Expectations",
+            $transmutedGrade >= 90 => 'Outstanding',
+            $transmutedGrade >= 85 => 'Very Satisfactory',
+            $transmutedGrade >= 80 => 'Satisfactory',
+            $transmutedGrade >= 75 => 'Fairly Satisfactory',
+            default => 'Did Not Meet Expectations',
         };
     }
 
@@ -209,16 +212,15 @@ class GradingService
     public function getShsGradeColor(?int $transmutedGrade): string
     {
         if ($transmutedGrade === null) {
-            return "text-gray-400 dark:text-gray-500";
+            return 'text-gray-400 dark:text-gray-500';
         }
+
         return match (true) {
-            $transmutedGrade >= 90 => "text-success-600 dark:text-success-400",
-            $transmutedGrade >= 85
-                => "text-primary-600 dark:text-primary-400", // Using Primary for Very Satisfactory
-            $transmutedGrade >= 80
-                => "text-info-600 dark:text-info-400", // Using Info for Satisfactory
-            $transmutedGrade >= 75 => "text-warning-600 dark:text-warning-400",
-            default => "text-danger-600 dark:text-danger-400",
+            $transmutedGrade >= 90 => 'text-success-600 dark:text-success-400',
+            $transmutedGrade >= 85 => 'text-primary-600 dark:text-primary-400', // Using Primary for Very Satisfactory
+            $transmutedGrade >= 80 => 'text-info-600 dark:text-info-400', // Using Info for Satisfactory
+            $transmutedGrade >= 75 => 'text-warning-600 dark:text-warning-400',
+            default => 'text-danger-600 dark:text-danger-400',
         };
     }
 
@@ -237,7 +239,8 @@ class GradingService
             $activities,
             $collegeScale
         );
-        return $details["gwa"]; // Return the calculated GWA from details
+
+        return $details['gwa']; // Return the calculated GWA from details
     }
 
     /**
@@ -248,13 +251,14 @@ class GradingService
         Collection $activities,
         ?string $collegeScale
     ): array {
-        if (!$collegeScale) {
-            Log::warning("College grading scale not set.");
+        if (! $collegeScale) {
+            Log::warning('College grading scale not set.');
+
             return [
-                "gwa" => null,
-                "total_units" => 0,
-                "weighted_grade_sum" => 0,
-                "activity_grades" => [],
+                'gwa' => null,
+                'total_units' => 0,
+                'weighted_grade_sum' => 0,
+                'activity_grades' => [],
             ];
         }
 
@@ -284,9 +288,9 @@ class GradingService
                     $weightedGradeSum += $scaleGrade * $units;
                     $totalUnits += $units;
                     $activityGrades[$activity->id] = [
-                        "scale_grade" => $scaleGrade,
-                        "percentage" => $percentage,
-                        "units" => $units,
+                        'scale_grade' => $scaleGrade,
+                        'percentage' => $percentage,
+                        'units' => $units,
                     ];
                 }
             } elseif (
@@ -306,12 +310,13 @@ class GradingService
         }
 
         return [
-            "gwa" => $gwa,
-            "total_units" => $totalUnits,
-            "weighted_grade_sum" => $weightedGradeSum,
-            "activity_grades" => $activityGrades,
+            'gwa' => $gwa,
+            'total_units' => $totalUnits,
+            'weighted_grade_sum' => $weightedGradeSum,
+            'activity_grades' => $activityGrades,
         ];
     }
+
     /**
      * Calculate the grade for a specific college term (Prelim, Midterm, Final).
      * Calculates the average percentage of scored activities within the term,
@@ -322,7 +327,7 @@ class GradingService
         Collection $termActivities, // Activities ALREADY filtered for the specific term
         ?string $numericScale // e.g., '5_point', '4_point', 'percentage'
     ): ?float {
-        if (!$numericScale || $termActivities->isEmpty()) {
+        if (! $numericScale || $termActivities->isEmpty()) {
             return null;
         }
 
@@ -365,6 +370,7 @@ class GradingService
             $numericScale
         );
     }
+
     /**
      * Calculate the Final Final Grade for the College Term-Based system.
      */
@@ -378,16 +384,17 @@ class GradingService
     ): ?array {
         // Return array: ['grade' => float|null, 'term_grades' => [...]]
         if (
-            !$numericScale ||
+            ! $numericScale ||
             $prelimWeight === null ||
             $midtermWeight === null ||
             $finalWeight === null ||
             $prelimWeight + $midtermWeight + $finalWeight !== 100
         ) {
             Log::warning(
-                "College term weights or scale not configured correctly."
+                'College term weights or scale not configured correctly.'
             );
-            return ["final_grade" => null, "term_grades" => []];
+
+            return ['final_grade' => null, 'term_grades' => []];
         }
 
         $termGrades = [];
@@ -395,7 +402,7 @@ class GradingService
 
         // Calculate Prelim Grade
         $prelimActivities = $allActivities->where(
-            "term",
+            'term',
             Activity::TERM_PRELIM
         );
         $prelimGrade = $this->calculateCollegeTermGrade(
@@ -410,7 +417,7 @@ class GradingService
 
         // Calculate Midterm Grade
         $midtermActivities = $allActivities->where(
-            "term",
+            'term',
             Activity::TERM_MIDTERM
         );
         $midtermGrade = $this->calculateCollegeTermGrade(
@@ -424,7 +431,7 @@ class GradingService
         }
 
         // Calculate Final Grade
-        $finalActivities = $allActivities->where("term", Activity::TERM_FINAL);
+        $finalActivities = $allActivities->where('term', Activity::TERM_FINAL);
         $finalGradeVal = $this->calculateCollegeTermGrade(
             $studentScores,
             $finalActivities,
@@ -453,10 +460,11 @@ class GradingService
         }
 
         return [
-            "final_grade" => $finalFinalGrade,
-            "term_grades" => $termGrades, // Return calculated term grades for breakdown
+            'final_grade' => $finalFinalGrade,
+            'term_grades' => $termGrades, // Return calculated term grades for breakdown
         ];
     }
+
     /**
      * Convert a percentage score to a college grade based on the numeric scale.
      * (Make sure this handles '5_point', '4_point', 'percentage')
@@ -469,7 +477,7 @@ class GradingService
 
         switch ($numericScale) {
             // Use the extracted numeric scale
-            case "5_point":
+            case '5_point':
                 // ... (keep existing 5_point logic)
                 return match (true) {
                     $percentage >= 98 => 1.0,
@@ -484,7 +492,7 @@ class GradingService
                     default => 5.0,
                 };
 
-            case "4_point":
+            case '4_point':
                 // ... (keep existing 4_point logic)
                 return match (true) {
                     $percentage >= 93 => 4.0,
@@ -501,13 +509,14 @@ class GradingService
                     default => 0.0,
                 };
 
-            case "percentage":
+            case 'percentage':
                 return round($percentage, 2);
 
             default:
                 Log::error(
                     "Unsupported college numeric scale: {$numericScale}"
                 );
+
                 return null;
         }
     }
@@ -520,18 +529,18 @@ class GradingService
         ?string $numericScale,
         bool $raw = false
     ): string {
-        if ($gradeValue === null || !$numericScale) {
-            return "N/A";
+        if ($gradeValue === null || ! $numericScale) {
+            return 'N/A';
         }
 
         switch ($numericScale) {
-            case "5_point":
-            case "4_point":
+            case '5_point':
+            case '4_point':
                 return number_format($gradeValue, 2);
-            case "percentage":
-                return number_format($gradeValue, 2) . ($raw ? "" : "%");
+            case 'percentage':
+                return number_format($gradeValue, 2).($raw ? '' : '%');
             default:
-                return "N/A";
+                return 'N/A';
         }
     }
 
@@ -542,48 +551,39 @@ class GradingService
         ?float $gradeValue,
         ?string $numericScale
     ): string {
-        if ($gradeValue === null || !$numericScale) {
-            return "text-gray-400 dark:text-gray-500";
+        if ($gradeValue === null || ! $numericScale) {
+            return 'text-gray-400 dark:text-gray-500';
         }
 
         switch ($numericScale) {
-            case "5_point":
+            case '5_point':
                 // ... (keep existing 5_point logic)
                 return match (true) {
-                    $gradeValue <= 1.5
-                        => "text-success-600 dark:text-success-400",
-                    $gradeValue <= 2.0
-                        => "text-primary-600 dark:text-primary-400",
-                    $gradeValue <= 2.5 => "text-info-600 dark:text-info-400",
-                    $gradeValue <= 3.0
-                        => "text-warning-600 dark:text-warning-400",
-                    default => "text-danger-600 dark:text-danger-400",
+                    $gradeValue <= 1.5 => 'text-success-600 dark:text-success-400',
+                    $gradeValue <= 2.0 => 'text-primary-600 dark:text-primary-400',
+                    $gradeValue <= 2.5 => 'text-info-600 dark:text-info-400',
+                    $gradeValue <= 3.0 => 'text-warning-600 dark:text-warning-400',
+                    default => 'text-danger-600 dark:text-danger-400',
                 };
-            case "4_point":
+            case '4_point':
                 // ... (keep existing 4_point logic)
                 return match (true) {
-                    $gradeValue >= 3.7
-                        => "text-success-600 dark:text-success-400",
-                    $gradeValue >= 3.0
-                        => "text-primary-600 dark:text-primary-400",
-                    $gradeValue >= 2.0 => "text-info-600 dark:text-info-400",
-                    $gradeValue >= 1.0
-                        => "text-warning-600 dark:text-warning-400",
-                    default => "text-danger-600 dark:text-danger-400",
+                    $gradeValue >= 3.7 => 'text-success-600 dark:text-success-400',
+                    $gradeValue >= 3.0 => 'text-primary-600 dark:text-primary-400',
+                    $gradeValue >= 2.0 => 'text-info-600 dark:text-info-400',
+                    $gradeValue >= 1.0 => 'text-warning-600 dark:text-warning-400',
+                    default => 'text-danger-600 dark:text-danger-400',
                 };
-            case "percentage":
+            case 'percentage':
                 // ... (keep existing percentage logic)
                 return match (true) {
-                    $gradeValue >= 90
-                        => "text-success-600 dark:text-success-400",
-                    $gradeValue >= 80
-                        => "text-primary-600 dark:text-primary-400",
-                    $gradeValue >= 75
-                        => "text-warning-600 dark:text-warning-400",
-                    default => "text-danger-600 dark:text-danger-400",
+                    $gradeValue >= 90 => 'text-success-600 dark:text-success-400',
+                    $gradeValue >= 80 => 'text-primary-600 dark:text-primary-400',
+                    $gradeValue >= 75 => 'text-warning-600 dark:text-warning-400',
+                    default => 'text-danger-600 dark:text-danger-400',
                 };
             default:
-                return "text-gray-400 dark:text-gray-500";
+                return 'text-gray-400 dark:text-gray-500';
         }
     }
 }

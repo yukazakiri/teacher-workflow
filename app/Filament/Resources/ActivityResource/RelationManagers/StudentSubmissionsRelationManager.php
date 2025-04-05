@@ -7,37 +7,32 @@ namespace App\Filament\Resources\ActivityResource\RelationManagers;
 use App\Models\Activity;
 use App\Models\ActivitySubmission;
 use App\Models\Student; // Use Student model
-use App\Models\User;
-use Filament\Tables\Actions\Action;
 use Filament\Forms;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
-use Filament\Tables\Table;
+use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Table; // Useful for quick numeric input
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Placeholder;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\TextInputColumn; // Useful for quick numeric input
-use Filament\Tables\Columns\BadgeColumn;
-use Filament\Notifications\Notification;
-use Filament\Tables\Actions\BulkActionGroup;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class StudentSubmissionsRelationManager extends RelationManager
 {
     // Change relationship if needed, but we're primarily querying Students
-    protected static string $relationship = "submissions";
-    protected static ?string $title = "Student Grades & Submissions";
+    protected static string $relationship = 'submissions';
+
+    protected static ?string $title = 'Student Grades & Submissions';
 
     // We don't define a form here as we're editing via table actions
 
@@ -57,32 +52,32 @@ class StudentSubmissionsRelationManager extends RelationManager
             ->query(
                 // Base query on active students in the current team
                 Student::query()
-                    ->where("team_id", $teamId)
-                    ->where("status", "active") // Only show active students
+                    ->where('team_id', $teamId)
+                    ->where('status', 'active') // Only show active students
             )
-            ->recordTitleAttribute("name") // Identify records by student name
+            ->recordTitleAttribute('name') // Identify records by student name
             ->columns([
-                TextColumn::make("name")
-                    ->label("Student Name")
+                TextColumn::make('name')
+                    ->label('Student Name')
                     ->searchable()
                     ->sortable()
-                    ->weight("medium"),
+                    ->weight('medium'),
 
                 // Inline Score Input/Display
-                TextInputColumn::make("score") // Use TextInputColumn for quick edits
-                    ->label("Score")
+                TextInputColumn::make('score') // Use TextInputColumn for quick edits
+                    ->label('Score')
                     ->rules([
-                        "nullable",
-                        "numeric",
-                        "min:0",
+                        'nullable',
+                        'numeric',
+                        'min:0',
                         "max:{$totalPoints}",
                     ]) // Add validation
                     ->extraAttributes([
-                        "style" => "width: 80px; text-align: center;",
+                        'style' => 'width: 80px; text-align: center;',
                     ]) // Adjust width
                     // Load the score from the submission
                     ->getStateUsing(
-                        fn(Student $record) => $this->getSubmissionForStudent(
+                        fn (Student $record) => $this->getSubmissionForStudent(
                             $record,
                             $activity
                         )?->score
@@ -93,51 +88,51 @@ class StudentSubmissionsRelationManager extends RelationManager
                         ?string $state
                     ) use ($activity) {
                         $this->updateStudentData($record->id, $activity->id, [
-                            "score" => $state,
+                            'score' => $state,
                         ]);
                     }),
 
                 // Display Max Points
-                Tables\Columns\TextColumn::make("max_points")
-                    ->label("/ Max")
-                    ->formatStateUsing(fn() => "/ " . $totalPoints)
+                Tables\Columns\TextColumn::make('max_points')
+                    ->label('/ Max')
+                    ->formatStateUsing(fn () => '/ '.$totalPoints)
                     ->alignCenter(),
 
                 // Inline Feedback Action
-                TextColumn::make("feedback_action") // Use TextColumn
-                    ->label("Feedback")
-                    ->tooltip("Click to view/edit feedback")
-                    ->icon("heroicon-o-chat-bubble-left-right") // Display an icon
+                TextColumn::make('feedback_action') // Use TextColumn
+                    ->label('Feedback')
+                    ->tooltip('Click to view/edit feedback')
+                    ->icon('heroicon-o-chat-bubble-left-right') // Display an icon
                     ->alignCenter() // Center the icon
                     ->color(
-                        fn(Student $record) => $this->getSubmissionForStudent(
+                        fn (Student $record) => $this->getSubmissionForStudent(
                             $record,
                             $activity
                         )?->feedback
-                            ? "primary"
-                            : "gray"
+                            ? 'primary'
+                            : 'gray'
                     ) // Keep color logic based on feedback presence
                     ->action(
                         // Attach the action definition here
-                        Action::make("edit_feedback") // Action definition remains the same
+                        Action::make('edit_feedback') // Action definition remains the same
                             ->label(
-                                fn(
+                                fn (
                                     Student $record
                                 ) => "Feedback for {$record->name}"
                             )
-                            ->modalWidth("lg")
+                            ->modalWidth('lg')
                             ->fillForm(
-                                fn(Student $record) => [
-                                    "feedback" => $this->getSubmissionForStudent(
+                                fn (Student $record) => [
+                                    'feedback' => $this->getSubmissionForStudent(
                                         $record,
                                         $activity
                                     )?->feedback,
                                 ]
                             )
                             ->form([
-                                Forms\Components\RichEditor::make("feedback")
-                                    ->label("Teacher Feedback")
-                                    ->disableToolbarButtons(["attachFiles"])
+                                Forms\Components\RichEditor::make('feedback')
+                                    ->label('Teacher Feedback')
+                                    ->disableToolbarButtons(['attachFiles'])
                                     ->nullable(),
                             ])
                             ->action(function (
@@ -147,59 +142,58 @@ class StudentSubmissionsRelationManager extends RelationManager
                                 $this->updateStudentData(
                                     $record->id,
                                     $activity->id,
-                                    ["feedback" => $data["feedback"]]
+                                    ['feedback' => $data['feedback']]
                                 );
                                 Notification::make()
-                                    ->title("Feedback updated.")
+                                    ->title('Feedback updated.')
                                     ->success()
                                     ->send();
                             })
                     ),
 
-                BadgeColumn::make("submission_status")
-                    ->label("Status")
+                BadgeColumn::make('submission_status')
+                    ->label('Status')
                     ->getStateUsing(
-                        fn(Student $record) => $this->getSubmissionForStudent(
+                        fn (Student $record) => $this->getSubmissionForStudent(
                             $record,
                             $activity
-                        )?->status ?? "not_submitted"
+                        )?->status ?? 'not_submitted'
                     )
                     ->colors([
-                        "gray" => "not_submitted",
-                        "danger" => "missing", // Or 'late' if deadline passed
-                        "warning" => "draft",
-                        "info" => "submitted",
-                        "success" => "completed", // Typically after grading
+                        'gray' => 'not_submitted',
+                        'danger' => 'missing', // Or 'late' if deadline passed
+                        'warning' => 'draft',
+                        'info' => 'submitted',
+                        'success' => 'completed', // Typically after grading
                         // Add other statuses as needed
                     ])
                     ->formatStateUsing(
-                        fn(string $state): string => match ($state) {
-                            "not_submitted" => "Not Submitted",
-                            "in_progress"
-                                => "In Progress", // If you use this status
+                        fn (string $state): string => match ($state) {
+                            'not_submitted' => 'Not Submitted',
+                            'in_progress' => 'In Progress', // If you use this status
                             default => Str::title(
-                                str_replace("_", " ", $state)
+                                str_replace('_', ' ', $state)
                             ),
                         }
                     ),
 
                 // Optional: View Submission Details Action (if complex submission like form/files)
-                TextColumn::make("view_submission") // Use TextColumn
-                    ->label("View")
-                    ->tooltip("View Full Submission")
-                    ->icon("heroicon-o-eye") // Display an icon
+                TextColumn::make('view_submission') // Use TextColumn
+                    ->label('View')
+                    ->tooltip('View Full Submission')
+                    ->icon('heroicon-o-eye') // Display an icon
                     ->alignCenter() // Center the icon
-                    ->color("gray")
+                    ->color('gray')
                     ->action(
                         // Attach the action definition here
-                        Action::make("view_details") // Action definition remains the same
+                        Action::make('view_details') // Action definition remains the same
                             ->label(
-                                fn(
+                                fn (
                                     Student $record
                                 ) => "Submission by {$record->name}"
                             )
                             ->modalHeading(
-                                fn(
+                                fn (
                                     Student $record
                                 ) => "Submission Details: {$record->name}"
                             ) // Optional: Add a heading
@@ -210,29 +204,30 @@ class StudentSubmissionsRelationManager extends RelationManager
                                     $record,
                                     $activity
                                 );
+
                                 // Make sure the view path is correct
                                 return $submission
                                     ? view(
-                                        "filament.resources.activity-resource.partials.submission-details",
-                                        ["submission" => $submission]
+                                        'filament.resources.activity-resource.partials.submission-details',
+                                        ['submission' => $submission]
                                     )
                                     : view()->make(
-                                        "filament::components.modal.content",
+                                        'filament::components.modal.content',
                                         [
-                                            "slot" =>
-                                                '<p class="text-center text-gray-500 dark:text-gray-400">No submission found.</p>',
+                                            'slot' => '<p class="text-center text-gray-500 dark:text-gray-400">No submission found.</p>',
                                         ]
                                     ); // Use a standard empty state
                             })
                             ->modalSubmitAction(false)
-                            ->modalCancelActionLabel("Close")
+                            ->modalCancelActionLabel('Close')
                     ) // End the action definition attached to TextColumn
                     ->visible(function (?Model $record) use ($activity) {
                         // Allow null or base Model
                         // Ensure $record is actually a Student instance before proceeding
-                        if (!$record instanceof Student) {
+                        if (! $record instanceof Student) {
                             return false;
                         }
+
                         // Now safely check for submission
                         return (bool) $this->getSubmissionForStudent(
                             $record,
@@ -240,103 +235,105 @@ class StudentSubmissionsRelationManager extends RelationManager
                         );
                     }), // Only show if record is a Student and submission exists
 
-                TextColumn::make("graded_details")
-                    ->label("Graded")
+                TextColumn::make('graded_details')
+                    ->label('Graded')
                     ->getStateUsing(function (Student $record) use ($activity) {
                         $submission = $this->getSubmissionForStudent(
                             $record,
                             $activity
                         );
                         if ($submission && $submission->graded_at) {
-                            $grader = $submission->gradedBy?->name ?? "System"; // gradedBy relationship
-                            return "By {$grader} on " .
-                                $submission->graded_at->format("M d, Y H:i");
+                            $grader = $submission->gradedBy?->name ?? 'System'; // gradedBy relationship
+
+                            return "By {$grader} on ".
+                                $submission->graded_at->format('M d, Y H:i');
                         }
-                        return "Not Graded";
+
+                        return 'Not Graded';
                     })
                     ->color(
-                        fn(string $state) => $state === "Not Graded"
-                            ? "gray"
+                        fn (string $state) => $state === 'Not Graded'
+                            ? 'gray'
                             : null
                     )
                     ->toggleable(isToggledHiddenByDefault: true), // Hide by default
 
-                TextColumn::make("submitted_at")
-                    ->label("Submitted At")
-                    ->dateTime("M d, Y H:i")
+                TextColumn::make('submitted_at')
+                    ->label('Submitted At')
+                    ->dateTime('M d, Y H:i')
                     ->getStateUsing(
-                        fn(Student $record) => $this->getSubmissionForStudent(
+                        fn (Student $record) => $this->getSubmissionForStudent(
                             $record,
                             $activity
                         )?->submitted_at
                     )
-                    ->placeholder("-")
+                    ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make("submission_status")
-                    ->label("Submission Status")
+                Tables\Filters\SelectFilter::make('submission_status')
+                    ->label('Submission Status')
                     ->options([
-                        "not_submitted" => "Not Submitted",
-                        "draft" => "Draft",
-                        "submitted" => "Submitted",
-                        "completed" => "Completed",
+                        'not_submitted' => 'Not Submitted',
+                        'draft' => 'Draft',
+                        'submitted' => 'Submitted',
+                        'completed' => 'Completed',
                         // Add other relevant statuses
                     ])
                     ->query(function (Builder $query, array $data) use (
                         $activity
                     ) {
-                        $status = $data["value"] ?? null;
-                        if (!$status) {
+                        $status = $data['value'] ?? null;
+                        if (! $status) {
                             return $query;
                         }
 
-                        if ($status === "not_submitted") {
+                        if ($status === 'not_submitted') {
                             // Find students who DO NOT have a submission for this activity
                             return $query->whereDoesntHave(
-                                "submissions",
-                                fn($subQuery) => $subQuery->where(
-                                    "activity_id",
+                                'submissions',
+                                fn ($subQuery) => $subQuery->where(
+                                    'activity_id',
                                     $activity->id
                                 )
                             );
                         } else {
                             // Find students who HAVE a submission with the specified status
                             return $query->whereHas(
-                                "submissions",
-                                fn($subQuery) => $subQuery
-                                    ->where("activity_id", $activity->id)
-                                    ->where("status", $status)
+                                'submissions',
+                                fn ($subQuery) => $subQuery
+                                    ->where('activity_id', $activity->id)
+                                    ->where('status', $status)
                             );
                         }
                     }),
-                Tables\Filters\TernaryFilter::make("is_graded")
-                    ->label("Grading Status")
-                    ->placeholder("All Students")
-                    ->trueLabel("Graded")
-                    ->falseLabel("Not Graded")
+                Tables\Filters\TernaryFilter::make('is_graded')
+                    ->label('Grading Status')
+                    ->placeholder('All Students')
+                    ->trueLabel('Graded')
+                    ->falseLabel('Not Graded')
                     ->queries(
-                        true: fn(Builder $query) => $query->whereHas(
-                            "submissions",
-                            fn($sq) => $sq
-                                ->where("activity_id", $activity->id)
-                                ->whereNotNull("graded_at")
+                        true: fn (Builder $query) => $query->whereHas(
+                            'submissions',
+                            fn ($sq) => $sq
+                                ->where('activity_id', $activity->id)
+                                ->whereNotNull('graded_at')
                         ),
-                        false: fn(Builder $query) => $query->where(function (
+                        false: fn (Builder $query) => $query->where(function (
                             $q
                         ) use ($activity) {
                             $q->whereDoesntHave(
-                                "submissions",
-                                fn($sq) => $sq->where(
-                                    "activity_id",
+                                'submissions',
+                                fn ($sq) => $sq->where(
+                                    'activity_id',
                                     $activity->id
                                 )
                             ) // Not submitted counts as not graded
                                 ->orWhereHas(
-                                    "submissions",
-                                    fn($sq) => $sq
-                                        ->where("activity_id", $activity->id)
-                                        ->whereNull("graded_at")
+                                    'submissions',
+                                    fn ($sq) => $sq
+                                        ->where('activity_id', $activity->id)
+                                        ->whereNull('graded_at')
                                 );
                         })
                     ),
@@ -344,62 +341,63 @@ class StudentSubmissionsRelationManager extends RelationManager
                 // This is more complex, might need Livewire lifecycle hooks
             ])
             ->headerActions([
-                Tables\Actions\Action::make("bulk_grade")
-                    ->label("Bulk Grade")
-                    ->icon("heroicon-o-academic-cap")
-                    ->color("primary")
-                    ->modalWidth("lg")
+                Tables\Actions\Action::make('bulk_grade')
+                    ->label('Bulk Grade')
+                    ->icon('heroicon-o-academic-cap')
+                    ->color('primary')
+                    ->modalWidth('lg')
                     ->form([
-                        Forms\Components\Select::make("students")
-                            ->label("Select Students to Grade")
+                        Forms\Components\Select::make('students')
+                            ->label('Select Students to Grade')
                             ->options(
                                 // Provide options from the current table query results
-                                fn() => Student::where("team_id", $teamId)
-                                    ->where("status", "active")
-                                    ->pluck("name", "id")
+                                fn () => Student::where('team_id', $teamId)
+                                    ->where('status', 'active')
+                                    ->pluck('name', 'id')
                             )
                             ->multiple()
                             ->required()
                             ->searchable()
                             ->helperText(
-                                "Select students to apply the same score/feedback."
+                                'Select students to apply the same score/feedback.'
                             ),
-                        TextInput::make("score")
-                            ->label("Score")
+                        TextInput::make('score')
+                            ->label('Score')
                             ->numeric()
                             ->minValue(0)
                             ->maxValue($totalPoints)
                             ->required(),
-                        Forms\Components\RichEditor::make("feedback")
-                            ->label("Feedback (Optional)")
-                            ->disableToolbarButtons(["attachFiles"])
+                        Forms\Components\RichEditor::make('feedback')
+                            ->label('Feedback (Optional)')
+                            ->disableToolbarButtons(['attachFiles'])
                             ->nullable(),
-                        Select::make("status") // Allow setting status during bulk grade
-                            ->label("Set Status To")
+                        Select::make('status') // Allow setting status during bulk grade
+                            ->label('Set Status To')
                             ->options([
-                                "submitted" => "Submitted",
-                                "completed" => "Completed",
+                                'submitted' => 'Submitted',
+                                'completed' => 'Completed',
                                 // 'late' => 'Late', // Add if needed
                             ])
-                            ->default("completed")
+                            ->default('completed')
                             ->required(),
                     ])
                     ->action(function (array $data) use ($activity) {
-                        $studentIds = $data["students"] ?? [];
+                        $studentIds = $data['students'] ?? [];
                         $count = count($studentIds);
 
                         if ($count === 0) {
                             Notification::make()
-                                ->title("No students selected.")
+                                ->title('No students selected.')
                                 ->warning()
                                 ->send();
+
                             return;
                         }
 
                         $updateData = [
-                            "score" => $data["score"],
-                            "feedback" => $data["feedback"] ?? null,
-                            "status" => $data["status"] ?? "completed", // Default to completed when grading
+                            'score' => $data['score'],
+                            'feedback' => $data['feedback'] ?? null,
+                            'status' => $data['status'] ?? 'completed', // Default to completed when grading
                         ];
 
                         foreach ($studentIds as $studentId) {
@@ -411,7 +409,7 @@ class StudentSubmissionsRelationManager extends RelationManager
                         }
 
                         Notification::make()
-                            ->title("Bulk Grading Complete")
+                            ->title('Bulk Grading Complete')
                             ->body(
                                 "Successfully graded {$count} student submissions."
                             )
@@ -421,40 +419,41 @@ class StudentSubmissionsRelationManager extends RelationManager
             ])
             ->actions([
                 // Edit action to modify score/feedback/status in a modal
-                Tables\Actions\Action::make("edit_grade")
-                    ->label("Grade/Edit")
-                    ->icon("heroicon-o-pencil-square")
-                    ->modalWidth("lg")
+                Tables\Actions\Action::make('edit_grade')
+                    ->label('Grade/Edit')
+                    ->icon('heroicon-o-pencil-square')
+                    ->modalWidth('lg')
                     ->fillForm(function (Student $record) use ($activity) {
                         $submission = $this->getSubmissionForStudent(
                             $record,
                             $activity
                         );
+
                         return [
-                            "score" => $submission?->score,
-                            "feedback" => $submission?->feedback,
-                            "status" => $submission?->status ?? "submitted", // Default if no submission yet
+                            'score' => $submission?->score,
+                            'feedback' => $submission?->feedback,
+                            'status' => $submission?->status ?? 'submitted', // Default if no submission yet
                         ];
                     })
                     ->form([
-                        TextInput::make("score")
+                        TextInput::make('score')
                             ->label("Score (Max: {$totalPoints})")
                             ->numeric()
                             ->minValue(0)
                             ->maxValue($totalPoints)
                             ->required(), // Make score required when editing
-                        Forms\Components\RichEditor::make("feedback")
-                            ->label("Teacher Feedback")
-                            ->disableToolbarButtons(["attachFiles"])
+                        Forms\Components\RichEditor::make('feedback')
+                            ->label('Teacher Feedback')
+                            ->disableToolbarButtons(['attachFiles'])
                             ->nullable(),
-                        Select::make("status")
-                            ->label("Submission Status")
+                        Select::make('status')
+                            ->label('Submission Status')
                             ->options([
-                                "submitted" => "Submitted",
-                                "completed" => "Completed",
-                                "late" => "Late",
-                                "draft" => "Draft", // Allow reverting?
-                                "missing" => "Missing",
+                                'submitted' => 'Submitted',
+                                'completed' => 'Completed',
+                                'late' => 'Late',
+                                'draft' => 'Draft', // Allow reverting?
+                                'missing' => 'Missing',
                             ])
                             ->required(),
                     ])
@@ -474,29 +473,29 @@ class StudentSubmissionsRelationManager extends RelationManager
             ])
             ->bulkActions([
                 BulkActionGroup::make([
-                    Tables\Actions\BulkAction::make("bulk_update_grades")
-                        ->label("Grade Selected Students")
-                        ->icon("heroicon-o-check-circle")
-                        ->color("primary")
-                        ->modalWidth("lg")
+                    Tables\Actions\BulkAction::make('bulk_update_grades')
+                        ->label('Grade Selected Students')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('primary')
+                        ->modalWidth('lg')
                         ->form([
-                            TextInput::make("score")
+                            TextInput::make('score')
                                 ->label("Score (Max: {$totalPoints})")
                                 ->numeric()
                                 ->minValue(0)
                                 ->maxValue($totalPoints)
                                 ->required(),
-                            Forms\Components\RichEditor::make("feedback")
-                                ->label("Feedback (Optional)")
-                                ->disableToolbarButtons(["attachFiles"])
+                            Forms\Components\RichEditor::make('feedback')
+                                ->label('Feedback (Optional)')
+                                ->disableToolbarButtons(['attachFiles'])
                                 ->nullable(),
-                            Select::make("status")
-                                ->label("Set Status To")
+                            Select::make('status')
+                                ->label('Set Status To')
                                 ->options([
-                                    "submitted" => "Submitted",
-                                    "completed" => "Completed",
+                                    'submitted' => 'Submitted',
+                                    'completed' => 'Completed',
                                 ])
-                                ->default("completed")
+                                ->default('completed')
                                 ->required(),
                         ])
                         ->action(function (
@@ -504,9 +503,9 @@ class StudentSubmissionsRelationManager extends RelationManager
                             array $data
                         ) use ($activity) {
                             $updateData = [
-                                "score" => $data["score"],
-                                "feedback" => $data["feedback"] ?? null,
-                                "status" => $data["status"] ?? "completed",
+                                'score' => $data['score'],
+                                'feedback' => $data['feedback'] ?? null,
+                                'status' => $data['status'] ?? 'completed',
                             ];
                             $count = 0;
                             $records->each(function (Student $record) use (
@@ -523,7 +522,7 @@ class StudentSubmissionsRelationManager extends RelationManager
                             });
 
                             Notification::make()
-                                ->title("Bulk Grading Complete")
+                                ->title('Bulk Grading Complete')
                                 ->body(
                                     "Successfully graded {$count} selected student submissions."
                                 )
@@ -546,8 +545,8 @@ class StudentSubmissionsRelationManager extends RelationManager
     ): ?ActivitySubmission {
         // Eager load submission if possible or cache result?
         // For simplicity, query directly here. Optimize if performance becomes an issue.
-        return ActivitySubmission::where("activity_id", $activity->id)
-            ->where("student_id", $student->id)
+        return ActivitySubmission::where('activity_id', $activity->id)
+            ->where('student_id', $student->id)
             ->first();
     }
 
@@ -563,26 +562,26 @@ class StudentSubmissionsRelationManager extends RelationManager
         try {
             /** @var ActivitySubmission $submission */
             $submission = ActivitySubmission::firstOrNew(
-                ["activity_id" => $activityId, "student_id" => $studentId],
-                ["team_id" => Auth::user()->currentTeam->id] // Set team_id on creation
+                ['activity_id' => $activityId, 'student_id' => $studentId],
+                ['team_id' => Auth::user()->currentTeam->id] // Set team_id on creation
             );
 
             // Track if score is being set/updated
-            $isGrading = isset($data["score"]) && $data["score"] !== null;
+            $isGrading = isset($data['score']) && $data['score'] !== null;
 
             // Apply updates from $data array
-            if (array_key_exists("score", $data)) {
-                $submission->score = $data["score"];
+            if (array_key_exists('score', $data)) {
+                $submission->score = $data['score'];
             }
-            if (array_key_exists("feedback", $data)) {
-                $submission->feedback = $data["feedback"];
+            if (array_key_exists('feedback', $data)) {
+                $submission->feedback = $data['feedback'];
             }
-            if (array_key_exists("final_grade", $data)) {
+            if (array_key_exists('final_grade', $data)) {
                 // Handle final_grade if passed
-                $submission->final_grade = $data["final_grade"];
+                $submission->final_grade = $data['final_grade'];
             }
-            if (array_key_exists("status", $data)) {
-                $submission->status = $data["status"];
+            if (array_key_exists('status', $data)) {
+                $submission->status = $data['status'];
             }
 
             // Set timestamps and grader if grading occurred
@@ -590,43 +589,43 @@ class StudentSubmissionsRelationManager extends RelationManager
                 $submission->graded_by = Auth::id();
                 $submission->graded_at = now();
                 // Often, when grading, you mark it 'completed'
-                if (!isset($data["status"])) {
+                if (! isset($data['status'])) {
                     // Only default if status wasn't explicitly set
-                    $submission->status = "completed";
+                    $submission->status = 'completed';
                 }
             }
 
             // Set submission time if this is the first save
-            if (!$submission->exists) {
+            if (! $submission->exists) {
                 $submission->submitted_at = now();
                 // Default status if not provided and not grading
-                if (!isset($data["status"]) && !$isGrading) {
-                    $submission->status = "submitted"; // Default to submitted on first save
+                if (! isset($data['status']) && ! $isGrading) {
+                    $submission->status = 'submitted'; // Default to submitted on first save
                 }
             }
 
             $submission->save();
 
-            Log::info("StudentSubmissionsRelationManager - Data Updated", [
-                "submission_id" => $submission->id,
-                "student_id" => $studentId,
-                "activity_id" => $activityId,
-                "updated_data" => array_keys($data),
+            Log::info('StudentSubmissionsRelationManager - Data Updated', [
+                'submission_id' => $submission->id,
+                'student_id' => $studentId,
+                'activity_id' => $activityId,
+                'updated_data' => array_keys($data),
             ]);
         } catch (\Exception $e) {
             Log::error(
-                "StudentSubmissionsRelationManager - Error Updating Data",
+                'StudentSubmissionsRelationManager - Error Updating Data',
                 [
-                    "student_id" => $studentId,
-                    "activity_id" => $activityId,
-                    "error" => $e->getMessage(),
-                    "trace" => $e->getTraceAsString(),
+                    'student_id' => $studentId,
+                    'activity_id' => $activityId,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
                 ]
             );
 
             Notification::make()
-                ->title("Error Saving Grade")
-                ->body("An unexpected error occurred. Please try again.")
+                ->title('Error Saving Grade')
+                ->body('An unexpected error occurred. Please try again.')
                 ->danger()
                 ->send();
             // Optionally re-throw or handle differently
@@ -645,12 +644,12 @@ class StudentSubmissionsRelationManager extends RelationManager
     ): void {
         $data = array_filter(
             [
-                "score" => $score,
-                "feedback" => $feedback,
-                "final_grade" => $finalGrade,
-                "status" => $status ?? ($score !== null ? "completed" : null), // Default status if scoring
+                'score' => $score,
+                'feedback' => $feedback,
+                'final_grade' => $finalGrade,
+                'status' => $status ?? ($score !== null ? 'completed' : null), // Default status if scoring
             ],
-            fn($value) => $value !== null
+            fn ($value) => $value !== null
         ); // Only include non-null values
         $this->updateStudentData($studentId, $activityId, $data);
     }
@@ -661,7 +660,7 @@ class StudentSubmissionsRelationManager extends RelationManager
         ?string $feedback
     ): void {
         $this->updateStudentData($studentId, $activityId, [
-            "feedback" => $feedback,
+            'feedback' => $feedback,
         ]);
     }
 }

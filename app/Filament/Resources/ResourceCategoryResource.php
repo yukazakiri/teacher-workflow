@@ -4,54 +4,54 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ResourceCategoryResource\Pages;
 use App\Models\ResourceCategory;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Auth;
-use Filament\Facades\Filament;
 
 class ResourceCategoryResource extends Resource
 {
     protected static ?string $model = ResourceCategory::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-tag';
-    
+
     protected static ?string $navigationGroup = 'Class Management';
-    
+
     protected static ?int $navigationSort = 21;
-    
+
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function getNavigationLabel(): string
     {
         return 'Resource Categories';
     }
-    
+
     public static function getPluralLabel(): string
     {
         return 'Resource Categories';
     }
-    
+
     public static function getModelLabel(): string
     {
         return 'Resource Category';
     }
+
     public static function canAccess(): bool
     {
         $user = Auth::user();
         $team = $user?->currentTeam;
-        
-        if (!$team) {
+
+        if (! $team) {
             return false;
         }
-        
+
         return $team->userIsOwner($user);
     }
-    
+
     /**
      * Determine if this resource's navigation item should be displayed.
      * Only show it for team owners.
@@ -60,19 +60,17 @@ class ResourceCategoryResource extends Resource
     {
         return static::canAccess();
     }
-    
+
     /**
      * Get the navigation items for this resource.
      * Only team owners should see these navigation items.
-     * 
-     * @return array
      */
     public static function getNavigationItems(): array
     {
-        if (!static::canAccess()) {
+        if (! static::canAccess()) {
             return [];
         }
-        
+
         return parent::getNavigationItems();
     }
 
@@ -85,10 +83,10 @@ class ResourceCategoryResource extends Resource
                         Forms\Components\TextInput::make('name')
                             ->required()
                             ->maxLength(255),
-                            
+
                         Forms\Components\Textarea::make('description')
                             ->rows(3),
-                        
+
                         Forms\Components\Select::make('type')
                             ->options([
                                 'teacher_material' => 'Teacher Materials',
@@ -97,10 +95,10 @@ class ResourceCategoryResource extends Resource
                             ->default('student_resource')
                             ->required()
                             ->helperText('Teacher Materials are visible only to teachers. Student Resources are accessible to students.'),
-                            
+
                         Forms\Components\ColorPicker::make('color')
                             ->default('#4f46e5'),
-                            
+
                         Forms\Components\Select::make('icon')
                             ->options([
                                 'heroicon-o-document' => 'Document',
@@ -124,7 +122,7 @@ class ResourceCategoryResource extends Resource
                                 'heroicon-o-trophy' => 'Quiz or Test',
                             ])
                             ->default('heroicon-o-document'),
-                            
+
                         Forms\Components\TextInput::make('sort_order')
                             ->numeric()
                             ->default(0),
@@ -140,7 +138,7 @@ class ResourceCategoryResource extends Resource
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
-                
+
                 Tables\Columns\BadgeColumn::make('type')
                     ->label('Type')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
@@ -152,20 +150,20 @@ class ResourceCategoryResource extends Resource
                         'danger' => 'teacher_material',
                         'success' => 'student_resource',
                     ]),
-                    
+
                 Tables\Columns\ColorColumn::make('color'),
-                
+
                 Tables\Columns\IconColumn::make('icon')
                     ->icon(fn (string $state): string => $state),
-                    
+
                 Tables\Columns\TextColumn::make('resources_count')
                     ->label('Resources')
                     ->counts('resources')
                     ->sortable(),
-                    
+
                 Tables\Columns\TextColumn::make('sort_order')
                     ->sortable(),
-                    
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -215,12 +213,12 @@ class ResourceCategoryResource extends Resource
             'edit' => Pages\EditResourceCategory::route('/{record}/edit'),
         ];
     }
-    
+
     public static function getEloquentQuery(): Builder
     {
         $team = Filament::getTenant();
-        
+
         return parent::getEloquentQuery()
             ->where('team_id', $team->id);
     }
-} 
+}

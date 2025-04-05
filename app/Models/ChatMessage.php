@@ -16,12 +16,12 @@ class ChatMessage extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        "conversation_id",
-        "user_id",
-        "role",
-        "content",
-        "metadata",
-        "is_streaming",
+        'conversation_id',
+        'user_id',
+        'role',
+        'content',
+        'metadata',
+        'is_streaming',
     ];
 
     /**
@@ -30,10 +30,10 @@ class ChatMessage extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        "metadata" => "array",
-        "is_streaming" => "boolean",
-        "created_at" => "datetime", // Ensure Carbon instance
-        "updated_at" => "datetime", //
+        'metadata' => 'array',
+        'is_streaming' => 'boolean',
+        'created_at' => 'datetime', // Ensure Carbon instance
+        'updated_at' => 'datetime', //
     ];
 
     /**
@@ -57,7 +57,7 @@ class ChatMessage extends Model
      */
     public function scopeUser($query)
     {
-        return $query->where("role", "user");
+        return $query->where('role', 'user');
     }
 
     /**
@@ -65,7 +65,7 @@ class ChatMessage extends Model
      */
     public function scopeAssistant($query)
     {
-        return $query->where("role", "assistant");
+        return $query->where('role', 'assistant');
     }
 
     /**
@@ -73,6 +73,6 @@ class ChatMessage extends Model
      */
     public function scopeSystem($query)
     {
-        return $query->where("role", "system");
+        return $query->where('role', 'system');
     }
 }

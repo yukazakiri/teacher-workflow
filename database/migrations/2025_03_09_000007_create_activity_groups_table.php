@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('name');
             $table->text('description')->nullable();
             $table->timestamps();
-            
+
             $table->foreign('activity_id')->references('id')->on('activities')->onDelete('cascade');
         });
 
@@ -27,7 +27,7 @@ return new class extends Migration
             $table->string('name');
             $table->text('description')->nullable();
             $table->timestamps();
-            
+
             $table->foreign('activity_id')->references('id')->on('activities')->onDelete('cascade');
         });
 
@@ -37,7 +37,7 @@ return new class extends Migration
             $table->uuid('activity_group_id');
             $table->uuid('group_role_id')->nullable();
             $table->timestamps();
-            
+
             $table->foreign('student_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('activity_group_id')->references('id')->on('activity_groups')->onDelete('cascade');
             $table->foreign('group_role_id')->references('id')->on('group_roles')->onDelete('set null');

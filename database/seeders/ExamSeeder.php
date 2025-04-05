@@ -5,15 +5,14 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Models\Exam;
-use App\Models\Question;
 use App\Models\ExamQuestion;
+use App\Models\Question;
 use App\Models\Student;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class ExamSeeder extends Seeder
 {
@@ -25,8 +24,9 @@ class ExamSeeder extends Seeder
         // Get the test user
         $user = User::where('email', 'test@example.com')->first();
 
-        if (!$user) {
+        if (! $user) {
             $this->command->error('Test user not found. Please run the DatabaseSeeder first.');
+
             return;
         }
 
@@ -35,6 +35,7 @@ class ExamSeeder extends Seeder
 
         if ($teams->isEmpty()) {
             $this->command->error('No teams found for the teacher. Please run DatabaseSeeder first.');
+
             return;
         }
 
@@ -44,6 +45,7 @@ class ExamSeeder extends Seeder
             $studentCount = Student::where('team_id', $team->id)->count();
             if ($studentCount === 0) {
                 $this->command->info("No students found in team {$team->name}. Skipping exam creation.");
+
                 continue;
             }
 
@@ -75,7 +77,7 @@ class ExamSeeder extends Seeder
             $exam = Exam::create([
                 'teacher_id' => $user->id,
                 'team_id' => $team->id,
-                'title' => "Sample Exam {$index}: " . $this->getRandomExamTitle(),
+                'title' => "Sample Exam {$index}: ".$this->getRandomExamTitle(),
                 'description' => $this->getRandomExamDescription(),
                 'status' => Arr::random(['draft', 'published', 'archived'], 1)[0],
                 'total_points' => 0, // Will calculate this after adding questions
@@ -95,7 +97,7 @@ class ExamSeeder extends Seeder
                     'short_answer',
                     'essay',
                     'matching',
-                    'fill_in_blank'
+                    'fill_in_blank',
                 ], 1)[0];
 
                 // Create question based on type
@@ -109,7 +111,7 @@ class ExamSeeder extends Seeder
                     'exam_id' => $exam->id,
                     'question_id' => $question->id,
                     'order' => $order,
-                    'points' => $question->points
+                    'points' => $question->points,
                 ]);
 
                 $order++;
@@ -135,6 +137,7 @@ class ExamSeeder extends Seeder
 
         if ($students->isEmpty()) {
             $this->command->info("No students found for team ID {$team->id}. Skipping submissions.");
+
             return;
         }
 
@@ -150,7 +153,7 @@ class ExamSeeder extends Seeder
             $finalGrade = $this->calculateFinalGrade($score);
 
             // For students without associated users, we need to handle differently
-            if (!$student->user_id) {
+            if (! $student->user_id) {
                 // For students without users, we'll create a submission directly
                 // but we need to modify our database schema to allow this
                 $this->command->info("Student {$student->id} has no associated user. Creating submission with teacher as student_id.");
@@ -168,6 +171,7 @@ class ExamSeeder extends Seeder
                     'graded_at' => now()->subDays(rand(0, 3)),
                     'answers' => $answers,
                 ]);
+
                 continue;
             }
 
@@ -203,7 +207,7 @@ class ExamSeeder extends Seeder
                         $choices = $choices->toArray();
                     }
                     // Make sure we have choices before trying to get a random one
-                    if (!empty($choices)) {
+                    if (! empty($choices)) {
                         $choiceKeys = array_keys($choices);
                         $answers[$question->id] = $choiceKeys[array_rand($choiceKeys)];
                     } else {
@@ -220,9 +224,9 @@ class ExamSeeder extends Seeder
                     $correctAnswer = null;
                     if (is_object($question->correct_answer) && method_exists($question->correct_answer, 'offsetGet')) {
                         $correctAnswerArray = $question->correct_answer->getArrayCopy();
-                        $correctAnswer = !empty($correctAnswerArray) ? $correctAnswerArray[0] : null;
-                    } else if (is_array($question->correct_answer)) {
-                        $correctAnswer = !empty($question->correct_answer) ? $question->correct_answer[0] : null;
+                        $correctAnswer = ! empty($correctAnswerArray) ? $correctAnswerArray[0] : null;
+                    } elseif (is_array($question->correct_answer)) {
+                        $correctAnswer = ! empty($question->correct_answer) ? $question->correct_answer[0] : null;
                     }
 
                     // 50% chance to use the correct answer
@@ -244,7 +248,7 @@ class ExamSeeder extends Seeder
                         $pairs = $pairs->toArray();
                     }
 
-                    if (!empty($pairs)) {
+                    if (! empty($pairs)) {
                         $shuffledValues = array_values($pairs);
                         shuffle($shuffledValues);
 
@@ -267,7 +271,7 @@ class ExamSeeder extends Seeder
                     }
 
                     $studentBlanks = [];
-                    if (!empty($blanks)) {
+                    if (! empty($blanks)) {
                         foreach ($blanks as $key => $value) {
                             $studentBlanks[$key] = rand(0, 1) ? $value : $this->getRandomWord();
                         }
@@ -293,7 +297,7 @@ class ExamSeeder extends Seeder
             ->where('name', Question::TYPES[$type])
             ->first();
 
-        if (!$questionType) {
+        if (! $questionType) {
             throw new \Exception("Question type '{$type}' not found in the database.");
         }
 
@@ -316,14 +320,14 @@ class ExamSeeder extends Seeder
                 $questionData['choices'] = $choices;
                 // Store correct_answer as an array to match the resource implementation
                 $questionData['correct_answer'] = [$correct];
-                $questionData['explanation'] = "The correct answer is {$correct}. " . $this->getRandomExplanation();
+                $questionData['explanation'] = "The correct answer is {$correct}. ".$this->getRandomExplanation();
                 break;
 
             case 'true_false':
                 $correct = Arr::random(['true', 'false'], 1)[0];
                 // Store correct_answer as an array to match the resource implementation
                 $questionData['correct_answer'] = [$correct];
-                $questionData['explanation'] = "The statement is {$correct}. " . $this->getRandomExplanation();
+                $questionData['explanation'] = "The statement is {$correct}. ".$this->getRandomExplanation();
                 break;
 
             case 'short_answer':
@@ -364,7 +368,7 @@ class ExamSeeder extends Seeder
         $letters = ['A', 'B', 'C', 'D'];
 
         foreach ($letters as $letter) {
-            $options[$letter] = "Option {$letter}: " . $this->getRandomSentence(rand(1, 2));
+            $options[$letter] = "Option {$letter}: ".$this->getRandomSentence(rand(1, 2));
         }
 
         return $options;
@@ -377,14 +381,14 @@ class ExamSeeder extends Seeder
     {
         $pairs = [];
         $terms = [
-            'Photosynthesis', 'Mitosis', 'Meiosis', 'Osmosis', 'Diffusion'
+            'Photosynthesis', 'Mitosis', 'Meiosis', 'Osmosis', 'Diffusion',
         ];
         $definitions = [
             'Process where plants convert light energy to chemical energy',
             'Cell division resulting in two identical daughter cells',
             'Cell division resulting in four haploid cells',
             'Movement of water molecules across a semipermeable membrane',
-            'Movement of molecules from high to low concentration'
+            'Movement of molecules from high to low concentration',
         ];
 
         // Shuffle definitions to make it more random
@@ -420,16 +424,16 @@ class ExamSeeder extends Seeder
     {
         switch ($type) {
             case 'multiple_choice':
-                return "Multiple choice question #{$index}: " . $this->getRandomSentence(2) . "?";
+                return "Multiple choice question #{$index}: ".$this->getRandomSentence(2).'?';
 
             case 'true_false':
-                return "True/False question #{$index}: " . $this->getRandomSentence(2) . ".";
+                return "True/False question #{$index}: ".$this->getRandomSentence(2).'.';
 
             case 'short_answer':
-                return "Short answer question #{$index}: " . $this->getRandomSentence(2) . "?";
+                return "Short answer question #{$index}: ".$this->getRandomSentence(2).'?';
 
             case 'essay':
-                return "Essay question #{$index}: " . $this->getRandomSentence(4) . " " . $this->getRandomSentence(3) . " Discuss in detail.";
+                return "Essay question #{$index}: ".$this->getRandomSentence(4).' '.$this->getRandomSentence(3).' Discuss in detail.';
 
             case 'matching':
                 return "Matching question #{$index}: Match each term with its correct definition.";
@@ -445,10 +449,10 @@ class ExamSeeder extends Seeder
                     $words[$position] = '[blank]';
                 }
 
-                return "Fill in the blank question #{$index}: " . implode(' ', $words);
+                return "Fill in the blank question #{$index}: ".implode(' ', $words);
 
             default:
-                return "Question #{$index}: " . $this->getRandomSentence(2) . "?";
+                return "Question #{$index}: ".$this->getRandomSentence(2).'?';
         }
     }
 
@@ -474,11 +478,11 @@ class ExamSeeder extends Seeder
     protected function getRandomExamDescription(): string
     {
         $descriptions = [
-            "This exam covers the fundamental concepts and principles of the subject. Students should review all class materials before attempting.",
-            "A comprehensive assessment designed to test understanding of key topics and application of knowledge.",
-            "This evaluation will assess critical thinking and problem-solving skills related to the course material.",
-            "An in-depth examination of core concepts. Students will need to demonstrate analytical skills and detailed knowledge.",
-            "This assessment focuses on practical applications and theoretical understanding of the subject material."
+            'This exam covers the fundamental concepts and principles of the subject. Students should review all class materials before attempting.',
+            'A comprehensive assessment designed to test understanding of key topics and application of knowledge.',
+            'This evaluation will assess critical thinking and problem-solving skills related to the course material.',
+            'An in-depth examination of core concepts. Students will need to demonstrate analytical skills and detailed knowledge.',
+            'This assessment focuses on practical applications and theoretical understanding of the subject material.',
         ];
 
         return Arr::random($descriptions, 1)[0];
@@ -490,11 +494,11 @@ class ExamSeeder extends Seeder
     protected function getRandomExplanation(): string
     {
         $explanations = [
-            "This is the correct answer because it aligns with the principles we discussed in class.",
-            "The other options are incorrect because they misrepresent key concepts of the subject.",
-            "This option accurately reflects the relationship between the variables in question.",
-            "You can verify this answer by referring to chapter 3 in your textbook.",
-            "Remember the formula we learned that helps solve this type of problem."
+            'This is the correct answer because it aligns with the principles we discussed in class.',
+            'The other options are incorrect because they misrepresent key concepts of the subject.',
+            'This option accurately reflects the relationship between the variables in question.',
+            'You can verify this answer by referring to chapter 3 in your textbook.',
+            'Remember the formula we learned that helps solve this type of problem.',
         ];
 
         return Arr::random($explanations, 1)[0];
@@ -506,14 +510,14 @@ class ExamSeeder extends Seeder
     protected function getRandomShortAnswer(): string
     {
         $answers = [
-            "The water cycle",
-            "Photosynthesis",
-            "The law of supply and demand",
+            'The water cycle',
+            'Photosynthesis',
+            'The law of supply and demand',
             "Newton's third law of motion",
-            "The Pythagorean theorem",
-            "Cellular respiration",
-            "The Industrial Revolution",
-            "Democracy"
+            'The Pythagorean theorem',
+            'Cellular respiration',
+            'The Industrial Revolution',
+            'Democracy',
         ];
 
         return Arr::random($answers, 1)[0];
@@ -525,18 +529,18 @@ class ExamSeeder extends Seeder
     protected function getRandomEssayAnswer(): string
     {
         $paragraphs = [
-            "The topic presents several important considerations that must be analyzed carefully. First, we must consider the historical context and how it has shaped our current understanding. Throughout history, various perspectives have emerged, each contributing to the complex tapestry of knowledge we now possess.",
+            'The topic presents several important considerations that must be analyzed carefully. First, we must consider the historical context and how it has shaped our current understanding. Throughout history, various perspectives have emerged, each contributing to the complex tapestry of knowledge we now possess.',
 
-            "When examining this subject from a scientific perspective, we can observe several patterns and principles at work. The evidence suggests a correlation between various factors, though causation remains a subject of debate among experts in the field. Recent studies have shed new light on previously held assumptions.",
+            'When examining this subject from a scientific perspective, we can observe several patterns and principles at work. The evidence suggests a correlation between various factors, though causation remains a subject of debate among experts in the field. Recent studies have shed new light on previously held assumptions.',
 
-            "From a philosophical standpoint, this raises questions about fundamental concepts such as truth, knowledge, and reality. Different schools of thought have approached these questions with varying methodologies and frameworks, leading to diverse conclusions that continue to influence contemporary discourse.",
+            'From a philosophical standpoint, this raises questions about fundamental concepts such as truth, knowledge, and reality. Different schools of thought have approached these questions with varying methodologies and frameworks, leading to diverse conclusions that continue to influence contemporary discourse.',
 
-            "In conclusion, while no single answer can fully address the complexity of this topic, a multidisciplinary approach offers the most comprehensive understanding. By integrating insights from various fields and remaining open to new evidence, we can continue to refine our knowledge and approach to this important subject."
+            'In conclusion, while no single answer can fully address the complexity of this topic, a multidisciplinary approach offers the most comprehensive understanding. By integrating insights from various fields and remaining open to new evidence, we can continue to refine our knowledge and approach to this important subject.',
         ];
 
         // Return 2-3 random paragraphs
         $selectedParagraphs = array_rand(array_flip($paragraphs), rand(2, 3));
-        if (!is_array($selectedParagraphs)) {
+        if (! is_array($selectedParagraphs)) {
             $selectedParagraphs = [$selectedParagraphs];
         }
 
@@ -548,12 +552,12 @@ class ExamSeeder extends Seeder
      */
     protected function getRandomRubric(): string
     {
-        return "<ul>
+        return '<ul>
             <li><strong>Content (40%):</strong> Demonstrates thorough understanding of the topic.</li>
             <li><strong>Analysis (30%):</strong> Shows critical thinking and insightful analysis.</li>
             <li><strong>Organization (15%):</strong> Well-structured with clear introduction, body, and conclusion.</li>
             <li><strong>Language (15%):</strong> Uses appropriate vocabulary, grammar, and academic style.</li>
-        </ul>";
+        </ul>';
     }
 
     /**
@@ -562,21 +566,21 @@ class ExamSeeder extends Seeder
     protected function getRandomSentence(int $length = 1): string
     {
         $sentences = [
-            "The quick brown fox jumps over the lazy dog",
-            "Students must understand the core concepts before proceeding",
-            "The scientific method involves observation, hypothesis, experimentation, and conclusion",
-            "Critical thinking is essential for academic success",
-            "Mathematical principles can be applied to solve real-world problems",
-            "Historical events should be analyzed within their proper context",
-            "Atoms combine to form molecules through chemical bonding",
-            "Literature reflects the cultural values of its time period",
-            "Geographic features influence human settlement patterns",
-            "Economic theories attempt to explain market behaviors",
-            "Computer algorithms process data to solve complex problems",
-            "Biological systems maintain homeostasis through feedback mechanisms",
-            "Environmental factors impact ecosystem development",
-            "Political systems vary in their distribution of power",
-            "Psychological studies examine human behavior and mental processes"
+            'The quick brown fox jumps over the lazy dog',
+            'Students must understand the core concepts before proceeding',
+            'The scientific method involves observation, hypothesis, experimentation, and conclusion',
+            'Critical thinking is essential for academic success',
+            'Mathematical principles can be applied to solve real-world problems',
+            'Historical events should be analyzed within their proper context',
+            'Atoms combine to form molecules through chemical bonding',
+            'Literature reflects the cultural values of its time period',
+            'Geographic features influence human settlement patterns',
+            'Economic theories attempt to explain market behaviors',
+            'Computer algorithms process data to solve complex problems',
+            'Biological systems maintain homeostasis through feedback mechanisms',
+            'Environmental factors impact ecosystem development',
+            'Political systems vary in their distribution of power',
+            'Psychological studies examine human behavior and mental processes',
         ];
 
         $result = [];
@@ -595,7 +599,7 @@ class ExamSeeder extends Seeder
         $words = [
             'photosynthesis', 'mitochondria', 'democracy', 'equation', 'molecule',
             'civilization', 'revolution', 'environment', 'algorithm', 'parallelogram',
-            'coefficient', 'hypothesis', 'chromosome', 'ecosystem', 'precipitation'
+            'coefficient', 'hypothesis', 'chromosome', 'ecosystem', 'precipitation',
         ];
 
         return Arr::random($words, 1)[0];
@@ -607,16 +611,16 @@ class ExamSeeder extends Seeder
     protected function getRandomFeedback(): string
     {
         $feedbacks = [
-            "Excellent work! Your understanding of the concepts is clear.",
-            "Good job. There are a few areas that could use improvement.",
-            "Satisfactory work, but please pay more attention to details.",
+            'Excellent work! Your understanding of the concepts is clear.',
+            'Good job. There are a few areas that could use improvement.',
+            'Satisfactory work, but please pay more attention to details.',
             "You've made some good points, but your analysis needs more depth.",
-            "Well-structured and thoughtful. Keep up the good work!",
-            "Your work shows promise, but needs more development in key areas.",
+            'Well-structured and thoughtful. Keep up the good work!',
+            'Your work shows promise, but needs more development in key areas.',
             "Very thorough analysis. I'm impressed with your attention to detail.",
             "You've met the basic requirements, but could have expanded more on your ideas.",
-            "Strong start, but your conclusion needs more supporting evidence.",
-            "Outstanding work! Your critical thinking skills are evident throughout."
+            'Strong start, but your conclusion needs more supporting evidence.',
+            'Outstanding work! Your critical thinking skills are evident throughout.',
         ];
 
         return Arr::random($feedbacks, 1)[0];

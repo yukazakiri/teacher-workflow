@@ -1,9 +1,10 @@
 <?php
+
 namespace App\Filament\Resources\StudentResource\Pages;
 
-use App\Filament\Resources\StudentResource;
+use App\Filament\Pages\Dashboard;
 use App\Filament\Resources\ActivityResource; // Import ActivityResource
-use App\Filament\Pages\Dashboard; // Import Activity Resource
+use App\Filament\Resources\StudentResource; // Import Activity Resource
 use App\Models\Team; // Import Team
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
@@ -14,14 +15,17 @@ class ListStudents extends ListRecords
 {
     protected static string $resource = StudentResource::class;
 
-    protected static string $view = "filament.resources.student-resource.pages.list-students";
+    protected static string $view = 'filament.resources.student-resource.pages.list-students';
 
     // Define constants needed (or import from Dashboard)
     const ONBOARDING_STUDENT_THRESHOLD = 5;
 
     public int $onboardingState = 0; // 0 = none, 2 = show create activity modal
+
     public bool $showCreateActivityModal = false;
+
     public ?string $activityResourceCreateUrl = null;
+
     public int $studentThreshold = 0;
 
     public function mount(): void
@@ -29,7 +33,7 @@ class ListStudents extends ListRecords
         parent::mount(); // Call parent mount method
 
         $user = Auth::user();
-        $team = $user?->currentTeam()->withCount("students")->first(); // Eager load count
+        $team = $user?->currentTeam()->withCount('students')->first(); // Eager load count
 
         if ($team) {
             $currentStep = (int) $team->onboarding_step;
@@ -40,28 +44,28 @@ class ListStudents extends ListRecords
             if ($currentStep <= 1 && $studentCount >= $this->studentThreshold) {
                 $this->showCreateActivityModal = true;
                 $this->activityResourceCreateUrl = ActivityResource::getUrl(
-                    "create-guide",
-                    ["tenant" => $team]
+                    'create-guide',
+                    ['tenant' => $team]
                 );
                 Log::info(
-                    "Student List: Conditions met for onboarding step 2 modal.",
-                    ["team_id" => $team->id, "user_id" => $user->id]
+                    'Student List: Conditions met for onboarding step 2 modal.',
+                    ['team_id' => $team->id, 'user_id' => $user->id]
                 );
             } else {
                 Log::debug(
-                    "Student List: Conditions NOT met for step 2 modal.",
+                    'Student List: Conditions NOT met for step 2 modal.',
                     [
-                        "team_id" => $team->id,
-                        "user_id" => $user->id,
-                        "step" => $currentStep,
-                        "count" => $studentCount,
+                        'team_id' => $team->id,
+                        'user_id' => $user->id,
+                        'step' => $currentStep,
+                        'count' => $studentCount,
                     ]
                 );
             }
         } else {
             Log::warning(
-                "Student List: No current team found for onboarding check.",
-                ["user_id" => $user->id]
+                'Student List: No current team found for onboarding check.',
+                ['user_id' => $user->id]
             );
         }
     }
@@ -69,21 +73,22 @@ class ListStudents extends ListRecords
     protected function calculateOnboardingState(): void
     {
         $user = Auth::user();
-        $team = $user?->currentTeam()->withCount("students")->first(); // Eager load count
+        $team = $user?->currentTeam()->withCount('students')->first(); // Eager load count
 
-        if (!$team) {
+        if (! $team) {
             $this->onboardingState = 0;
+
             return;
         }
 
         $currentStep = (int) $team->onboarding_step;
         $studentCount = $team->students_count; // Use eager loaded count
 
-        Log::debug("ListStudents Onboarding Check", [
-            "team_id" => $team->id,
-            "user_id" => $user->id,
-            "current_step" => $currentStep,
-            "student_count" => $studentCount,
+        Log::debug('ListStudents Onboarding Check', [
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'current_step' => $currentStep,
+            'student_count' => $studentCount,
         ]);
 
         // Only concerned with State 2 for this page
@@ -92,10 +97,10 @@ class ListStudents extends ListRecords
             $studentCount >= self::ONBOARDING_STUDENT_THRESHOLD
         ) {
             $this->onboardingState = 2;
-            Log::debug("ListStudents: Setting Onboarding State 2");
+            Log::debug('ListStudents: Setting Onboarding State 2');
         } else {
             $this->onboardingState = 0;
-            Log::debug("ListStudents: Setting Onboarding State 0");
+            Log::debug('ListStudents: Setting Onboarding State 0');
         }
     }
 
@@ -105,8 +110,8 @@ class ListStudents extends ListRecords
         if ($this->onboardingState === 2) {
             $team = Auth::user()?->currentTeam()->first();
             $this->activityResourceCreateUrl = $team
-                ? ActivityResource::getUrl("create-guide", ["tenant" => $team])
-                : "#";
+                ? ActivityResource::getUrl('create-guide', ['tenant' => $team])
+                : '#';
         } else {
             $this->activityResourceCreateUrl = null;
         }
@@ -123,25 +128,25 @@ class ListStudents extends ListRecords
         if ($team) {
             if ($stepJustCompleted > (int) $team->onboarding_step) {
                 Log::info(
-                    "Marking onboarding step complete from Student List",
+                    'Marking onboarding step complete from Student List',
                     [
-                        "team_id" => $team->id,
-                        "user_id" => $user->id,
-                        "step" => $stepJustCompleted,
-                        "old_step" => $team->onboarding_step,
+                        'team_id' => $team->id,
+                        'user_id' => $user->id,
+                        'step' => $stepJustCompleted,
+                        'old_step' => $team->onboarding_step,
                     ]
                 );
-                $team->update(["onboarding_step" => $stepJustCompleted]);
+                $team->update(['onboarding_step' => $stepJustCompleted]);
                 // Optionally hide the modal immediately without full page refresh
                 $this->showCreateActivityModal = false;
             } else {
                 Log::info(
-                    "Skipping onboarding step update from Student List (already completed or equal)",
+                    'Skipping onboarding step update from Student List (already completed or equal)',
                     [
-                        "team_id" => $team->id,
-                        "user_id" => $user->id,
-                        "step_attempted" => $stepJustCompleted,
-                        "current_step" => $team->onboarding_step,
+                        'team_id' => $team->id,
+                        'user_id' => $user->id,
+                        'step_attempted' => $stepJustCompleted,
+                        'current_step' => $team->onboarding_step,
                     ]
                 );
                 // Hide modal even if skipping update, user interacted
@@ -149,8 +154,8 @@ class ListStudents extends ListRecords
             }
         } else {
             Log::warning(
-                "Could not mark onboarding step from Student List: No current team found.",
-                ["user_id" => $user->id]
+                'Could not mark onboarding step from Student List: No current team found.',
+                ['user_id' => $user->id]
             );
         }
     }
@@ -183,9 +188,9 @@ class ListStudents extends ListRecords
     protected function getViewData(): array
     {
         return array_merge(parent::getViewData(), [
-            "showCreateActivityModal" => $this->showCreateActivityModal,
-            "activityResourceCreateUrl" => $this->activityResourceCreateUrl,
-            "studentThreshold" => $this->studentThreshold,
+            'showCreateActivityModal' => $this->showCreateActivityModal,
+            'activityResourceCreateUrl' => $this->activityResourceCreateUrl,
+            'studentThreshold' => $this->studentThreshold,
         ]);
     }
 }

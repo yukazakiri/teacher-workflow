@@ -9,7 +9,7 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Step 4 of the UUID migration sequence:
      * Convert schedule_items.schedule_id to UUID type
      * and restore foreign key constraint
@@ -19,13 +19,13 @@ return new class extends Migration
         // Since we already dropped the foreign key in the previous migration,
         // we can directly convert the column type
         DB::statement('ALTER TABLE schedule_items ALTER COLUMN schedule_id TYPE uuid USING NULL');
-        
+
         // Add the foreign key constraint back
         Schema::table('schedule_items', function (Blueprint $table) {
             $table->foreign('schedule_id')
-                  ->references('id')
-                  ->on('schedules')
-                  ->onDelete('cascade');
+                ->references('id')
+                ->on('schedules')
+                ->onDelete('cascade');
         });
     }
 

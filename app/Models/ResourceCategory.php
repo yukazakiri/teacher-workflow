@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class ResourceCategory extends Model
 {
@@ -52,7 +52,7 @@ class ResourceCategory extends Model
     {
         return $this->hasMany(ClassResource::class, 'category_id');
     }
-    
+
     /**
      * Determine if this category is for teacher materials.
      */
@@ -60,7 +60,7 @@ class ResourceCategory extends Model
     {
         return $this->type === 'teacher_material';
     }
-    
+
     /**
      * Determine if this category is for student resources.
      */
@@ -68,7 +68,7 @@ class ResourceCategory extends Model
     {
         return $this->type === 'student_resource';
     }
-    
+
     /**
      * Get the default category for a team.
      */
@@ -79,4 +79,4 @@ class ResourceCategory extends Model
             ->where('is_default', true)
             ->first();
     }
-} 
+}

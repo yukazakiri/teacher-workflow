@@ -2,26 +2,36 @@
 
 namespace App\Livewire;
 
-use App\Models\Conversation;
 use App\Models\ChatMessage;
+use App\Models\Conversation;
 use App\Services\PrismChatService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Livewire\Component;
 use Livewire\Attributes\On;
-use Illuminate\Database\Eloquent\Collection;
+use Livewire\Component;
+
 class Chat extends Component
 {
     public ?Conversation $conversation = null;
-    public string $message = "";
-    public string $selectedModel = "Gemini 2.0 Flash";
-    public string $selectedStyle = "default";
+
+    public string $message = '';
+
+    public string $selectedModel = 'Gemini 2.0 Flash';
+
+    public string $selectedStyle = 'default';
+
     public bool $isProcessing = false;
+
     public array $availableModels = [];
+
     public array $availableStyles = [];
+
     public array $quickActions = [];
+
     public array $recentChats = [];
+
     public bool $isStreaming = false;
+
     /**
      * Mount the component.
      */
@@ -31,7 +41,7 @@ class Chat extends Component
     ) {
         // Load conversation if ID is provided
         if ($conversationId) {
-            $this->conversation = Conversation::with("messages")->findOrFail(
+            $this->conversation = Conversation::with('messages')->findOrFail(
                 $conversationId
             );
             $this->selectedModel = $this->conversation->model;
@@ -45,40 +55,34 @@ class Chat extends Component
         // Define quick actions
         $this->quickActions = [
             [
-                "name" => "Polish prose",
-                "description" => "Improve writing style and clarity",
-                "prompt" =>
-                    "Please polish the following text to improve its clarity, style, and professionalism: ",
+                'name' => 'Polish prose',
+                'description' => 'Improve writing style and clarity',
+                'prompt' => 'Please polish the following text to improve its clarity, style, and professionalism: ',
             ],
             [
-                "name" => "Generate questions",
-                "description" => "Create discussion questions for students",
-                "prompt" =>
-                    "Generate 5 thought-provoking discussion questions for students about the following topic: ",
+                'name' => 'Generate questions',
+                'description' => 'Create discussion questions for students',
+                'prompt' => 'Generate 5 thought-provoking discussion questions for students about the following topic: ',
             ],
             [
-                "name" => "Write a memo",
-                "description" => "Create a professional memo",
-                "prompt" =>
-                    "Write a professional memo about the following topic: ",
+                'name' => 'Write a memo',
+                'description' => 'Create a professional memo',
+                'prompt' => 'Write a professional memo about the following topic: ',
             ],
             [
-                "name" => "Summarize",
-                "description" => "Create a concise summary",
-                "prompt" =>
-                    "Please summarize the following text in a clear and concise manner: ",
+                'name' => 'Summarize',
+                'description' => 'Create a concise summary',
+                'prompt' => 'Please summarize the following text in a clear and concise manner: ',
             ],
             [
-                "name" => "Create lesson plan",
-                "description" => "Generate a detailed lesson plan",
-                "prompt" =>
-                    "Create a detailed lesson plan for a class on the following topic: ",
+                'name' => 'Create lesson plan',
+                'description' => 'Generate a detailed lesson plan',
+                'prompt' => 'Create a detailed lesson plan for a class on the following topic: ',
             ],
             [
-                "name" => "Grade assignment",
-                "description" => "Provide feedback and grading",
-                "prompt" =>
-                    "Provide detailed feedback and a grade for the following student work: ",
+                'name' => 'Grade assignment',
+                'description' => 'Provide feedback and grading',
+                'prompt' => 'Provide detailed feedback and a grade for the following student work: ',
             ],
         ];
 
@@ -94,22 +98,23 @@ class Chat extends Component
         $user = Auth::user();
         $currentTeamId = $user?->currentTeam?->id;
 
-        if (!$currentTeamId) {
+        if (! $currentTeamId) {
             $this->recentChats = []; // No team, no chats for the team
+
             return;
         }
 
-        $this->recentChats = Conversation::where("team_id", $currentTeamId) // Filter by team_id
-            ->where("user_id", $user->id) // Optionally keep filtering by user if needed, or remove if chats are team-wide
-            ->orderBy("last_activity_at", "desc")
+        $this->recentChats = Conversation::where('team_id', $currentTeamId) // Filter by team_id
+            ->where('user_id', $user->id) // Optionally keep filtering by user if needed, or remove if chats are team-wide
+            ->orderBy('last_activity_at', 'desc')
             ->limit(5)
             ->get()
             ->map(function ($chat) {
                 return [
-                    "id" => $chat->id,
-                    "title" => $chat->title,
-                    "model" => $chat->model,
-                    "last_activity" => $chat->last_activity_at->diffForHumans(),
+                    'id' => $chat->id,
+                    'title' => $chat->title,
+                    'model' => $chat->model,
+                    'last_activity' => $chat->last_activity_at->diffForHumans(),
                 ];
             })
             ->toArray();
@@ -120,19 +125,20 @@ class Chat extends Component
      */
     public function getAllChats(): array
     {
-        return Conversation::where("user_id", Auth::id())
-            ->orderBy("last_activity_at", "desc")
+        return Conversation::where('user_id', Auth::id())
+            ->orderBy('last_activity_at', 'desc')
             ->get()
             ->map(function ($chat) {
                 return [
-                    "id" => $chat->id,
-                    "title" => $chat->title,
-                    "model" => $chat->model,
-                    "last_activity" => $chat->last_activity_at->diffForHumans(),
+                    'id' => $chat->id,
+                    'title' => $chat->title,
+                    'model' => $chat->model,
+                    'last_activity' => $chat->last_activity_at->diffForHumans(),
                 ];
             })
             ->toArray();
     }
+
     /**
      * Save an edited user message and regenerate the following response.
      */
@@ -141,10 +147,11 @@ class Chat extends Component
         $newContent = trim($newContent);
         if (empty($newContent)) {
             // Optionally add validation feedback
-            $this->dispatch("show-alert", [
-                "type" => "error",
-                "message" => "Message cannot be empty.",
+            $this->dispatch('show-alert', [
+                'type' => 'error',
+                'message' => 'Message cannot be empty.',
             ]);
+
             return;
         }
 
@@ -153,14 +160,15 @@ class Chat extends Component
         // Authorization: Ensure it's the user's own message and it's a 'user' role
         if (
             $message->user_id !== Auth::id() ||
-            $message->role !== "user" ||
-            !$this->conversation ||
+            $message->role !== 'user' ||
+            ! $this->conversation ||
             $message->conversation_id !== $this->conversation->id
         ) {
-            $this->dispatch("show-alert", [
-                "type" => "error",
-                "message" => "Unauthorized action.",
+            $this->dispatch('show-alert', [
+                'type' => 'error',
+                'message' => 'Unauthorized action.',
             ]);
+
             return;
         }
 
@@ -174,12 +182,12 @@ class Chat extends Component
 
         try {
             // 1. Update the message content
-            $message->update(["content" => $newContent]);
+            $message->update(['content' => $newContent]);
             $message->conversation->updateLastActivity(); // Update conversation timestamp
 
             // 2. Delete all subsequent messages
-            ChatMessage::where("conversation_id", $message->conversation_id)
-                ->where("created_at", ">", $message->created_at)
+            ChatMessage::where('conversation_id', $message->conversation_id)
+                ->where('created_at', '>', $message->created_at)
                 ->delete();
 
             // 3. Refresh the conversation model to get the current state of messages
@@ -188,8 +196,8 @@ class Chat extends Component
             // 4. Get the history up to the edited message
             $history = $this->conversation
                 ->messages()
-                ->where("created_at", "<=", $message->created_at) // Use the timestamp of the *updated* message
-                ->orderBy("created_at", "asc")
+                ->where('created_at', '<=', $message->created_at) // Use the timestamp of the *updated* message
+                ->orderBy('created_at', 'asc')
                 ->get();
 
             // 5. Trigger regeneration from the service
@@ -201,7 +209,7 @@ class Chat extends Component
 
             // 6. Refresh again to include the new response (placeholder)
             $this->conversation->refresh();
-            $this->dispatch("refreshChat"); // Tell Alpine to scroll
+            $this->dispatch('refreshChat'); // Tell Alpine to scroll
         } catch (\Exception $e) {
             $this->handleError($e);
         } finally {
@@ -209,6 +217,7 @@ class Chat extends Component
             $this->isProcessing = false;
         }
     }
+
     /**
      * Send a message to the AI.
      */
@@ -224,11 +233,11 @@ class Chat extends Component
 
         // Create a new conversation if one doesn't exist
         $isNewConversation = false;
-        if (!$this->conversation) {
+        if (! $this->conversation) {
             $chatService = app(PrismChatService::class);
             $title =
                 strlen($trimmedMessage) > 50
-                    ? substr($trimmedMessage, 0, 47) . "..."
+                    ? substr($trimmedMessage, 0, 47).'...'
                     : $trimmedMessage;
             $this->conversation = $chatService->createConversation(
                 $title,
@@ -240,7 +249,7 @@ class Chat extends Component
 
         // Store the message temporarily before clearing the input
         $messageToSend = $trimmedMessage;
-        $this->message = ""; // Clear input immediately
+        $this->message = ''; // Clear input immediately
 
         try {
             $chatService = app(PrismChatService::class);
@@ -256,7 +265,7 @@ class Chat extends Component
             // Dispatch event AFTER processing potentially starts
             // The UI update for streaming will happen via service/model events if implemented
             // Or simply rely on the next full refresh after streaming stops
-            $this->dispatch("refreshChat");
+            $this->dispatch('refreshChat');
         } catch (\Exception $e) {
             $this->handleError($e);
         } finally {
@@ -274,7 +283,7 @@ class Chat extends Component
         $this->selectedModel = $model;
 
         if ($this->conversation) {
-            $this->conversation->update(["model" => $model]);
+            $this->conversation->update(['model' => $model]);
         }
     }
 
@@ -286,7 +295,7 @@ class Chat extends Component
         $this->selectedStyle = $style;
 
         if ($this->conversation) {
-            $this->conversation->update(["style" => $style]);
+            $this->conversation->update(['style' => $style]);
         }
     }
 
@@ -296,9 +305,9 @@ class Chat extends Component
     public function applyQuickAction(string $actionName): void
     {
         // Find the action by name
-        $action = collect($this->quickActions)->firstWhere("name", $actionName);
+        $action = collect($this->quickActions)->firstWhere('name', $actionName);
 
-        if (!$action || empty($this->message)) {
+        if (! $action || empty($this->message)) {
             return;
         }
 
@@ -308,7 +317,7 @@ class Chat extends Component
             // Apply the action
             $chatService = app(PrismChatService::class);
             $result = $chatService->applyQuickAction(
-                $action["prompt"],
+                $action['prompt'],
                 $this->message
             );
 
@@ -327,16 +336,16 @@ class Chat extends Component
     {
         // Use findOrFail which eager loads messages or use load() after finding
         $this->conversation = Conversation::with([
-            "messages" => function ($query) {
-                $query->orderBy("created_at", "asc"); // Ensure messages are ordered correctly
+            'messages' => function ($query) {
+                $query->orderBy('created_at', 'asc'); // Ensure messages are ordered correctly
             },
         ])->findOrFail($conversationId);
 
         $this->selectedModel = $this->conversation->model;
         $this->selectedStyle = $this->conversation->style;
-        $this->message = ""; // Clear input when loading
+        $this->message = ''; // Clear input when loading
         $this->checkStreamingState(); // Check if the loaded convo has a streaming message
-        $this->dispatch("refreshChat"); // Ensure scroll happens on load
+        $this->dispatch('refreshChat'); // Ensure scroll happens on load
     }
 
     /**
@@ -370,9 +379,9 @@ class Chat extends Component
     public function newConversation(): void
     {
         $this->conversation = null;
-        $this->message = "";
-        $this->selectedModel = "GPT-4o";
-        $this->selectedStyle = "default";
+        $this->message = '';
+        $this->selectedModel = 'GPT-4o';
+        $this->selectedStyle = 'default';
     }
 
     /**
@@ -388,7 +397,7 @@ class Chat extends Component
      */
     public function regenerateLastMessage(): void
     {
-        if (!$this->conversation) {
+        if (! $this->conversation) {
             return;
         }
 
@@ -408,17 +417,18 @@ class Chat extends Component
 
             // Validate: Need at least two messages, last is assistant, second last is user
             if (
-                !$lastMessage ||
-                $lastMessage->role !== "assistant" ||
-                !$secondLastMessage ||
-                $secondLastMessage->role !== "user"
+                ! $lastMessage ||
+                $lastMessage->role !== 'assistant' ||
+                ! $secondLastMessage ||
+                $secondLastMessage->role !== 'user'
             ) {
-                $this->dispatch("show-alert", [
-                    "type" => "warning",
-                    "message" => "Cannot regenerate response.",
+                $this->dispatch('show-alert', [
+                    'type' => 'warning',
+                    'message' => 'Cannot regenerate response.',
                 ]);
                 $this->isProcessing = false;
                 $this->isStreaming = false;
+
                 return;
             }
 
@@ -431,8 +441,8 @@ class Chat extends Component
             // 3. Get the history *up to the user message*
             $history = $this->conversation
                 ->messages()
-                ->where("created_at", "<=", $secondLastMessage->created_at) // <= user message time
-                ->orderBy("created_at", "asc")
+                ->where('created_at', '<=', $secondLastMessage->created_at) // <= user message time
+                ->orderBy('created_at', 'asc')
                 ->get();
 
             // 4. Trigger regeneration from the service
@@ -444,7 +454,7 @@ class Chat extends Component
 
             // 5. Refresh again to include the new response (placeholder)
             $this->conversation->refresh();
-            $this->dispatch("refreshChat");
+            $this->dispatch('refreshChat');
         } catch (\Exception $e) {
             $this->handleError($e);
         } finally {
@@ -460,14 +470,14 @@ class Chat extends Component
     {
         $newTitle = trim($newTitle);
         if (
-            !$this->conversation ||
+            ! $this->conversation ||
             empty($newTitle) ||
             $this->conversation->title === $newTitle
         ) {
             return;
         }
 
-        $this->conversation->update(["title" => $newTitle]);
+        $this->conversation->update(['title' => $newTitle]);
         $this->loadRecentChats(); // Refresh recent chats list
         // The getAllChats() method will fetch the updated title for the sidebar automatically on next render
     }
@@ -477,26 +487,26 @@ class Chat extends Component
      */
     public function handleError(\Exception $e): void
     {
-        Log::error("Chat error: " . $e->getMessage(), [
-            "conversation_id" => $this->conversation?->id,
-            "user_id" => Auth::id(),
-            "trace" => $e->getTraceAsString(),
+        Log::error('Chat error: '.$e->getMessage(), [
+            'conversation_id' => $this->conversation?->id,
+            'user_id' => Auth::id(),
+            'trace' => $e->getTraceAsString(),
         ]);
 
         // Create an error message for the user
         if ($this->conversation) {
             ChatMessage::create([
-                "conversation_id" => $this->conversation->id,
-                "role" => "assistant",
-                "content" =>
-                    "Sorry, I encountered an error: " . $e->getMessage(),
-                "user_id" => null,
+                'conversation_id' => $this->conversation->id,
+                'role' => 'assistant',
+                'content' => 'Sorry, I encountered an error: '.$e->getMessage(),
+                'user_id' => null,
             ]);
         }
 
         $this->isProcessing = false;
-        $this->dispatch("refreshChat");
+        $this->dispatch('refreshChat');
     }
+
     /**
      * Check if the last message is currently streaming and update the component state.
      */
@@ -506,7 +516,7 @@ class Chat extends Component
             $lastMessage = $this->conversation->messages()->latest()->first();
             $this->isStreaming =
                 $lastMessage &&
-                $lastMessage->role === "assistant" &&
+                $lastMessage->role === 'assistant' &&
                 ($lastMessage->is_streaming ?? false);
         } else {
             $this->isStreaming = false;
@@ -522,11 +532,12 @@ class Chat extends Component
         if ($this->isStreaming) {
             $this->conversation->refresh(); // Reload messages
             $this->checkStreamingState();
-            if (!$this->isStreaming) {
-                $this->dispatch("refreshChat"); // One last scroll after streaming finishes
+            if (! $this->isStreaming) {
+                $this->dispatch('refreshChat'); // One last scroll after streaming finishes
             }
         }
     }
+
     /**
      * Render the component.
      */
@@ -536,11 +547,12 @@ class Chat extends Component
         $this->checkStreamingState();
 
         // Conditionally add polling if streaming is active
-        $view = view("livewire.chat");
+        $view = view('livewire.chat');
         if ($this->isStreaming) {
             // Poll every 500ms while streaming
-            $view->with(["pollingInterval" => "500ms"]);
+            $view->with(['pollingInterval' => '500ms']);
         }
+
         return $view;
     }
 }

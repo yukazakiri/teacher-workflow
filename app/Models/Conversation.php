@@ -86,6 +86,7 @@ class Conversation extends Model
     public function updateLastActivity(): bool
     {
         $this->last_activity_at = now();
+
         return $this->save();
     }
 }

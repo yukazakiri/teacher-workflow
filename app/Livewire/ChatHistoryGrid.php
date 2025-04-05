@@ -6,8 +6,8 @@ namespace App\Livewire;
 
 use App\Models\Chat;
 use Illuminate\Support\Facades\Auth;
-use Livewire\Component;
 use Livewire\Attributes\Computed;
+use Livewire\Component;
 
 class ChatHistoryGrid extends Component
 {
@@ -17,7 +17,7 @@ class ChatHistoryGrid extends Component
             'chats' => $this->chats,
         ]);
     }
-    
+
     #[Computed]
     public function chats()
     {
@@ -26,7 +26,7 @@ class ChatHistoryGrid extends Component
             ->latest()
             ->get();
     }
-    
+
     public function deleteChat(Chat $chat)
     {
         $chat->delete();

@@ -7,8 +7,11 @@ use Livewire\Component;
 class ChatToolbar extends Component
 {
     public array $availableModels = [];
+
     public array $availableStyles = [];
+
     public string $selectedModel;
+
     public string $selectedStyle;
 
     public function mount(array $availableModels, array $availableStyles, string $selectedModel, string $selectedStyle)

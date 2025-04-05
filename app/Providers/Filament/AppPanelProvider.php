@@ -2,82 +2,68 @@
 
 namespace App\Providers\Filament;
 
-use Filament\Pages;
-use Filament\Panel;
+use App\Filament\Pages\ApiTokens;
+use App\Filament\Pages\AttendanceManager;
+use App\Filament\Pages\ClassesResources;
+use App\Filament\Pages\CreateTeam;
+use App\Filament\Pages\EditProfile;
+use App\Filament\Pages\EditTeam;
+use App\Filament\Pages\Gradesheet;
+use App\Filament\Pages\WeeklySchedule;
+use App\Filament\Resources\ActivityResource;
+use App\Filament\Resources\AttendanceQrCodeResource;
+use App\Filament\Resources\AttendanceResource;
+use App\Filament\Resources\ExamResource;
+use App\Filament\Resources\ResourceCategoryResource;
+use App\Filament\Resources\StudentResource;
+use App\Listeners\SwitchTeam;
 use App\Models\Team;
 use App\Models\User;
-use Filament\Widgets;
-use Filament\PanelProvider;
-use Laravel\Fortify\Fortify;
-use App\Listeners\SwitchTeam;
-use Filament\Pages\Dashboard;
+use AssistantEngine\Filament\Chat\Pages\AssistantChat;
+use AssistantEngine\Filament\FilamentAssistantPlugin;
+use Devonab\FilamentEasyFooter\EasyFooterPlugin;
+use DutchCodingCompany\FilamentSocialite\FilamentSocialitePlugin;
+use DutchCodingCompany\FilamentSocialite\Provider;
 use Filament\Events\TenantSet;
 use Filament\Facades\Filament;
-use Laravel\Jetstream\Features;
-use App\Filament\Pages\EditTeam;
-use Laravel\Jetstream\Jetstream;
-use App\Filament\Pages\ApiTokens;
-use Filament\Navigation\MenuItem;
-use App\Filament\Pages\CreateTeam;
-use App\Filament\Pages\Gradesheet;
-use App\Filament\Pages\Changelogs;
-use Filament\Support\Colors\Color;
-use App\Filament\Pages\EditProfile;
-use Illuminate\Support\Facades\Auth;
-use LaraZeus\Boredom\Enums\Variants;
-use Illuminate\Support\Facades\Blade;
-use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Route;
-use SebastianBergmann\Type\FalseType;
-use Filament\Navigation\NavigationItem;
-use App\Filament\Pages\ClassesResources;
-use App\Filament\Resources\ExamResource;
-use Filament\Navigation\NavigationGroup;
-use App\Filament\Resources\ClassResource;
 use Filament\Http\Middleware\Authenticate;
-use Filament\Navigation\NavigationBuilder;
-use App\Filament\Resources\StudentResource;
-use App\Filament\Resources\ActivityResource;
-use App\Filament\Resources\AttendanceResource;
-use App\Filament\Resources\AttendanceQrCodeResource;
-use Illuminate\Session\Middleware\StartSession;
-use Devonab\FilamentEasyFooter\EasyFooterPlugin;
-use Illuminate\Cookie\Middleware\EncryptCookies;
-use App\Filament\Resources\ClassResourceResource;
-use App\Filament\Pages\Dashboard as PagesDashboard;
-use App\Filament\Resources\ResourceCategoryResource;
-use AssistantEngine\Filament\FilamentAssistantPlugin;
-use Illuminate\Routing\Middleware\SubstituteBindings;
-use AssistantEngine\Filament\Chat\Pages\AssistantChat;
-use Illuminate\Session\Middleware\AuthenticateSession;
-use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Filament\Navigation\MenuItem;
+use Filament\Navigation\NavigationBuilder;
+use Filament\Pages\Dashboard;
+use Filament\Panel;
+use Filament\PanelProvider;
+use Filament\Support\Colors\Color;
+use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
-use TomatoPHP\FilamentSimpleTheme\FilamentSimpleThemePlugin;
-use CodeWithDennis\FilamentThemeInspector\FilamentThemeInspectorPlugin;
-use DutchCodingCompany\FilamentDeveloperLogins\FilamentDeveloperLoginsPlugin;
-use App\Filament\Pages\WeeklySchedule;
-use App\Filament\Pages\AttendanceManager;
-use DutchCodingCompany\FilamentSocialite\FilamentSocialitePlugin;
-use DutchCodingCompany\FilamentSocialite\Models\SocialiteUser;
-use DutchCodingCompany\FilamentSocialite\Provider;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Session\Middleware\AuthenticateSession;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\HtmlString;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Laravel\Fortify\Fortify;
+use Laravel\Jetstream\Features;
+use Laravel\Jetstream\Jetstream;
 use Laravel\Socialite\Contracts\User as SocialiteUserContract;
-use Devonab\FilamentEasyFooter\Services\GitHubService;
+use LaraZeus\Boredom\Enums\Variants;
+
 class AppPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         $panel
             ->default()
-            ->id("app")
-            ->path("app")
+            ->id('app')
+            ->path('app')
             ->login()
             ->spa()
-            ->brandName("FilaGrade")
+            ->brandName('FilaGrade')
             // ->sidebarCollapsibleOnDesktop(true)
             ->sidebarFullyCollapsibleOnDesktop()
             ->emailVerification()
@@ -85,38 +71,23 @@ class AppPanelProvider extends PanelProvider
             ->registration()
             ->passwordReset()
             ->emailVerification()
-            ->viteTheme("resources/css/filament/app/theme.css")
+            ->viteTheme('resources/css/filament/app/theme.css')
             ->colors([
-                "primary" => Color::hex("#c6a0f6"),
-                "gray" => Color::hex("#7c7f93"),
-                "info" => Color::hex("#7287fd"),
-                "danger" => Color::hex("#e78284"),
-                "success" => Color::hex("#a6d189"),
-                "warning" => Color::hex("#fe640b"),
+                'primary' => Color::hex('#c6a0f6'),
+                'gray' => Color::hex('#7c7f93'),
+                'info' => Color::hex('#7287fd'),
+                'danger' => Color::hex('#e78284'),
+                'success' => Color::hex('#a6d189'),
+                'warning' => Color::hex('#fe640b'),
             ])
-            // ->userMenuItems([
-            //     MenuItem::make()
-            //         ->label('Profile')
-            //         ->icon('heroicon-o-user-circle')
-            //         ->url(function () use ($panel) {
-            //             if ($this->shouldRegisterMenuItem()) {
-            //                 // Check if we're in a tenant context
-            //                 $tenant = Filament::getTenant();
-            //                 if ($tenant) {
-            //                     return url(EditProfile::getUrl(['tenant' => $tenant->getKey()]));
-            //                 }
-            //                 return url(EditProfile::getUrl());
-            //             }
-            //             return url($panel->getPath());
-            //         }),
-            // ])
+
             ->discoverResources(
-                in: app_path("Filament/Resources"),
-                for: "App\\Filament\\Resources"
+                in: app_path('Filament/Resources'),
+                for: 'App\\Filament\\Resources'
             )
             ->discoverPages(
-                in: app_path("Filament/Pages"),
-                for: "App\\Filament\\Pages"
+                in: app_path('Filament/Pages'),
+                for: 'App\\Filament\\Pages'
             )
             ->pages([
                 \App\Filament\Pages\Dashboard::class,
@@ -124,7 +95,6 @@ class AppPanelProvider extends PanelProvider
                 EditProfile::class,
                 ApiTokens::class,
                 \App\Filament\Pages\Gradesheet::class,
-                // \App\Filament\Pages\ChatPage::class,
 
                 \App\Filament\Pages\ClassesResources::class,
                 \App\Filament\Pages\WeeklySchedule::class,
@@ -135,13 +105,13 @@ class AppPanelProvider extends PanelProvider
 
             ->plugins([
                 FilamentSocialitePlugin::make()
-                    // (required) Add providers corresponding with providers in `config/services.php`.
+
                     ->providers([
-                        // Create a provider 'gitlab' corresponding to the Socialite driver with the same name.
-                        Provider::make("google")
-                            ->label("Google")
-                            ->icon("fab-google-plus-g")
-                            ->color(Color::hex("#4285f4"))
+
+                        Provider::make('google')
+                            ->label('Google')
+                            ->icon('fab-google-plus-g')
+                            ->color(Color::hex('#4285f4'))
                             ->outlined(true)
                             ->stateless(false),
                     ])
@@ -153,9 +123,9 @@ class AppPanelProvider extends PanelProvider
                     ) {
                         // Create the user with basic info first
                         $user = User::create([
-                            "name" => $oauthUser->getName(),
-                            "email" => $oauthUser->getEmail(),
-                            "password" => null, // Important: Password should be nullable
+                            'name' => $oauthUser->getName(),
+                            'email' => $oauthUser->getEmail(),
+                            'password' => null, // Important: Password should be nullable
                         ]);
 
                         // Get avatar URL from OAuth provider
@@ -166,7 +136,7 @@ class AppPanelProvider extends PanelProvider
                                 // Download the image to a temporary file
                                 $tempFile = tempnam(
                                     sys_get_temp_dir(),
-                                    "avatar_"
+                                    'avatar_'
                                 );
                                 file_put_contents(
                                     $tempFile,
@@ -176,8 +146,8 @@ class AppPanelProvider extends PanelProvider
                                 // Create an UploadedFile instance from the temp file
                                 $uploadedFile = new \Illuminate\Http\UploadedFile(
                                     $tempFile,
-                                    "avatar.jpg", // Filename
-                                    "image/jpeg", // MIME type (adjust if needed)
+                                    'avatar.jpg', // Filename
+                                    'image/jpeg', // MIME type (adjust if needed)
                                     null,
                                     true // Test mode to avoid moving the file again
                                 );
@@ -199,30 +169,28 @@ class AppPanelProvider extends PanelProvider
                     ->withLoadTime()
                     ->withSentence(
                         new HtmlString(
-                            '<img src="https://static.cdnlogo.com/logos/l/23/laravel.svg" style="margin-right:.5rem;" alt="Laravel Logo" width="20" height="20"> Laravel'
+                            '<img src="https://static.cdnlogo.com/logos/l/23/filament.svg" style="margin-right:.5rem;" alt="Laravel Logo" width="20" height="20"> Laravel'
                         )
                     )
                     ->withGithub(showLogo: true, showUrl: true)
                     ->withLogo(
-                        "https://static.cdnlogo.com/logos/l/23/laravel.svg", // Path to logo
-                        "https://laravel.com",
-                        "Powered by Laravel"
-                        // URL for logo link (optional)
+                        'https://static.cdnlogo.com/logos/l/23/laravel.svg',
+                        'https://laravel.com',
+                        'Powered by Laravel'
+
                     )
                     ->withLinks([
                         [
-                            "title" => "About",
-                            "url" => "https://example.com/about",
+                            'title' => 'About',
+                            'url' => 'https://filagrade.koamishin.org/about',
                         ],
-                        ["title" => "CGV", "url" => "https://example.com/cgv"],
                         [
-                            "title" => "Privacy Policy",
-                            "url" => "https://example.com/privacy-policy",
+                            'title' => 'Privacy Policy',
+                            'url' => 'https://filagrade.koamishin.org/privacy',
                         ],
                     ])
                     ->withBorder(),
                 FilamentAssistantPlugin::make(),
-                // FilamentSimpleThemePlugin::make(),
                 \LaraZeus\Boredom\BoringAvatarPlugin::make()
 
                     ->variant(Variants::MARBLE)
@@ -230,24 +198,23 @@ class AppPanelProvider extends PanelProvider
                     ->size(60)
 
                     ->colors([
-                        "0A0310",
-                        "49007E",
-                        "FF005B",
-                        "FF7D10",
-                        "FFB238",
+                        '0A0310',
+                        '49007E',
+                        'FF005B',
+                        'FF7D10',
+                        'FFB238',
                     ]),
             ])
             ->discoverWidgets(
-                in: app_path("Filament/Widgets"),
-                for: "App\\Filament\\Widgets"
+                in: app_path('Filament/Widgets'),
+                for: 'App\\Filament\\Widgets'
             )
             ->navigation(function (
                 NavigationBuilder $builder
             ): NavigationBuilder {
                 return $builder
                     ->groups([
-                        // NavigationGroup::make('Chat History')
-                        //     ->items($chatItems),
+
                     ])
                     ->items([
                         ...Dashboard::getNavigationItems(),
@@ -265,27 +232,28 @@ class AppPanelProvider extends PanelProvider
             })
             ->userMenuItems([
                 MenuItem::make()
-                    ->label("Profile")
+                    ->label('Profile')
                     ->url(
-                        fn(): string => EditProfile::getUrl([
-                            "tenant" => Auth::user()?->currentTeam->id ?? 1,
+                        fn (): string => EditProfile::getUrl([
+                            'tenant' => Auth::user()?->currentTeam->id ?? 1,
                         ])
                     )
-                    ->icon("heroicon-o-user-circle"),
+                    ->icon('heroicon-o-user-circle'),
                 MenuItem::make()
                     ->label(function () {
                         $githubService = app(
                             \Devonab\FilamentEasyFooter\Services\GitHubService::class
                         );
                         $version = $githubService->getLatestTag();
-                        return "Changelogs (" .
-                            (str()->startsWith($version, "v")
+
+                        return 'Changelogs ('.
+                            (str()->startsWith($version, 'v')
                                 ? $version
-                                : "v" . $version) .
-                            ")";
+                                : 'v'.$version).
+                            ')';
                     })
-                    ->url(fn() => \App\Filament\Pages\Changelogs::getUrl())
-                    ->icon("heroicon-o-document-text"),
+                    ->url(fn () => \App\Filament\Pages\Changelogs::getUrl())
+                    ->icon('heroicon-o-document-text'),
             ])
             ->widgets([
                 Widgets\AccountWidget::class,
@@ -307,10 +275,10 @@ class AppPanelProvider extends PanelProvider
         if (Features::hasApiFeatures()) {
             $panel->userMenuItems([
                 MenuItem::make()
-                    ->label("API Tokens")
-                    ->icon("heroicon-o-key")
+                    ->label('API Tokens')
+                    ->icon('heroicon-o-key')
                     ->url(
-                        fn() => $this->shouldRegisterMenuItem()
+                        fn () => $this->shouldRegisterMenuItem()
                             ? url(ApiTokens::getUrl())
                             : url($panel->getPath())
                     ),
@@ -357,19 +325,19 @@ class AppPanelProvider extends PanelProvider
          * Register custom routes for team switching
          */
         Route::middleware([
-            "web",
-            "auth:sanctum",
-            config("jetstream.auth_session"),
-            "verified",
+            'web',
+            'auth:sanctum',
+            config('jetstream.auth_session'),
+            'verified',
         ])->group(function () {
-            Route::post("/app/team/switch/{team}", function (Team $team) {
+            Route::post('/app/team/switch/{team}', function (Team $team) {
                 // This will trigger the TenantSet event which is handled by SwitchTeam listener
                 Filament::setTenant($team);
 
-                return redirect()->route("filament.app.pages.dashboard", [
-                    "tenant" => $team->id,
+                return redirect()->route('filament.app.pages.dashboard', [
+                    'tenant' => $team->id,
                 ]);
-            })->name("filament.app.team.switch");
+            })->name('filament.app.team.switch');
         });
     }
 
@@ -380,6 +348,7 @@ class AppPanelProvider extends PanelProvider
         return Filament::hasTenancy()
             ? $hasVerifiedEmail && Filament::getTenant()
             : $hasVerifiedEmail;
+
         return true;
     }
 }

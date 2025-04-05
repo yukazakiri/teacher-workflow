@@ -18,11 +18,11 @@ class ListActivities extends ListRecords
     // Optional: Default sort
     protected function getDefaultTableSortColumn(): ?string
     {
-        return "created_at";
+        return 'created_at';
     }
 
     protected function getDefaultTableSortDirection(): ?string
     {
-        return "desc";
+        return 'desc';
     }
 }

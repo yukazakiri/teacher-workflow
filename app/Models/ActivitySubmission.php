@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 namespace App\Models;
-use Illuminate\Support\Arr;
+
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -19,20 +19,20 @@ class ActivitySubmission extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        "activity_id",
-        "student_id",
-        "group_id",
-        "content",
-        "form_responses",
-        "attachments",
-        "status",
-        "score",
-        "final_grade",
-        "feedback",
-        "submitted_at",
-        "submitted_by_teacher",
-        "graded_by",
-        "graded_at",
+        'activity_id',
+        'student_id',
+        'group_id',
+        'content',
+        'form_responses',
+        'attachments',
+        'status',
+        'score',
+        'final_grade',
+        'feedback',
+        'submitted_at',
+        'submitted_by_teacher',
+        'graded_by',
+        'graded_at',
     ];
 
     /**
@@ -41,17 +41,17 @@ class ActivitySubmission extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        "attachments" => "array",
-        "form_responses" => "array",
-        "submitted_at" => "datetime",
-        "graded_at" => "datetime",
-        "score" => "float",
-        "final_grade" => "float",
-        "form_data" => "array",
-        "attachments" => "array",
-        "submitted_at" => "datetime",
-        "graded_at" => "datetime",
-        "submitted_by_teacher" => "boolean",
+        'attachments' => 'array',
+        'form_responses' => 'array',
+        'submitted_at' => 'datetime',
+        'graded_at' => 'datetime',
+        'score' => 'float',
+        'final_grade' => 'float',
+        'form_data' => 'array',
+        'attachments' => 'array',
+        'submitted_at' => 'datetime',
+        'graded_at' => 'datetime',
+        'submitted_by_teacher' => 'boolean',
     ];
 
     /**
@@ -67,7 +67,7 @@ class ActivitySubmission extends Model
      */
     public function student(): BelongsTo
     {
-        return $this->belongsTo(Student::class, "student_id");
+        return $this->belongsTo(Student::class, 'student_id');
     }
 
     /**
@@ -83,7 +83,7 @@ class ActivitySubmission extends Model
      */
     public function gradedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, "graded_by");
+        return $this->belongsTo(User::class, 'graded_by');
     }
 
     /**
@@ -91,7 +91,7 @@ class ActivitySubmission extends Model
      */
     public function isDraft(): bool
     {
-        return $this->status === "draft";
+        return $this->status === 'draft';
     }
 
     /**
@@ -99,7 +99,7 @@ class ActivitySubmission extends Model
      */
     public function isInProgress(): bool
     {
-        return $this->status === "in_progress";
+        return $this->status === 'in_progress';
     }
 
     /**
@@ -107,7 +107,7 @@ class ActivitySubmission extends Model
      */
     public function isSubmitted(): bool
     {
-        return $this->status === "submitted";
+        return $this->status === 'submitted';
     }
 
     /**
@@ -115,7 +115,7 @@ class ActivitySubmission extends Model
      */
     public function isCompleted(): bool
     {
-        return $this->status === "completed";
+        return $this->status === 'completed';
     }
 
     /**
@@ -123,7 +123,7 @@ class ActivitySubmission extends Model
      */
     public function isLate(): bool
     {
-        return $this->status === "late";
+        return $this->status === 'late';
     }
 
     /**
@@ -141,6 +141,7 @@ class ActivitySubmission extends Model
     {
         return $this->submitted_by_teacher === true;
     }
+
     /**
      * Get formatted form data with labels for display.
      * Assumes form_structure is stored on the related Activity.
@@ -149,7 +150,7 @@ class ActivitySubmission extends Model
     {
         if (
             empty($this->form_data) ||
-            !$this->activity ||
+            ! $this->activity ||
             empty($this->activity->form_structure)
         ) {
             return [];
@@ -159,10 +160,10 @@ class ActivitySubmission extends Model
         $structure = $this->activity->form_structure; // The Builder structure array
 
         foreach ($structure as $block) {
-            $fieldName = $block["data"]["name"] ?? null;
+            $fieldName = $block['data']['name'] ?? null;
             $fieldLabel =
-                $block["data"]["label"] ??
-                Str::title(str_replace("_", " ", $fieldName)); // Fallback label
+                $block['data']['label'] ??
+                Str::title(str_replace('_', ' ', $fieldName)); // Fallback label
 
             if ($fieldName && isset($this->form_data[$fieldName])) {
                 $value = $this->form_data[$fieldName];
@@ -170,10 +171,10 @@ class ActivitySubmission extends Model
                 // Handle potential array values from checkboxes/multi-select
                 if (is_array($value)) {
                     // If options were KeyValue, map values back to labels if possible
-                    $options = $block["data"]["options"] ?? [];
-                    if (!empty($options)) {
+                    $options = $block['data']['options'] ?? [];
+                    if (! empty($options)) {
                         $labels = [];
-                        $optionMap = array_column($options, "label", "value"); // Map value => label
+                        $optionMap = array_column($options, 'label', 'value'); // Map value => label
                         foreach ($value as $singleValue) {
                             $labels[] =
                                 $optionMap[$singleValue] ?? $singleValue; // Use label if found, else value
@@ -181,22 +182,22 @@ class ActivitySubmission extends Model
                         $value = $labels; // Replace value array with label array
                     }
                 } elseif (
-                    ($block["type"] === "select" ||
-                        $block["type"] === "radio") &&
-                    !($block["data"]["multiple"] ?? false)
+                    ($block['type'] === 'select' ||
+                        $block['type'] === 'radio') &&
+                    ! ($block['data']['multiple'] ?? false)
                 ) {
                     // Handle single select/radio - map value to label
-                    $options = $block["data"]["options"] ?? [];
-                    if (!empty($options)) {
-                        $optionMap = array_column($options, "label", "value");
+                    $options = $block['data']['options'] ?? [];
+                    if (! empty($options)) {
+                        $optionMap = array_column($options, 'label', 'value');
                         $value = $optionMap[$value] ?? $value; // Use label if found
                     }
                 }
 
                 $formatted[] = [
-                    "name" => $fieldName,
-                    "label" => $fieldLabel,
-                    "value" => $value,
+                    'name' => $fieldName,
+                    'label' => $fieldLabel,
+                    'value' => $value,
                 ];
             }
         }

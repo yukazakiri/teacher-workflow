@@ -2,16 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Schedule extends Model
 {
     use HasFactory, HasUuids;
-    
+
     /**
      * The attributes that are mass assignable.
      *
@@ -23,7 +23,7 @@ class Schedule extends Model
         'description',
         'is_active',
     ];
-    
+
     /**
      * Get the attributes that should be cast.
      *
@@ -35,7 +35,7 @@ class Schedule extends Model
             'is_active' => 'boolean',
         ];
     }
-    
+
     /**
      * Get the team that owns the schedule.
      */
@@ -43,7 +43,7 @@ class Schedule extends Model
     {
         return $this->belongsTo(Team::class);
     }
-    
+
     /**
      * Get the schedule items for the schedule.
      */
@@ -51,7 +51,7 @@ class Schedule extends Model
     {
         return $this->hasMany(ScheduleItem::class);
     }
-    
+
     /**
      * Get items for a specific day of the week.
      */

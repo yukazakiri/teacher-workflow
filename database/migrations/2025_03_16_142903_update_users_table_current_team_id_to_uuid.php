@@ -19,12 +19,12 @@ return new class extends Migration
         // Then, add it back as a UUID
         Schema::table('users', function (Blueprint $table) {
             $table->uuid('current_team_id')->nullable()->after('remember_token');
-            
+
             // Add a foreign key constraint to the teams table
             $table->foreign('current_team_id')
-                  ->references('id')
-                  ->on('teams')
-                  ->onDelete('set null');
+                ->references('id')
+                ->on('teams')
+                ->onDelete('set null');
         });
     }
 

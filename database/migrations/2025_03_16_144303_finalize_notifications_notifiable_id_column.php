@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -23,19 +23,19 @@ return new class extends Migration
                     WHERE table_name = 'notifications' 
                     AND column_name = 'notifiable_id'
                 ");
-                
+
                 // If the column is not UUID or doesn't exist, create/modify it
                 if (empty($columnType) || $columnType[0]->data_type !== 'uuid') {
                     // If column exists, drop it first
-                    if (!empty($columnType)) {
+                    if (! empty($columnType)) {
                         $table->dropColumn('notifiable_id');
                     }
-                    
+
                     // Create the column as UUID
                     $table->uuid('notifiable_id')->nullable();
                 }
             });
-            
+
             // Add an index for better performance
             Schema::table('notifications', function (Blueprint $table) {
                 // Check if index exists before creating
@@ -45,7 +45,7 @@ return new class extends Migration
                     WHERE tablename = 'notifications' 
                     AND indexname = 'notifications_notifiable_id_index'
                 ");
-                
+
                 if (empty($indexExists)) {
                     $table->index('notifiable_id');
                 }

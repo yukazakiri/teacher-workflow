@@ -26,4 +26,4 @@ class CreateActivityCustom extends Page
     {
         return __('Create Activity');
     }
-} 
+}

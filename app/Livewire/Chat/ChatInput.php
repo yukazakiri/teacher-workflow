@@ -3,16 +3,21 @@
 namespace App\Livewire\Chat;
 
 use Livewire\Component;
-use Livewire\Attributes\On;
 
 class ChatInput extends Component
 {
     public string $message = '';
+
     public bool $isProcessing = false;
+
     public array $availableModels = [];
+
     public array $availableStyles = [];
+
     public array $quickActions = [];
+
     public string $selectedModel;
+
     public string $selectedStyle;
 
     public function mount(array $availableModels, array $availableStyles, array $quickActions, string $selectedModel, string $selectedStyle)
@@ -37,8 +42,8 @@ class ChatInput extends Component
     public function applyQuickAction(string $actionName): void
     {
         $action = collect($this->quickActions)->firstWhere('name', $actionName);
-        
-        if (!$action || empty($this->message)) {
+
+        if (! $action || empty($this->message)) {
             return;
         }
 
