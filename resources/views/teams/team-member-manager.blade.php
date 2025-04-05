@@ -1,210 +1,260 @@
 @php
     use Illuminate\Support\Facades\Gate;
+    use Illuminate\Support\Str;
 @endphp
+
 <div>
-    @if (Gate::check('addTeamMember', $team))
-        <x-section-border />
+    <!-- Current Team Members Card -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
+        <div class="px-4 py-5 sm:px-6">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ __('Class Members') }}</h3>
+                <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                    {{ $team->users->count() }} {{ Str::plural('Member', $team->users->count()) }}
+                </span>
+            </div>
+        </div>
 
-        <!-- Add Team Member -->
-        <div class="mt-10 sm:mt-0">
-            <x-form-section submit="addTeamMember">
-                <x-slot name="title">
-                    {{ __('Add Team Member') }}
-                </x-slot>
+        @if($team->users->isNotEmpty())
+            <div class="border-t border-gray-200 dark:border-gray-700"></div>
 
-                <x-slot name="description">
-                    {{ __('Add a new team member to your team, allowing them to collaborate with you.') }}
-                </x-slot>
+            <div class="divide-y divide-gray-200 dark:divide-gray-700">
+                @foreach ($team->users->sortBy('name') as $user)
+                    <div class="px-4 py-3 sm:px-6 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <img class="h-10 w-10 rounded-full object-cover"
+                                src="{{ $user->profile_photo_url }}"
+                                alt="{{ $user->name }}" />
 
-                <x-slot name="form">
-                    <div class="col-span-6">
-                        <div class="max-w-xl text-sm text-gray-600 dark:text-gray-400">
-                            {{ __('Please provide the email address of the person you would like to add to this team.') }}
+                            <div>
+                                <p class="font-medium text-sm text-gray-900 dark:text-white">{{ $user->name }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $user->email }}</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            @if (Laravel\Jetstream\Jetstream::hasRoles())
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                    {{ $user->membership->role === 'admin' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' }}">
+                                    {{ Laravel\Jetstream\Jetstream::findRole($user->membership->role)->name }}
+                                </span>
+
+                                @if (Gate::check('updateTeamMember', $team))
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center p-1 border border-transparent rounded-full text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 focus:outline-none focus:text-gray-700 focus:bg-gray-100 dark:focus:bg-gray-800 transition"
+                                        title="{{ __('Change Role') }}"
+                                        wire:click="manageRole('{{ $user->id }}')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                        </svg>
+                                    </button>
+                                @endif
+                            @endif
+
+                            <div class="flex items-center">
+                                @if ($this->user->id === $user->id)
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                        wire:click="$toggle('confirmingLeavingTeam')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd" />
+                                        </svg>
+                                        {{ __('Leave') }}
+                                    </button>
+                                @elseif (Gate::check('removeTeamMember', $team))
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                        wire:click="confirmTeamMemberRemoval('{{ $user->id }}')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                        </svg>
+                                        {{ __('Remove') }}
+                                    </button>
+                                @endif
+                            </div>
                         </div>
                     </div>
+                @endforeach
+            </div>
+        @else
+            <div class="py-6 px-4 text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ __('No Class Members found') }}</p>
+            </div>
+        @endif
+    </div>
 
-                    <!-- Member Email -->
-                    <div class="col-span-6 sm:col-span-4">
-                        <x-label for="email" value="{{ __('Email') }}" />
-                        <x-input id="email" type="email" class="mt-1 block w-full" wire:model="addTeamMemberForm.email" />
+    <!-- Pending Invitations Card -->
+    @if ($team->teamInvitations->isNotEmpty() && Gate::check('addTeamMember', $team))
+        <div class="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div class="px-4 py-5 sm:px-6">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ __('Pending Invitations') }}</h3>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+                        {{ $team->teamInvitations->count() }} {{ Str::plural('Invitation', $team->teamInvitations->count()) }}
+                    </span>
+                </div>
+            </div>
+
+            <div class="border-t border-gray-200 dark:border-gray-700"></div>
+
+            <div class="divide-y divide-gray-200 dark:divide-gray-700">
+                @foreach ($team->teamInvitations as $invitation)
+                    <div class="px-4 py-3 sm:px-6 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="font-medium text-sm text-gray-900 dark:text-white">{{ $invitation->email }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">
+                                    {{ __('Invited') }} {{ $invitation->created_at->diffForHumans() }}
+                                </p>
+                            </div>
+                        </div>
+
+                        @if (Gate::check('removeTeamMember', $team))
+                            <button
+                                type="button"
+                                class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                wire:click="cancelTeamInvitation({{ $invitation->id }})">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                                {{ __('Cancel Invitation') }}
+                            </button>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
+    @if (Gate::check('addTeamMember', $team))
+        <div class="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div class="px-4 py-5 sm:px-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ __('Invite New Class Member') }}</h3>
+            </div>
+
+            <div class="border-t border-gray-200 dark:border-gray-700"></div>
+
+            <form wire:submit="addTeamMember" class="px-4 py-5 sm:px-6">
+                <div class="grid gap-6">
+                    <div>
+                        <x-label for="email" value="{{ __('Email Address') }}" />
+                        <x-input
+                            id="email"
+                            type="email"
+                            class="mt-1 block w-full"
+                            placeholder="colleague@example.com"
+                            wire:model="addTeamMemberForm.email" />
                         <x-input-error for="email" class="mt-2" />
                     </div>
 
-                    <!-- Role -->
                     @if (count($this->roles) > 0)
-                        <div class="col-span-6 lg:col-span-4">
-                            <x-label for="role" value="{{ __('Role') }}" />
+                        <div>
+                            <x-label value="{{ __('Role') }}" />
                             <x-input-error for="role" class="mt-2" />
 
-                            <div class="relative z-0 mt-1 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer">
-                                @foreach ($this->roles as $index => $role)
-                                    <button type="button" class="relative px-4 py-3 inline-flex w-full rounded-lg focus:z-10 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-600 {{ $index > 0 ? 'border-t border-gray-200 dark:border-gray-700 focus:border-none rounded-t-none' : '' }} {{ ! $loop->last ? 'rounded-b-none' : '' }}"
-                                                    wire:click="$set('addTeamMemberForm.role', '{{ $role->key }}')">
-                                        <div class="{{ isset($addTeamMemberForm['role']) && $addTeamMemberForm['role'] !== $role->key ? 'opacity-50' : '' }}">
-                                            <!-- Role Name -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                                @foreach ($this->roles as $role)
+                                    <label
+                                        for="role_{{ $role->key }}"
+                                        class="relative border rounded-lg p-4 flex cursor-pointer {{ $addTeamMemberForm['role'] == $role->key ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-500' : 'border-gray-300 dark:border-gray-600' }}">
+                                        <input
+                                            type="radio"
+                                            id="role_{{ $role->key }}"
+                                            name="role"
+                                            value="{{ $role->key }}"
+                                            wire:model="addTeamMemberForm.role"
+                                            class="sr-only" />
+
+                                        <div class="flex flex-col">
                                             <div class="flex items-center">
-                                                <div class="text-sm text-gray-600 dark:text-gray-400 {{ $addTeamMemberForm['role'] == $role->key ? 'font-semibold' : '' }}">
+                                                <span class="text-sm font-medium text-gray-900 dark:text-white">
                                                     {{ $role->name }}
-                                                </div>
+                                                </span>
 
                                                 @if ($addTeamMemberForm['role'] == $role->key)
-                                                    <svg class="ms-2 size-5 text-green-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    <svg class="ml-2 h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                     </svg>
                                                 @endif
                                             </div>
-
-                                            <!-- Role Description -->
-                                            <div class="mt-2 text-xs text-gray-600 dark:text-gray-400 text-start">
+                                            <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
                                                 {{ $role->description }}
-                                            </div>
+                                            </p>
                                         </div>
-                                    </button>
+                                    </label>
                                 @endforeach
                             </div>
                         </div>
                     @endif
-                </x-slot>
 
-                <x-slot name="actions">
-                    <x-action-message class="me-3" on="saved">
-                        {{ __('Added.') }}
-                    </x-action-message>
-
-                    <x-button>
-                        {{ __('Add') }}
-                    </x-button>
-                </x-slot>
-            </x-form-section>
-        </div>
-    @endif
-
-    @if ($team->teamInvitations->isNotEmpty() && Gate::check('addTeamMember', $team))
-        <x-section-border />
-
-        <!-- Team Member Invitations -->
-        <div class="mt-10 sm:mt-0">
-            <x-action-section>
-                <x-slot name="title">
-                    {{ __('Pending Team Invitations') }}
-                </x-slot>
-
-                <x-slot name="description">
-                    {{ __('These people have been invited to your team and have been sent an invitation email. They may join the team by accepting the email invitation.') }}
-                </x-slot>
-
-                <x-slot name="content">
-                    <div class="space-y-6">
-                        @foreach ($team->teamInvitations as $invitation)
-                            <div class="flex items-center justify-between">
-                                <div class="text-gray-600 dark:text-gray-400">{{ $invitation->email }}</div>
-
-                                <div class="flex items-center">
-                                    @if (Gate::check('removeTeamMember', $team))
-                                        <!-- Cancel Team Invitation -->
-                                        <button class="cursor-pointer ms-6 text-sm text-red-500 focus:outline-none"
-                                                            wire:click="cancelTeamInvitation({{ $invitation->id }})">
-                                            {{ __('Cancel') }}
-                                        </button>
-                                    @endif
-                                </div>
-                            </div>
-                        @endforeach
+                    <div class="flex justify-end">
+                        <x-button wire:loading.attr="disabled" class="ml-auto">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z" />
+                            </svg>
+                            {{ __('Send Invitation') }}
+                        </x-button>
                     </div>
-                </x-slot>
-            </x-action-section>
-        </div>
-    @endif
-
-    @if ($team->users->isNotEmpty())
-        <x-section-border />
-
-        <!-- Manage Team Members -->
-        <div class="mt-10 sm:mt-0">
-            <x-action-section>
-                <x-slot name="title">
-                    {{ __('Team Members') }}
-                </x-slot>
-
-                <x-slot name="description">
-                    {{ __('All of the people that are part of this team.') }}
-                </x-slot>
-
-                <!-- Team Member List -->
-                <x-slot name="content">
-                    <div class="space-y-6">
-                        @foreach ($team->users->sortBy('name') as $user)
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center">
-                                    <img class="size-8 rounded-full object-cover" src="{{ $user->profile_photo_url }}" alt="{{ $user->name }}">
-                                    <div class="ms-4 dark:text-white">{{ $user->name }}</div>
-                                </div>
-
-                                <div class="flex items-center">
-                                    <!-- Manage Team Member Role -->
-                                    @if (Gate::check('updateTeamMember', $team) && Laravel\Jetstream\Jetstream::hasRoles())
-                                        <button class="ms-2 text-sm text-gray-400 underline" wire:click="manageRole('{{ $user->id }}')">
-                                            {{ Laravel\Jetstream\Jetstream::findRole($user->membership->role)->name }}
-                                        </button>
-                                    @elseif (Laravel\Jetstream\Jetstream::hasRoles())
-                                        <div class="ms-2 text-sm text-gray-400">
-                                            {{ Laravel\Jetstream\Jetstream::findRole($user->membership->role)->name }}
-                                        </div>
-                                    @endif
-
-                                    <!-- Leave Team -->
-                                    @if ($this->user->id === $user->id)
-                                        <button class="cursor-pointer ms-6 text-sm text-red-500" wire:click="$toggle('confirmingLeavingTeam')">
-                                            {{ __('Leave') }}
-                                        </button>
-
-                                    <!-- Remove Team Member -->
-                                    @elseif (Gate::check('removeTeamMember', $team))
-                                        <button class="cursor-pointer ms-6 text-sm text-red-500" wire:click="confirmTeamMemberRemoval('{{ $user->id }}')">
-                                            {{ __('Remove') }}
-                                        </button>
-                                    @endif
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </x-slot>
-            </x-action-section>
+                </div>
+            </form>
         </div>
     @endif
 
     <!-- Role Management Modal -->
     <x-dialog-modal wire:model.live="currentlyManagingRole">
         <x-slot name="title">
-            {{ __('Manage Role') }}
+            {{ __('Manage Class Member Role') }}
         </x-slot>
 
         <x-slot name="content">
-            <div class="relative z-0 mt-1 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer">
-                @foreach ($this->roles as $index => $role)
-                    <button type="button" class="relative px-4 py-3 inline-flex w-full rounded-lg focus:z-10 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-600 {{ $index > 0 ? 'border-t border-gray-200 dark:border-gray-700 focus:border-none rounded-t-none' : '' }} {{ ! $loop->last ? 'rounded-b-none' : '' }}"
-                                    wire:click="$set('currentRole', '{{ $role->key }}')">
-                        <div class="{{ $currentRole !== $role->key ? 'opacity-50' : '' }}">
-                            <!-- Role Name -->
-                            <div class="flex items-center">
-                                <div class="text-sm text-gray-600 dark:text-gray-400 {{ $currentRole == $role->key ? 'font-semibold' : '' }}">
-                                    {{ $role->name }}
+            <div class="space-y-4">
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                    {{ __('Please select the appropriate role for this Class member.') }}
+                </p>
+
+                <div class="grid gap-3">
+                    @foreach ($this->roles as $role)
+                        <label
+                            for="modal_role_{{ $role->key }}"
+                            class="relative border rounded-lg p-4 flex cursor-pointer {{ $currentRole == $role->key ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-500' : 'border-gray-300 dark:border-gray-600' }}">
+                            <input
+                                type="radio"
+                                id="modal_role_{{ $role->key }}"
+                                name="modal_role"
+                                value="{{ $role->key }}"
+                                wire:model="currentRole"
+                                class="sr-only" />
+
+                            <div class="flex flex-col">
+                                <div class="flex items-center">
+                                    <span class="text-sm font-medium text-gray-900 dark:text-white">
+                                        {{ $role->name }}
+                                    </span>
+
+                                    @if ($currentRole == $role->key)
+                                        <svg class="ml-2 h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    @endif
                                 </div>
-
-                                @if ($currentRole == $role->key)
-                                    <svg class="ms-2 size-5 text-green-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                @endif
+                                <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                                    {{ $role->description }}
+                                </p>
                             </div>
-
-                            <!-- Role Description -->
-                            <div class="mt-2 text-xs text-gray-600 text-start dark:text-gray-400">
-                                {{ $role->description }}
-                            </div>
-                        </div>
-                    </button>
-                @endforeach
+                        </label>
+                    @endforeach
+                </div>
             </div>
         </x-slot>
 
@@ -213,7 +263,7 @@
                 {{ __('Cancel') }}
             </x-secondary-button>
 
-            <x-button class="ms-3" wire:click="updateRole" wire:loading.attr="disabled">
+            <x-button class="ml-3" wire:click="updateRole" wire:loading.attr="disabled">
                 {{ __('Save') }}
             </x-button>
         </x-slot>
@@ -222,11 +272,19 @@
     <!-- Leave Team Confirmation Modal -->
     <x-confirmation-modal wire:model.live="confirmingLeavingTeam">
         <x-slot name="title">
-            {{ __('Leave Team') }}
+            {{ __('Leave Class') }}
         </x-slot>
 
         <x-slot name="content">
-            {{ __('Are you sure you would like to leave this team?') }}
+            <div class="flex items-center mb-4">
+                <svg class="h-6 w-6 text-yellow-600 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                {{ __('Are you sure you want to leave this Class?') }}
+            </div>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+                {{ __('You will no longer have access to this class\'s resources.') }}
+            </p>
         </x-slot>
 
         <x-slot name="footer">
@@ -234,8 +292,8 @@
                 {{ __('Cancel') }}
             </x-secondary-button>
 
-            <x-danger-button class="ms-3" wire:click="leaveTeam" wire:loading.attr="disabled">
-                {{ __('Leave') }}
+            <x-danger-button class="ml-3" wire:click="leaveTeam" wire:loading.attr="disabled">
+                {{ __('Leave class') }}
             </x-danger-button>
         </x-slot>
     </x-confirmation-modal>
@@ -243,11 +301,19 @@
     <!-- Remove Team Member Confirmation Modal -->
     <x-confirmation-modal wire:model.live="confirmingTeamMemberRemoval">
         <x-slot name="title">
-            {{ __('Remove Team Member') }}
+            {{ __('Remove Class Member') }}
         </x-slot>
 
         <x-slot name="content">
-            {{ __('Are you sure you would like to remove this person from the team?') }}
+            <div class="flex items-center mb-4">
+                <svg class="h-6 w-6 text-yellow-600 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                {{ __('Are you sure you want to remove this person from the class?') }}
+            </div>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+                {{ __('They will no longer have access to this class\'s resources.') }}
+            </p>
         </x-slot>
 
         <x-slot name="footer">
@@ -255,8 +321,8 @@
                 {{ __('Cancel') }}
             </x-secondary-button>
 
-            <x-danger-button class="ms-3" wire:click="removeTeamMember" wire:loading.attr="disabled">
-                {{ __('Remove') }}
+            <x-danger-button class="ml-3" wire:click="removeTeamMember" wire:loading.attr="disabled">
+                {{ __('Remove Member') }}
             </x-danger-button>
         </x-slot>
     </x-confirmation-modal>

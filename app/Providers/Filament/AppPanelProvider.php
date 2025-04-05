@@ -31,6 +31,7 @@ use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\MenuItem;
 use Filament\Navigation\NavigationBuilder;
+use Filament\Navigation\NavigationGroup;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -213,20 +214,46 @@ class AppPanelProvider extends PanelProvider
                 NavigationBuilder $builder
             ): NavigationBuilder {
                 return $builder
-                    ->groups([])
-                    ->items([
-                        ...Dashboard::getNavigationItems(),
-                        ...ClassesResources::getNavigationItems(),
-                        ...WeeklySchedule::getNavigationItems(),
-                        ...Gradesheet::getNavigationItems(),
-                        ...ActivityResource::getNavigationItems(),
-                        ...ExamResource::getNavigationItems(),
-                        ...ResourceCategoryResource::getNavigationItems(),
-                        ...StudentResource::getNavigationItems(),
-                        ...AttendanceManager::getNavigationItems(),
-                        ...AttendanceResource::getNavigationItems(),
-                        ...AttendanceQrCodeResource::getNavigationItems(),
-                    ]);
+                    ->groups([
+                        // Dashboard group
+                        NavigationGroup::make()
+                            ->label('Dashboard')
+                            ->items([
+                                ...Dashboard::getNavigationItems(),
+                            ]),
+                        // Academic group
+                        NavigationGroup::make()
+                            ->label('Academic')
+                            ->items([
+                                ...ClassesResources::getNavigationItems(),
+                                ...WeeklySchedule::getNavigationItems(),
+                                ...Gradesheet::getNavigationItems(),
+                                ...ExamResource::getNavigationItems(),
+                            ]),
+                        // Student Management group
+                        NavigationGroup::make()
+                            ->label('Student Management')
+                            ->items([
+                                ...StudentResource::getNavigationItems(),
+                                ...AttendanceManager::getNavigationItems(),
+                                ...AttendanceResource::getNavigationItems(),
+                                ...AttendanceQrCodeResource::getNavigationItems(),
+                            ]),
+                        // Resources group
+                        NavigationGroup::make()
+                            ->label('Resources')
+                            ->items([
+                                ...ActivityResource::getNavigationItems(),
+                                ...ResourceCategoryResource::getNavigationItems(),
+                            ]),
+                        // System group
+                        NavigationGroup::make()
+                            ->label('System')
+                            ->items([
+                                ...(\App\Filament\Pages\Changelogs::getNavigationItems()),
+                            ]),
+                    ])
+                    ->items([]);
             })
             ->userMenuItems([
                 MenuItem::make()

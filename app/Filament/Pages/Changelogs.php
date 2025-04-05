@@ -18,6 +18,8 @@ class Changelogs extends Page
 
     protected static ?string $title = 'Release History & Changelogs';
 
+    protected static ?string $navigationGroup = 'System';
+
     public array $releases = [];
 
     public ?string $currentVersion = null;
@@ -67,7 +69,7 @@ class Changelogs extends Page
             function () {
                 try {
                     $token = config('filament-easy-footer.github.token');
-                    $response = Http::when($token, fn ($request) => $request->withToken($token))
+                    $response = Http::when($token, fn($request) => $request->withToken($token))
                         ->get("https://api.github.com/repos/{$this->repository}/releases");
 
                     if ($response->successful()) {
@@ -157,6 +159,6 @@ class Changelogs extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        return false;
+        return true;
     }
 }
