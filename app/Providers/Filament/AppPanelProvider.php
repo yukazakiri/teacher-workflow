@@ -73,10 +73,10 @@ class AppPanelProvider extends PanelProvider
             ->emailVerification()
             ->viteTheme('resources/css/filament/app/theme.css')
             ->colors([
-                'primary' => Color::hex('#c6a0f6'),
-                'gray' => Color::hex('#7c7f93'),
+                'primary' => Color::hex('#eebebe'),
+                'gray' => Color::hex('#949cbb'),
                 'info' => Color::hex('#7287fd'),
-                'danger' => Color::hex('#e78284'),
+                'danger' => Color::hex('#f38ba8'),
                 'success' => Color::hex('#a6d189'),
                 'warning' => Color::hex('#fe640b'),
             ])
@@ -213,9 +213,7 @@ class AppPanelProvider extends PanelProvider
                 NavigationBuilder $builder
             ): NavigationBuilder {
                 return $builder
-                    ->groups([
-
-                    ])
+                    ->groups([])
                     ->items([
                         ...Dashboard::getNavigationItems(),
                         ...ClassesResources::getNavigationItems(),
@@ -234,7 +232,7 @@ class AppPanelProvider extends PanelProvider
                 MenuItem::make()
                     ->label('Profile')
                     ->url(
-                        fn (): string => EditProfile::getUrl([
+                        fn(): string => EditProfile::getUrl([
                             'tenant' => Auth::user()?->currentTeam->id ?? 1,
                         ])
                     )
@@ -246,13 +244,13 @@ class AppPanelProvider extends PanelProvider
                         );
                         $version = $githubService->getLatestTag();
 
-                        return 'Changelogs ('.
+                        return 'Changelogs (' .
                             (str()->startsWith($version, 'v')
                                 ? $version
-                                : 'v'.$version).
+                                : 'v' . $version) .
                             ')';
                     })
-                    ->url(fn () => \App\Filament\Pages\Changelogs::getUrl())
+                    ->url(fn() => \App\Filament\Pages\Changelogs::getUrl())
                     ->icon('heroicon-o-document-text'),
             ])
             ->widgets([
@@ -278,7 +276,7 @@ class AppPanelProvider extends PanelProvider
                     ->label('API Tokens')
                     ->icon('heroicon-o-key')
                     ->url(
-                        fn () => $this->shouldRegisterMenuItem()
+                        fn() => $this->shouldRegisterMenuItem()
                             ? url(ApiTokens::getUrl())
                             : url($panel->getPath())
                     ),

@@ -1,3 +1,6 @@
+@php
+    use Illuminate\Support\Facades\Gate;
+@endphp
 <x-filament-panels::page>
     <!-- Team Join Code Manager Component -->
     @livewire(\App\Livewire\TeamJoinCodeManager::class, ['team' => $team])
