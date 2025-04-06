@@ -9,12 +9,19 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use App\Models\ClassResource;
+use Illuminate\Support\Facades\DB; // Import DB facade
+use Illuminate\Support\Str; // Import Str facade
 
 class Chat extends Component
 {
     public ?Conversation $conversation = null;
 
     public string $message = '';
+
+    // Property to store selected resource mentions for the current message
+    // Format: [ 'Resource Title' => 'resource_id' ]
+    public array $selectedResources = [];
 
     public string $selectedModel = 'Gemini 2.0 Flash';
 
@@ -31,6 +38,12 @@ class Chat extends Component
     public array $recentChats = [];
 
     public bool $isStreaming = false;
+
+    // --- Mention Feature Properties ---
+    public string $mentionQuery = '';
+    public array $mentionResults = [];
+    public bool $showMentionResults = false;
+    // -------------------------------
 
     /**
      * Mount the component.
@@ -178,7 +191,7 @@ class Chat extends Component
         }
 
         $this->isProcessing = true;
-        $this->isStreaming = true;
+        // $this->isStreaming = true; // Streaming state will be set by the service/placeholder message
 
         try {
             // 1. Update the message content
@@ -213,9 +226,25 @@ class Chat extends Component
         } catch (\Exception $e) {
             $this->handleError($e);
         } finally {
+            // Check state AFTER potential changes
             $this->checkStreamingState();
-            $this->isProcessing = false;
+            // Only set processing to false if streaming has definitively stopped
+            if (!$this->isStreaming) {
+                 $this->isProcessing = false;
+             }
         }
+    }
+
+    /**
+     * Stores the details of a resource selected via mention.
+     *
+     * @param string $id The UUID of the resource.
+     * @param string $title The title of the resource (used as the key).
+     */
+    public function addSelectedResource(string $id, string $title): void
+    {
+        $this->selectedResources[$title] = $id;
+        Log::debug('Resource added for mention:', ['title' => $title, 'id' => $id, 'current_selected' => $this->selectedResources]);
     }
 
     /**
@@ -229,16 +258,42 @@ class Chat extends Component
         }
 
         $this->isProcessing = true;
-        $this->isStreaming = true; // Expecting a stream
+
+        // --- Mention Processing --- START ---
+        // Create a map for faster lookups
+        $resourceMap = $this->selectedResources;
+        Log::debug('Processing message with selected resources:', ['map' => $resourceMap, 'original_message' => $trimmedMessage]);
+
+        // Replace @ResourceTitle with [Resource: Title ID: X]
+        $processedMessage = preg_replace_callback('/@([\w\s.-]+)(?=\s|$)/', function ($matches) use ($resourceMap) {
+            $title = trim($matches[1]);
+            if (isset($resourceMap[$title])) {
+                 $id = $resourceMap[$title];
+                 Log::debug('Mention replacement found:', ['title' => $title, 'id' => $id]);
+                 return sprintf('resource_uuid:%s', $id);
+             } else {
+                 Log::warning('Mention replacement not found for title:', ['title' => $title, 'map' => $resourceMap]);
+                 // Keep the original @mention if no ID is found (or remove it, depending on desired behavior)
+                 return $matches[0]; // Keep original mention
+             }
+         }, $trimmedMessage);
+
+         $this->selectedResources = []; // Clear after processing
+         // --- Mention Processing --- END ---
+
+        // Use the processed message from now on
+        $messageToSend = $processedMessage;
+        Log::debug('Processed message content:', ['processed' => $messageToSend]);
+        $this->message = ''; // Clear input immediately
 
         // Create a new conversation if one doesn't exist
         $isNewConversation = false;
         if (! $this->conversation) {
             $chatService = app(PrismChatService::class);
             $title =
-                strlen($trimmedMessage) > 50
-                    ? substr($trimmedMessage, 0, 47).'...'
-                    : $trimmedMessage;
+                strlen($messageToSend) > 50
+                    ? substr($messageToSend, 0, 47).'...'
+                    : $messageToSend;
             $this->conversation = $chatService->createConversation(
                 $title,
                 $this->selectedModel,
@@ -247,31 +302,41 @@ class Chat extends Component
             $isNewConversation = true;
         }
 
-        // Store the message temporarily before clearing the input
-        $messageToSend = $trimmedMessage;
-        $this->message = ''; // Clear input immediately
+        // --- Create User Message First ---
+        $userMessage = ChatMessage::create([
+            'conversation_id' => $this->conversation->id,
+            'user_id' => Auth::id(),
+            'role' => 'user',
+            'content' => $messageToSend,
+        ]);
+        $this->conversation->updateLastActivity();
+        // --- Refresh and Notify UI Immediately ---
+        $this->conversation->refresh(); // Reload messages relation to include the user message
+        $this->dispatch('refreshChat'); // Trigger scroll/UI update
+
 
         try {
             $chatService = app(PrismChatService::class);
-            // Pass the actual message content
-            $chatService->sendMessage($this->conversation, $messageToSend);
+            // Pass the conversation and the already created user message content (or ID if needed by service)
+            // Service will handle creating the assistant placeholder and generating response
+            $chatService->sendMessage($this->conversation, $userMessage->content); // Pass content again, or adjust service
 
-            // Refresh necessary data
-            $this->conversation->refresh(); // Reload messages relation
+            // Refresh necessary data after service call (might be redundant if polling handles it)
+            // $this->conversation->refresh(); // Reload messages relation
             if ($isNewConversation) {
                 $this->loadRecentChats();
             }
 
-            // Dispatch event AFTER processing potentially starts
-            // The UI update for streaming will happen via service/model events if implemented
-            // Or simply rely on the next full refresh after streaming stops
-            $this->dispatch('refreshChat');
+            // $this->dispatch('refreshChat'); // Already dispatched after user message
         } catch (\Exception $e) {
             $this->handleError($e);
         } finally {
-            // We set isStreaming based on ChatMessage state now
+            // Check state AFTER the service call might have changed it
             $this->checkStreamingState();
-            $this->isProcessing = false; // General processing ends, but streaming might continue
+            // Only set processing to false if we are sure streaming isn't happening
+            if (!$this->isStreaming) {
+                $this->isProcessing = false;
+            }
         }
     }
 
@@ -534,6 +599,7 @@ class Chat extends Component
             $this->checkStreamingState();
             if (! $this->isStreaming) {
                 $this->dispatch('refreshChat'); // One last scroll after streaming finishes
+                $this->isProcessing = false; // Mark processing as finished when streaming stops
             }
         }
     }
@@ -555,4 +621,96 @@ class Chat extends Component
 
         return $view;
     }
+
+    // --- Mention Feature Methods ---
+
+    /**
+     * Searches for class resources based on the mention query.
+     */
+    public function searchResourceMentions(string $query)
+    {
+        Log::info('searchResourceMentions called', ['query' => $query]); // Add log
+        $this->mentionQuery = trim($query);
+
+        if (empty($this->mentionQuery)) {
+            Log::info('Mention query empty, clearing results.'); // Add log
+            $this->clearMentionResults();
+            return;
+        }
+
+        $user = Auth::user();
+        $team = $user?->currentTeam;
+
+        if (! $user || ! $team) {
+             Log::warning('Mention search failed: No user or team context.'); // Add log
+            $this->clearMentionResults();
+            return;
+        }
+
+        Log::debug('Team ID used in mention search:', ['team_id' => $team->id]); // <-- ADD THIS LOG
+
+        // Use a basic query optimized for typeahead - search title only for speed
+        // Apply permission filtering
+        $resourceQuery = ClassResource::query()
+            ->where('team_id', $team->id)
+            ->where(DB::raw('LOWER(title)'), 'like', '%' . strtolower($this->mentionQuery) . '%') // Corrected case-insensitive
+            ->where(function ($q) { // Exclude archived
+                $q->where('is_archived', false)->orWhereNull('is_archived');
+            })
+            ->select('id', 'title', 'category_id') // Select only needed fields
+            ->with('category:id,name') // Eager load category name
+            ->orderBy(DB::raw('CASE WHEN LOWER(title) LIKE '.DB::connection()->getPdo()->quote(strtolower($this->mentionQuery).'%').' THEN 0 ELSE 1 END')) // Case-insensitive order
+            ->orderBy('updated_at', 'desc')
+            ->limit(5); // Limit results for dropdown
+
+        // Apply Permission Filtering
+        $isOwner = $team->userIsOwner($user);
+        if (! $isOwner) {
+             if ($user->hasTeamRole($team, 'teacher')) {
+                 $resourceQuery->where(function ($q) use ($user) {
+                     $q->where('access_level', 'all')
+                       ->orWhere('access_level', 'teacher')
+                       ->orWhere('created_by', $user->id);
+                 });
+             } else {
+                  $resourceQuery->where(function ($q) use ($user) {
+                     $q->where('access_level', 'all')
+                        ->orWhere('created_by', $user->id);
+                 });
+             }
+        }
+
+        // Log the SQL query before execution
+        Log::debug('Mention Search SQL:', ['sql' => $resourceQuery->toSql(), 'bindings' => $resourceQuery->getBindings()]);
+
+        $results = $resourceQuery->get();
+        Log::info('Mention search results count:', ['count' => $results->count()]); // Restore original log
+
+        $this->mentionResults = $results->map(function ($resource) {
+            // Prepare data for the dropdown
+            return [
+                'id' => $resource->id, // May not be needed unless inserting ID
+                'title' => $resource->title,
+                'category' => $resource->category?->name ?? 'Uncategorized',
+                // Format how you want to insert it - e.g., just title or a markdown link
+                'insert_text' => $resource->title, // Simple title insertion for now
+                // 'insert_text' => '[@resource:'.$resource->id.']('.$resource->file_url.')', // Example markdown link
+            ];
+        })->toArray();
+
+        $this->showMentionResults = !empty($this->mentionResults);
+    }
+
+    /**
+     * Clears mention results and hides the dropdown.
+     */
+    public function clearMentionResults(): void
+    {
+        Log::info('clearMentionResults called'); // Add log
+        $this->mentionQuery = '';
+        $this->mentionResults = [];
+        $this->showMentionResults = false;
+    }
+
+    // --- End Mention Feature Methods ---
 }

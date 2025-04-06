@@ -239,22 +239,54 @@
                     </div>
 
                     {{-- Chat Input Form (Initial State) --}}
-                    <form wire:submit.prevent="sendMessage" class="w-full max-w-5xl sticky bottom-0 z-10" wire:key="initial-input-form">
+                    <form wire:submit.prevent="sendMessage" class="w-full max-w-5xl sticky bottom-0 z-10" wire:key="initial-input-form"
+                          x-data="mentionHandler($wire)"> {{-- Add Alpine component --}}
                         <div class="relative rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg transition-all duration-200 focus-within:ring-2 focus-within:ring-primary-500">
+                            {{-- Mention Dropdown --}}
+                            <div x-show="showSuggestions"
+                                 @click.away="resetMentions()"
+                                 x-transition:enter="transition ease-out duration-100"
+                                 x-transition:enter-start="opacity-0 scale-95"
+                                 x-transition:enter-end="opacity-100 scale-100"
+                                 x-transition:leave="transition ease-in duration-75"
+                                 x-transition:leave-start="opacity-100 scale-100"
+                                 x-transition:leave-end="opacity-0 scale-95"
+                                 class="absolute bottom-full mb-2 w-full max-w-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden z-20 max-h-60 overflow-y-auto"
+                                 style="display: none;">
+                                <template x-if="mentionResults.length > 0">
+                                    <ul>
+                                        <template x-for="(result, index) in mentionResults" :key="index">
+                                            <li @click="selectMention(index)"
+                                                @mouseenter="highlightedIndex = index"
+                                                class="px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                :class="{ 'bg-gray-100 dark:bg-gray-700': highlightedIndex === index }">
+                                                <div class="font-medium text-sm text-gray-900 dark:text-white" x-text="result.title"></div>
+                                                <div class="text-xs text-gray-500 dark:text-gray-400" x-text="result.category"></div>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </template>
+                                <template x-if="mentionResults.length === 0 && mentionQuery.length > 0">
+                                    <p class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">No resources found matching "@<span x-text="mentionQuery"></span>"</p>
+                                </template>
+                            </div>
+
                             {{-- Message input area --}}
                             <div class="flex p-2 gap-2 items-start">
                                 <textarea
                                     wire:model.live="message"
-                                    placeholder="Start typing your message here..."
+                                    x-ref="textarea" {{-- Add ref --}}
+                                    @input.debounce.300ms="handleInput($event)" {{-- Debounced input --}}
+                                    @keydown="handleKeyDown($event)" {{-- Keydown for navigation/selection --}}
+                                    placeholder="Start typing your message here... Use @ to mention resources."
                                     class="flex-1 min-h-[3.5rem] max-h-60 resize-none border-0 bg-transparent p-0 focus:ring-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm"
-                                    wire:keydown.enter.prevent="!$wire.isProcessing && $wire.message.trim() ? sendMessage() : ''" {{-- Prevent send if processing or empty --}}
+                                    {{-- x-on:keydown.enter="if (!$event.shiftKey) { $event.preventDefault(); if (!$wire.isProcessing && !$wire.isStreaming && $wire.message.trim()) { $wire.sendMessage() } }" --}} {{-- Handled in handleKeyDown --}}
                                     aria-label="Message input"
-                                    x-data="{ resize() { $el.style.height = 'auto'; $el.style.height = Math.min($el.scrollHeight, 240) + 'px'; } }" {{-- Added max-height sync --}}
                                     x-init="resize()"
                                     @input="resize()"
-                                    wire:loading.attr="disabled" {{-- Disable textarea while processing --}}
+                                    wire:loading.attr="disabled"
                                     wire:target="sendMessage, regenerateLastMessage, saveEditedMessage"
-                                    :disabled="$wire.isProcessing || $wire.isStreaming" {{-- Alpine disable --}}
+                                    :disabled="$wire.isProcessing || $wire.isStreaming"
                                 ></textarea>
                                 <button
                                     type="submit"
@@ -526,6 +558,20 @@
                             @endforeach
                         @endif
 
+                         {{-- Loading indicator for AI response --}}
+                        <div x-show="$wire.isProcessing" wire:key="ai-loading-indicator" class="flex justify-start group">
+                            <div class="max-w-[85%] relative bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-xl p-3 shadow-sm">
+                                <div class="text-xs text-gray-500 dark:text-gray-400 mb-1 flex justify-between items-center">
+                                    <span>{{ $conversation->model ?? 'Assistant' }}</span>
+                                    {{-- <span class="text-xs text-gray-400 dark:text-gray-500">Now</span> --}}
+                                </div>
+                                <div class="mt-1 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                    <div class="typing-indicator"><span></span><span></span><span></span></div>
+                                    <span x-text="$wire.isStreaming ? 'Generating...' : 'Processing...'">Generating...</span>
+                                </div>
+                            </div>
+                        </div>
+
                          {{-- Loading indicator specifically for regeneration/saving edit --}}
                         <div wire:loading wire:target="regenerateLastMessage, saveEditedMessage" class="flex justify-center py-4">
                             <div class="inline-flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-md text-sm font-medium shadow">
@@ -541,22 +587,54 @@
 
                 {{-- Fixed Chat Input Form (Active Conversation) - Redesigned for Mobile --}}
                 <div class="sticky bottom-0 z-10 bg-gray-50 dark:bg-gray-900 pt-4 pb-2 border-t border-gray-200 dark:border-gray-700">
-                    <form wire:submit.prevent="sendMessage" class="mx-auto max-w-4xl w-full px-4 sm:px-6 lg:px-8" wire:key="active-input-form">
+                    <form wire:submit.prevent="sendMessage" class="mx-auto max-w-4xl w-full px-4 sm:px-6 lg:px-8" wire:key="active-input-form"
+                          x-data="mentionHandler($wire)"> {{-- Add Alpine component --}}
                         <div class="relative rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg transition-all duration-200 focus-within:ring-2 focus-within:ring-primary-500">
+                             {{-- Mention Dropdown --}}
+                            <div x-show="showSuggestions"
+                                 @click.away="resetMentions()"
+                                 x-transition:enter="transition ease-out duration-100"
+                                 x-transition:enter-start="opacity-0 scale-95"
+                                 x-transition:enter-end="opacity-100 scale-100"
+                                 x-transition:leave="transition ease-in duration-75"
+                                 x-transition:leave-start="opacity-100 scale-100"
+                                 x-transition:leave-end="opacity-0 scale-95"
+                                 class="absolute bottom-full mb-2 w-full max-w-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden z-20 max-h-60 overflow-y-auto"
+                                 style="display: none;">
+                                <template x-if="mentionResults.length > 0">
+                                    <ul>
+                                        <template x-for="(result, index) in mentionResults" :key="index">
+                                            <li @click="selectMention(index)"
+                                                @mouseenter="highlightedIndex = index"
+                                                class="px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                :class="{ 'bg-gray-100 dark:bg-gray-700': highlightedIndex === index }">
+                                                <div class="font-medium text-sm text-gray-900 dark:text-white" x-text="result.title"></div>
+                                                <div class="text-xs text-gray-500 dark:text-gray-400" x-text="result.category"></div>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </template>
+                                <template x-if="mentionResults.length === 0 && mentionQuery.length > 0">
+                                    <p class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">No resources found matching "@<span x-text="mentionQuery"></span>"</p>
+                                </template>
+                            </div>
+
                             {{-- Message input area --}}
                             <div class="flex p-3 gap-3 items-start">
                                 <textarea
                                     wire:model.live="message"
-                                    placeholder="Send a message..."
+                                    x-ref="textarea" {{-- Add ref --}}
+                                    @input.debounce.300ms="handleInput($event)" {{-- Debounced input --}}
+                                    @keydown="handleKeyDown($event)" {{-- Keydown for navigation/selection --}}
+                                    placeholder="Send a message... Use @ to mention resources."
                                     class="flex-1 min-h-[3.5rem] max-h-60 resize-none border-0 bg-transparent p-0 focus:ring-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm"
-                                    wire:keydown.enter.prevent="!$wire.isProcessing && $wire.message.trim() ? sendMessage() : ''" {{-- Prevent send if processing or empty --}}
+                                     {{-- x-on:keydown.enter="if (!$event.shiftKey) { $event.preventDefault(); if (!$wire.isProcessing && !$wire.isStreaming && $wire.message.trim()) { $wire.sendMessage() } }" --}} {{-- Handled in handleKeyDown --}}
                                     aria-label="Message input"
-                                    x-data="{ resize() { $el.style.height = 'auto'; $el.style.height = Math.min($el.scrollHeight, 240) + 'px'; } }" {{-- Added max-height sync --}}
                                     x-init="resize()"
                                     @input="resize()"
-                                    wire:loading.attr="disabled" {{-- Disable textarea while processing --}}
+                                    wire:loading.attr="disabled"
                                     wire:target="sendMessage, regenerateLastMessage, saveEditedMessage"
-                                    :disabled="$wire.isProcessing || $wire.isStreaming" {{-- Alpine disable --}}
+                                    :disabled="$wire.isProcessing || $wire.isStreaming"
                                 ></textarea>
                                 <button
                                     type="submit"
@@ -668,4 +746,156 @@
         </template>
     </div>
     --}}
+
+    <script>
+        function mentionHandler($wire) {
+            return {
+                mentionQuery: '',
+                mentionResults: [],
+                showSuggestions: false,
+                highlightedIndex: -1,
+                mentionStartIndex: -1,
+                init() {
+                    console.log('Mention handler initialized.');
+                    // Watch the Livewire property for results
+                    this.$watch('$wire.mentionResults', (newResults) => {
+                        console.log('Livewire mentionResults updated:', newResults);
+                        this.mentionResults = newResults;
+                        this.showSuggestions = this.$wire.showMentionResults && this.mentionQuery.length > 0;
+                        this.highlightedIndex = -1; // Reset highlight when results change
+                    });
+                    this.$watch('$wire.showMentionResults', (newValue) => {
+                         console.log('Livewire showMentionResults updated:', newValue);
+                         this.showSuggestions = newValue && this.mentionQuery.length > 0;
+                         if (!newValue) {
+                             this.highlightedIndex = -1;
+                         }
+                    });
+                },
+                handleInput(event) {
+                    console.log('handleInput triggered');
+                    const textarea = this.$refs.textarea;
+                    const value = textarea.value;
+                    const cursorPosition = textarea.selectionStart;
+
+                    // Regex to find "@" followed by non-space characters right before the cursor
+                    const textBeforeCursor = value.substring(0, cursorPosition);
+                    const match = textBeforeCursor.match(/@([\w\s.-]*)$/); // Allow spaces, dots, hyphens
+                    console.log('Regex match:', match);
+
+                    if (match) {
+                        this.mentionStartIndex = match.index;
+                        this.mentionQuery = match[1];
+                        console.log(`Mention pattern found. Query: '${this.mentionQuery}'. Calling Livewire...`);
+                        // Trigger Livewire search (debounced by @input.debounce)
+                        $wire.searchResourceMentions(this.mentionQuery);
+                    } else {
+                        console.log('Mention pattern NOT found or cleared.');
+                        this.resetMentions();
+                    }
+                    this.resize(); // Call existing resize function
+                },
+                handleKeyDown(event) {
+                    // console.log('handleKeyDown:', event.key, 'Show suggestions:', this.showSuggestions);
+                    if (this.showSuggestions) {
+                        switch (event.key) {
+                            case 'ArrowDown':
+                                event.preventDefault();
+                                this.highlightedIndex = (this.highlightedIndex + 1) % this.mentionResults.length;
+                                this.scrollToHighlighted();
+                                break;
+                            case 'ArrowUp':
+                                event.preventDefault();
+                                this.highlightedIndex = (this.highlightedIndex - 1 + this.mentionResults.length) % this.mentionResults.length;
+                                this.scrollToHighlighted();
+                                break;
+                            case 'Enter':
+                            case 'Tab': // Allow Tab for selection too
+                                if (this.highlightedIndex !== -1) {
+                                    event.preventDefault();
+                                    this.selectMention(this.highlightedIndex);
+                                } else {
+                                    // If dropdown is visible but nothing selected, maybe just close it? Or allow default Enter.
+                                     this.resetMentions();
+                                     // Allow default Enter to send message if Shift isn't pressed (original logic)
+                                    if (event.key === 'Enter' && !event.shiftKey && !$wire.isProcessing && !$wire.isStreaming && $wire.message.trim()) {
+                                         $wire.sendMessage();
+                                    }
+                                }
+                                break;
+                            case 'Escape':
+                                event.preventDefault();
+                                console.log('Escape pressed, resetting mentions.');
+                                this.resetMentions();
+                                break;
+                        }
+                    } else if (event.key === 'Enter' && !event.shiftKey) {
+                         // Default send message logic when mention is not active
+                        event.preventDefault();
+                        if (!$wire.isProcessing && !$wire.isStreaming && $wire.message.trim()) {
+                            $wire.sendMessage();
+                        }
+                    }
+                },
+                selectMention(index) {
+                    console.log('selectMention called with index:', index);
+                    if (this.mentionResults[index] && this.mentionStartIndex !== -1) {
+                        const result = this.mentionResults[index];
+                        // Call Livewire to store the selection details
+                        $wire.addSelectedResource(result.id, result.title);
+
+                        // const selectedText = `[Resource: ${result.title} ID: ${result.id}] `; // Old format
+                        const selectedText = `@${result.title} `; // New, cleaner format for display
+                        const textarea = this.$refs.textarea;
+                        const value = textarea.value;
+                        const before = value.substring(0, this.mentionStartIndex);
+                        // Ensure we correctly calculate the end position based on the @ and the query length
+                        const after = value.substring(this.mentionStartIndex + 1 + this.mentionQuery.length); // +1 for '@'
+
+                        // Update the Livewire message property directly
+                        $wire.message = before + selectedText + after;
+
+                        // Manually set textarea value and cursor position after Livewire update
+                        this.$nextTick(() => {
+                            textarea.value = $wire.message;
+                            const cursorPos = before.length + selectedText.length;
+                             textarea.focus();
+                             textarea.setSelectionRange(cursorPos, cursorPos);
+                             this.resize(); // Resize after changing content
+                        });
+
+                        this.resetMentions();
+                    }
+                },
+                resetMentions() {
+                    console.log('resetMentions called.');
+                    this.showSuggestions = false;
+                    this.mentionQuery = '';
+                    this.highlightedIndex = -1;
+                    this.mentionStartIndex = -1;
+                    // Don't necessarily clear wire results here, let Livewire manage its state
+                     $wire.clearMentionResults(); // Tell Livewire to clear its state too
+                },
+                // Helper to scroll the dropdown if needed
+                scrollToHighlighted() {
+                     this.$nextTick(() => {
+                        const listElement = this.$el.querySelector('ul');
+                        if (listElement && this.highlightedIndex !== -1) {
+                            const highlightedItem = listElement.children[this.highlightedIndex];
+                            if (highlightedItem) {
+                                highlightedItem.scrollIntoView({ block: 'nearest' });
+                            }
+                        }
+                    });
+                },
+                 // Reuse existing resize logic if available, or define it
+                 resize() {
+                    const el = this.$refs.textarea;
+                    el.style.height = 'auto';
+                    // Use the same max height as before (240px based on previous code)
+                    el.style.height = Math.min(el.scrollHeight, 240) + 'px';
+                }
+            }
+        }
+    </script>
 </div>
