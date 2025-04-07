@@ -428,10 +428,13 @@ You have access to the following tools to retrieve specific user data:
 Use these tools ONLY when the user explicitly asks about THEIR specific data related to these categories. Ask clarifying questions if the request is ambiguous. State clearly when you are retrieving data using a tool.
 
 **Using `class_resource_data` for Content:**
-If the user's message (which might look different from their original input) contains a string like `resource_uuid:SOME_UUID_VALUE`:
-1. You MUST use the `class_resource_data` tool.
-2. Set the `query_type` parameter to `get_resource_content`.
-3. Set the `resource_id` parameter to **EXACTLY** the `SOME_UUID_VALUE` part. **DO NOT** include the `resource_uuid:` prefix in the parameter value.
+If the user's message contains a string formatted EXACTLY like `resource_uuid:SOME_UUID_VALUE` (where SOME_UUID_VALUE is the actual UUID):
+1.  You MUST use the `class_resource_data` tool.
+2.  Set the tool's `query_type` parameter to the string value `get_resource_content`.
+3.  Extract **ONLY** the UUID part (`SOME_UUID_VALUE`) from the `resource_uuid:SOME_UUID_VALUE` string.
+4.  Set the tool's `resource_id` parameter to the extracted UUID value (e.g., `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`). **DO NOT** include the `resource_uuid:` prefix in the `resource_id` parameter value you send to the tool.
+
+Example: If the input message contains `resource_uuid:123e4567-e89b-12d3-a456-426614174000\nWhat is this?`, your FIRST action MUST be to call the tool with parameters: `query_type="get_resource_content"` and `resource_id="123e4567-e89b-12d3-a456-426614174000"`. AFTER retrieving the content, THEN address the rest of the user's query ("What is this?") using the retrieved information.
 PROMPT;
 
         return ($basePrompts[$style] ?? $basePrompts['default']) . $toolInstructions;

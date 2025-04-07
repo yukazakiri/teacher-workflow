@@ -264,17 +264,30 @@ class Chat extends Component
         $resourceMap = $this->selectedResources;
         Log::debug('Processing message with selected resources:', ['map' => $resourceMap, 'original_message' => $trimmedMessage]);
 
-        // Replace @ResourceTitle with [Resource: Title ID: X]
-        $processedMessage = preg_replace_callback('/@([\w\s.-]+)(?=\s|$)/', function ($matches) use ($resourceMap) {
-            $title = trim($matches[1]);
+        // Replace @ResourceTitle with resource_uuid:X
+        // Use stricter regex to only capture non-space characters as the title
+        // Add newline after replacement if there is trailing text
+        $processedMessage = preg_replace_callback('/@([^\s]+)/', function ($matches) use ($resourceMap, $trimmedMessage) {
+            $title = $matches[1]; // No need to trim if we don't capture spaces
+            $fullMatch = $matches[0]; // The full string matched by the regex (e.g., "@SomeTitle")
+            $matchStartPosition = strpos($trimmedMessage, $fullMatch);
+            $matchEndPosition = $matchStartPosition + strlen($fullMatch);
+
             if (isset($resourceMap[$title])) {
                  $id = $resourceMap[$title];
                  Log::debug('Mention replacement found:', ['title' => $title, 'id' => $id]);
-                 return sprintf('resource_uuid:%s', $id);
+                 $replacement = sprintf('resource_uuid:%s', $id);
+
+                 // Check if there is text *after* the matched mention in the original message
+                 if ($matchEndPosition < strlen($trimmedMessage)) {
+                    // Add a newline to separate the UUID from the following text
+                    $replacement .= "\n";
+                 }
+                 return $replacement;
              } else {
                  Log::warning('Mention replacement not found for title:', ['title' => $title, 'map' => $resourceMap]);
-                 // Keep the original @mention if no ID is found (or remove it, depending on desired behavior)
-                 return $matches[0]; // Keep original mention
+                 // Keep the original @mention if no ID is found
+                 return $fullMatch; // Return the original full match
              }
          }, $trimmedMessage);
 
@@ -283,7 +296,7 @@ class Chat extends Component
 
         // Use the processed message from now on
         $messageToSend = $processedMessage;
-        Log::debug('Processed message content:', ['processed' => $messageToSend]);
+        Log::debug('Processed message content before sending to service:', ['processed' => $messageToSend]);
         $this->message = ''; // Clear input immediately
 
         // Create a new conversation if one doesn't exist

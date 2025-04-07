@@ -8,7 +8,7 @@
     <div
             x-show="sidebarOpen"
             x-transition:enter="transform transition ease-in-out duration-300 sm:duration-500"
-            x-transition:enter-start="translate-x-full"
+            x-transition:enter-start="tran`slate-x-full"
             x-transition:enter-end="translate-x-0"
             x-transition:leave="transform transition ease-in-out duration-300 sm:duration-500"
             x-transition:leave-start="translate-x-0"
