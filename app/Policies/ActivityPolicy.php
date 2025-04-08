@@ -15,7 +15,9 @@ class ActivityPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_activity');
+        // Both teachers and students can view activities
+        return $user->hasTeamRole($user->currentTeam, 'teacher') ||
+               $user->hasTeamRole($user->currentTeam, 'student');
     }
 
     /**
@@ -23,7 +25,14 @@ class ActivityPolicy
      */
     public function view(User $user, Activity $activity): bool
     {
-        return $user->can('view_activity');
+        // Ensure they're on the same team
+        if (!$user->belongsToTeam($activity->team)) {
+            return false;
+        }
+
+        // Both teachers and students can view activities in their team
+        return $user->hasTeamRole($activity->team, 'teacher') ||
+               $user->hasTeamRole($activity->team, 'student');
     }
 
     /**
@@ -31,7 +40,8 @@ class ActivityPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_activity');
+        // Only teachers can create activities
+        return $user->hasTeamRole($user->currentTeam, 'teacher');
     }
 
     /**
@@ -39,7 +49,15 @@ class ActivityPolicy
      */
     public function update(User $user, Activity $activity): bool
     {
-        return $user->can('update_activity');
+        // Ensure they're on the same team
+        if (!$user->belongsToTeam($activity->team)) {
+            return false;
+        }
+
+        // Only teachers can update activities
+        // Additionally, teachers can only update activities they created or if they're the team owner
+        return $user->hasTeamRole($activity->team, 'teacher') &&
+               ($activity->teacher_id === $user->id || $user->ownsTeam($activity->team));
     }
 
     /**
@@ -47,7 +65,15 @@ class ActivityPolicy
      */
     public function delete(User $user, Activity $activity): bool
     {
-        return $user->can('delete_activity');
+        // Ensure they're on the same team
+        if (!$user->belongsToTeam($activity->team)) {
+            return false;
+        }
+
+        // Only teachers can delete activities
+        // Additionally, teachers can only delete activities they created or if they're the team owner
+        return $user->hasTeamRole($activity->team, 'teacher') &&
+               ($activity->teacher_id === $user->id || $user->ownsTeam($activity->team));
     }
 
     /**
@@ -55,7 +81,8 @@ class ActivityPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_activity');
+        // Only teachers can bulk delete activities
+        return $user->hasTeamRole($user->currentTeam, 'teacher');
     }
 
     /**
@@ -63,7 +90,9 @@ class ActivityPolicy
      */
     public function forceDelete(User $user, Activity $activity): bool
     {
-        return $user->can('force_delete_activity');
+        // Only team owners can permanently delete activities
+        return $user->belongsToTeam($activity->team) &&
+               $user->ownsTeam($activity->team);
     }
 
     /**
@@ -71,7 +100,8 @@ class ActivityPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_activity');
+        // Only team owners can permanently bulk delete activities
+        return $user->ownsTeam($user->currentTeam);
     }
 
     /**
@@ -79,7 +109,15 @@ class ActivityPolicy
      */
     public function restore(User $user, Activity $activity): bool
     {
-        return $user->can('restore_activity');
+        // Ensure they're on the same team
+        if (!$user->belongsToTeam($activity->team)) {
+            return false;
+        }
+
+        // Only teachers can restore activities
+        // Additionally, teachers can only restore activities they created or if they're the team owner
+        return $user->hasTeamRole($activity->team, 'teacher') &&
+               ($activity->teacher_id === $user->id || $user->ownsTeam($activity->team));
     }
 
     /**
@@ -87,7 +125,8 @@ class ActivityPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_activity');
+        // Only teachers can bulk restore activities
+        return $user->hasTeamRole($user->currentTeam, 'teacher');
     }
 
     /**
@@ -95,7 +134,13 @@ class ActivityPolicy
      */
     public function replicate(User $user, Activity $activity): bool
     {
-        return $user->can('replicate_activity');
+        // Ensure they're on the same team
+        if (!$user->belongsToTeam($activity->team)) {
+            return false;
+        }
+
+        // Only teachers can replicate activities
+        return $user->hasTeamRole($activity->team, 'teacher');
     }
 
     /**
@@ -103,6 +148,7 @@ class ActivityPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_activity');
+        // Only teachers can reorder activities
+        return $user->hasTeamRole($user->currentTeam, 'teacher');
     }
 }

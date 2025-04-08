@@ -15,7 +15,9 @@ class StudentPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_student');
+        // Both teachers and students can view students
+        return $user->hasTeamRole($user->currentTeam, 'teacher') ||
+               $user->hasTeamRole($user->currentTeam, 'student');
     }
 
     /**
@@ -23,7 +25,22 @@ class StudentPolicy
      */
     public function view(User $user, Student $student): bool
     {
-        return $user->can('view_student');
+        // Ensure they're on the same team
+        if (!$user->belongsToTeam($student->team)) {
+            return false;
+        }
+
+        // Teachers can view any student in their team
+        if ($user->hasTeamRole($student->team, 'teacher')) {
+            return true;
+        }
+
+        // Students can only view themselves
+        if ($user->hasTeamRole($student->team, 'student')) {
+            return $student->user_id === $user->id;
+        }
+
+        return false;
     }
 
     /**
@@ -31,7 +48,8 @@ class StudentPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_student');
+        // Only teachers can create students
+        return $user->hasTeamRole($user->currentTeam, 'teacher');
     }
 
     /**
@@ -39,7 +57,22 @@ class StudentPolicy
      */
     public function update(User $user, Student $student): bool
     {
-        return $user->can('update_student');
+        // Ensure they're on the same team
+        if (!$user->belongsToTeam($student->team)) {
+            return false;
+        }
+
+        // Teachers can update any student in their team
+        if ($user->hasTeamRole($student->team, 'teacher')) {
+            return true;
+        }
+
+        // Students can only update themselves
+        if ($user->hasTeamRole($student->team, 'student')) {
+            return $student->user_id === $user->id;
+        }
+
+        return false;
     }
 
     /**
@@ -47,7 +80,9 @@ class StudentPolicy
      */
     public function delete(User $user, Student $student): bool
     {
-        return $user->can('delete_student');
+        // Only teachers can delete students and they must be on the same team
+        return $user->belongsToTeam($student->team) &&
+               $user->hasTeamRole($student->team, 'teacher');
     }
 
     /**
@@ -55,7 +90,8 @@ class StudentPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_student');
+        // Only teachers can bulk delete students
+        return $user->hasTeamRole($user->currentTeam, 'teacher');
     }
 
     /**
@@ -63,7 +99,9 @@ class StudentPolicy
      */
     public function forceDelete(User $user, Student $student): bool
     {
-        return $user->can('force_delete_student');
+        // Only team owners can permanently delete students
+        return $user->belongsToTeam($student->team) &&
+               $user->ownsTeam($student->team);
     }
 
     /**
@@ -71,7 +109,8 @@ class StudentPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_student');
+        // Only team owners can permanently bulk delete students
+        return $user->ownsTeam($user->currentTeam);
     }
 
     /**
@@ -79,7 +118,9 @@ class StudentPolicy
      */
     public function restore(User $user, Student $student): bool
     {
-        return $user->can('restore_student');
+        // Only teachers can restore students and they must be on the same team
+        return $user->belongsToTeam($student->team) &&
+               $user->hasTeamRole($student->team, 'teacher');
     }
 
     /**
@@ -87,7 +128,8 @@ class StudentPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_student');
+        // Only teachers can bulk restore students
+        return $user->hasTeamRole($user->currentTeam, 'teacher');
     }
 
     /**
@@ -95,7 +137,9 @@ class StudentPolicy
      */
     public function replicate(User $user, Student $student): bool
     {
-        return $user->can('replicate_student');
+        // Only teachers can replicate students and they must be on the same team
+        return $user->belongsToTeam($student->team) &&
+               $user->hasTeamRole($student->team, 'teacher');
     }
 
     /**
@@ -103,6 +147,7 @@ class StudentPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_student');
+        // Only teachers can reorder students
+        return $user->hasTeamRole($user->currentTeam, 'teacher');
     }
 }

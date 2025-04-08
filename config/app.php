@@ -12,7 +12,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    "name" => env("APP_NAME", "Laravel"),
 
     /*
     |--------------------------------------------------------------------------
@@ -25,7 +25,7 @@ return [
     |
     */
 
-    'env' => env('APP_ENV', 'production'),
+    "env" => env("APP_ENV", "production"),
 
     /*
     |--------------------------------------------------------------------------
@@ -38,7 +38,7 @@ return [
     |
     */
 
-    'debug' => (bool) env('APP_DEBUG', false),
+    "debug" => (bool) env("APP_DEBUG", false),
 
     /*
     |--------------------------------------------------------------------------
@@ -51,7 +51,7 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'http://localhost'),
+    "url" => env("APP_URL", "http://localhost"),
 
     /*
     |--------------------------------------------------------------------------
@@ -64,7 +64,7 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    "timezone" => "UTC",
 
     /*
     |--------------------------------------------------------------------------
@@ -77,11 +77,11 @@ return [
     |
     */
 
-    'locale' => env('APP_LOCALE', 'en'),
+    "locale" => env("APP_LOCALE", "en"),
 
-    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
+    "fallback_locale" => env("APP_FALLBACK_LOCALE", "en"),
 
-    'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
+    "faker_locale" => env("APP_FAKER_LOCALE", "en_US"),
 
     /*
     |--------------------------------------------------------------------------
@@ -94,12 +94,12 @@ return [
     |
     */
 
-    'cipher' => 'AES-256-CBC',
+    "cipher" => "AES-256-CBC",
 
-    'key' => env('APP_KEY'),
+    "key" => env("APP_KEY"),
 
-    'previous_keys' => [
-        ...array_filter(explode(',', env('APP_PREVIOUS_KEYS', ''))),
+    "previous_keys" => [
+        ...array_filter(explode(",", env("APP_PREVIOUS_KEYS", ""))),
     ],
 
     /*
@@ -115,9 +115,9 @@ return [
     |
     */
 
-    'maintenance' => [
-        'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
-        'store' => env('APP_MAINTENANCE_STORE', 'database'),
+    "maintenance" => [
+        "driver" => env("APP_MAINTENANCE_DRIVER", "file"),
+        "store" => env("APP_MAINTENANCE_STORE", "database"),
     ],
 
     /*
@@ -131,58 +131,5 @@ return [
     |
     */
 
-    'providers' => [
-        /*
-         * Laravel Framework Service Providers...
-         */
-        Illuminate\Auth\AuthServiceProvider::class,
-        Illuminate\Broadcasting\BroadcastServiceProvider::class,
-        Illuminate\Bus\BusServiceProvider::class,
-        Illuminate\Cache\CacheServiceProvider::class,
-        Illuminate\Foundation\Providers\ConsoleSupportServiceProvider::class,
-        Illuminate\Cookie\CookieServiceProvider::class,
-        Illuminate\Database\DatabaseServiceProvider::class,
-        Illuminate\Encryption\EncryptionServiceProvider::class,
-        Illuminate\Filesystem\FilesystemServiceProvider::class,
-        Illuminate\Foundation\Providers\FoundationServiceProvider::class,
-        Illuminate\Hashing\HashServiceProvider::class,
-        Illuminate\Mail\MailServiceProvider::class,
-        Illuminate\Notifications\NotificationServiceProvider::class,
-        Illuminate\Pagination\PaginationServiceProvider::class,
-        Illuminate\Pipeline\PipelineServiceProvider::class,
-        Illuminate\Queue\QueueServiceProvider::class,
-        Illuminate\Redis\RedisServiceProvider::class,
-        Illuminate\Auth\Passwords\PasswordResetServiceProvider::class,
-        Illuminate\Session\SessionServiceProvider::class,
-        Illuminate\Translation\TranslationServiceProvider::class,
-        Illuminate\Validation\ValidationServiceProvider::class,
-        Illuminate\View\ViewServiceProvider::class,
-
-        /*
-         * Package Service Providers...
-         */
-        LaravelQRCode\Providers\QRCodeServiceProvider::class,
-
-        /*
-         * Application Service Providers...
-         */
-        App\Providers\AppServiceProvider::class,
-        App\Providers\AuthServiceProvider::class,
-        // App\Providers\BroadcastServiceProvider::class,
-        App\Providers\EventServiceProvider::class,
-        App\Providers\Filament\AppPanelProvider::class,
-        App\Providers\Filament\AdminPanelProvider::class,
-        App\Providers\JetstreamServiceProvider::class,
-        App\Providers\FortifyServiceProvider::class,
-        App\Providers\FilamentTeamBadgeServiceProvider::class,
-        App\Providers\PrismServiceProvider::class,
-        App\Providers\ChatServiceProvider::class,
-    ],
-
-    'aliases' => [
-        'PrismMarkdown' => App\Facades\PrismMarkdown::class,
-        'QRCode' => LaravelQRCode\Facades\QRCode::class,
-    ],
-
-    'use_workos' => env('USE_WORKOS', true),
+    "use_workos" => env("USE_WORKOS", false),
 ];

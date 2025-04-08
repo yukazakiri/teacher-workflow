@@ -15,7 +15,7 @@ class TeamPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_team');
+        return true;
     }
 
     /**
@@ -23,7 +23,7 @@ class TeamPolicy
      */
     public function view(User $user, Team $team): bool
     {
-        return $user->can('view_team');
+        return $user->belongsToTeam($team);
     }
 
     /**
@@ -31,7 +31,7 @@ class TeamPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_team');
+        return true;
     }
 
     /**
@@ -39,7 +39,31 @@ class TeamPolicy
      */
     public function update(User $user, Team $team): bool
     {
-        return $user->can('update_team');
+        return $user->ownsTeam($team);
+    }
+
+    /**
+     * Determine whether the user can add team members.
+     */
+    public function addTeamMember(User $user, Team $team): bool
+    {
+        return $user->ownsTeam($team);
+    }
+
+    /**
+     * Determine whether the user can update team member permissions.
+     */
+    public function updateTeamMember(User $user, Team $team): bool
+    {
+        return $user->ownsTeam($team);
+    }
+
+    /**
+     * Determine whether the user can remove team members.
+     */
+    public function removeTeamMember(User $user, Team $team): bool
+    {
+        return $user->ownsTeam($team);
     }
 
     /**
@@ -47,62 +71,6 @@ class TeamPolicy
      */
     public function delete(User $user, Team $team): bool
     {
-        return $user->can('delete_team');
-    }
-
-    /**
-     * Determine whether the user can bulk delete.
-     */
-    public function deleteAny(User $user): bool
-    {
-        return $user->can('delete_any_team');
-    }
-
-    /**
-     * Determine whether the user can permanently delete.
-     */
-    public function forceDelete(User $user, Team $team): bool
-    {
-        return $user->can('force_delete_team');
-    }
-
-    /**
-     * Determine whether the user can permanently bulk delete.
-     */
-    public function forceDeleteAny(User $user): bool
-    {
-        return $user->can('force_delete_any_team');
-    }
-
-    /**
-     * Determine whether the user can restore.
-     */
-    public function restore(User $user, Team $team): bool
-    {
-        return $user->can('restore_team');
-    }
-
-    /**
-     * Determine whether the user can bulk restore.
-     */
-    public function restoreAny(User $user): bool
-    {
-        return $user->can('restore_any_team');
-    }
-
-    /**
-     * Determine whether the user can replicate.
-     */
-    public function replicate(User $user, Team $team): bool
-    {
-        return $user->can('replicate_team');
-    }
-
-    /**
-     * Determine whether the user can reorder.
-     */
-    public function reorder(User $user): bool
-    {
-        return $user->can('reorder_team');
+        return $user->ownsTeam($team);
     }
 }

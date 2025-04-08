@@ -7,11 +7,13 @@ use App\Models\Attendance;
 use App\Models\ClassResource;
 use App\Models\ScheduleItem;
 use App\Models\Student;
+use App\Models\Team;
 use App\Policies\ActivityPolicy;
 use App\Policies\AttendancePolicy;
 use App\Policies\ClassResourcePolicy;
 use App\Policies\ScheduleItemPolicy;
 use App\Policies\StudentPolicy;
+use App\Policies\TeamPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 class AuthServiceProvider extends ServiceProvider
@@ -27,6 +29,7 @@ class AuthServiceProvider extends ServiceProvider
         Attendance::class => AttendancePolicy::class,
         ScheduleItem::class => ScheduleItemPolicy::class,
         ClassResource::class => ClassResourcePolicy::class,
+        Team::class => TeamPolicy::class,
     ];
 
     /**

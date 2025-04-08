@@ -60,11 +60,11 @@ class AppPanelProvider extends PanelProvider
     {
         $panel
             ->default()
-            ->id('app')
-            ->path('app')
+            ->id("app")
+            ->path("app")
             ->login()
             ->spa()
-            ->brandName('FilaGrade')
+            ->brandName("FilaGrade")
             // ->sidebarCollapsibleOnDesktop(true)
             ->sidebarFullyCollapsibleOnDesktop()
             ->emailVerification()
@@ -72,23 +72,23 @@ class AppPanelProvider extends PanelProvider
             ->registration()
             ->passwordReset()
             ->emailVerification()
-            ->viteTheme('resources/css/filament/app/theme.css')
+            ->viteTheme("resources/css/filament/app/theme.css")
             ->colors([
-                'primary' => Color::hex('#eebebe'),
-                'gray' => Color::hex('#949cbb'),
-                'info' => Color::hex('#7287fd'),
-                'danger' => Color::hex('#f38ba8'),
-                'success' => Color::hex('#a6d189'),
-                'warning' => Color::hex('#fe640b'),
+                "primary" => Color::hex("#eebebe"),
+                "gray" => Color::hex("#949cbb"),
+                "info" => Color::hex("#7287fd"),
+                "danger" => Color::hex("#f38ba8"),
+                "success" => Color::hex("#a6d189"),
+                "warning" => Color::hex("#fe640b"),
             ])
 
             ->discoverResources(
-                in: app_path('Filament/Resources'),
-                for: 'App\\Filament\\Resources'
+                in: app_path("Filament/Resources"),
+                for: "App\\Filament\\Resources"
             )
             ->discoverPages(
-                in: app_path('Filament/Pages'),
-                for: 'App\\Filament\\Pages'
+                in: app_path("Filament/Pages"),
+                for: "App\\Filament\\Pages"
             )
             ->pages([
                 \App\Filament\Pages\Dashboard::class,
@@ -108,11 +108,10 @@ class AppPanelProvider extends PanelProvider
                 FilamentSocialitePlugin::make()
 
                     ->providers([
-
-                        Provider::make('google')
-                            ->label('Google')
-                            ->icon('fab-google-plus-g')
-                            ->color(Color::hex('#4285f4'))
+                        Provider::make("google")
+                            ->label("Google")
+                            ->icon("fab-google-plus-g")
+                            ->color(Color::hex("#4285f4"))
                             ->outlined(true)
                             ->stateless(false),
                     ])
@@ -124,9 +123,9 @@ class AppPanelProvider extends PanelProvider
                     ) {
                         // Create the user with basic info first
                         $user = User::create([
-                            'name' => $oauthUser->getName(),
-                            'email' => $oauthUser->getEmail(),
-                            'password' => null, // Important: Password should be nullable
+                            "name" => $oauthUser->getName(),
+                            "email" => $oauthUser->getEmail(),
+                            "password" => null, // Important: Password should be nullable
                         ]);
 
                         // Get avatar URL from OAuth provider
@@ -137,7 +136,7 @@ class AppPanelProvider extends PanelProvider
                                 // Download the image to a temporary file
                                 $tempFile = tempnam(
                                     sys_get_temp_dir(),
-                                    'avatar_'
+                                    "avatar_"
                                 );
                                 file_put_contents(
                                     $tempFile,
@@ -147,8 +146,8 @@ class AppPanelProvider extends PanelProvider
                                 // Create an UploadedFile instance from the temp file
                                 $uploadedFile = new \Illuminate\Http\UploadedFile(
                                     $tempFile,
-                                    'avatar.jpg', // Filename
-                                    'image/jpeg', // MIME type (adjust if needed)
+                                    "avatar.jpg", // Filename
+                                    "image/jpeg", // MIME type (adjust if needed)
                                     null,
                                     true // Test mode to avoid moving the file again
                                 );
@@ -175,19 +174,18 @@ class AppPanelProvider extends PanelProvider
                     )
                     ->withGithub(showLogo: true, showUrl: true)
                     ->withLogo(
-                        'https://static.cdnlogo.com/logos/l/23/laravel.svg',
-                        'https://laravel.com',
-                        'Powered by Laravel'
-
+                        "https://static.cdnlogo.com/logos/l/23/laravel.svg",
+                        "https://laravel.com",
+                        "Powered by Laravel"
                     )
                     ->withLinks([
                         [
-                            'title' => 'About',
-                            'url' => 'https://filagrade.koamishin.org/about',
+                            "title" => "About",
+                            "url" => "https://filagrade.koamishin.org/about",
                         ],
                         [
-                            'title' => 'Privacy Policy',
-                            'url' => 'https://filagrade.koamishin.org/privacy',
+                            "title" => "Privacy Policy",
+                            "url" => "https://filagrade.koamishin.org/privacy",
                         ],
                     ])
                     ->withBorder(),
@@ -199,16 +197,16 @@ class AppPanelProvider extends PanelProvider
                     ->size(60)
 
                     ->colors([
-                        '0A0310',
-                        '49007E',
-                        'FF005B',
-                        'FF7D10',
-                        'FFB238',
+                        "0A0310",
+                        "49007E",
+                        "FF005B",
+                        "FF7D10",
+                        "FFB238",
                     ]),
             ])
             ->discoverWidgets(
-                in: app_path('Filament/Widgets'),
-                for: 'App\\Filament\\Widgets'
+                in: app_path("Filament/Widgets"),
+                for: "App\\Filament\\Widgets"
             )
             ->navigation(function (
                 NavigationBuilder $builder
@@ -217,13 +215,11 @@ class AppPanelProvider extends PanelProvider
                     ->groups([
                         // Dashboard group
                         NavigationGroup::make()
-                            ->label('Dashboard')
-                            ->items([
-                                ...Dashboard::getNavigationItems(),
-                            ]),
+                            ->label("Dashboard")
+                            ->items([...Dashboard::getNavigationItems()]),
                         // Academic group
                         NavigationGroup::make()
-                            ->label('Academic')
+                            ->label("Academic")
                             ->items([
                                 ...ClassesResources::getNavigationItems(),
                                 ...WeeklySchedule::getNavigationItems(),
@@ -232,7 +228,7 @@ class AppPanelProvider extends PanelProvider
                             ]),
                         // Student Management group
                         NavigationGroup::make()
-                            ->label('Student Management')
+                            ->label("Student Management")
                             ->items([
                                 ...StudentResource::getNavigationItems(),
                                 ...AttendanceManager::getNavigationItems(),
@@ -241,29 +237,29 @@ class AppPanelProvider extends PanelProvider
                             ]),
                         // Resources group
                         NavigationGroup::make()
-                            ->label('Resources')
+                            ->label("Resources")
                             ->items([
                                 ...ActivityResource::getNavigationItems(),
                                 ...ResourceCategoryResource::getNavigationItems(),
                             ]),
                         // System group
                         NavigationGroup::make()
-                            ->label('System')
+                            ->label("System")
                             ->items([
-                                ...(\App\Filament\Pages\Changelogs::getNavigationItems()),
+                                ...\App\Filament\Pages\Changelogs::getNavigationItems(),
                             ]),
                     ])
                     ->items([]);
             })
             ->userMenuItems([
                 MenuItem::make()
-                    ->label('Profile')
+                    ->label("Profile")
                     ->url(
                         fn(): string => EditProfile::getUrl([
-                            'tenant' => Auth::user()?->currentTeam->id ?? 1,
+                            "tenant" => Auth::user()?->currentTeam->id ?? 1,
                         ])
                     )
-                    ->icon('heroicon-o-user-circle'),
+                    ->icon("heroicon-o-user-circle"),
                 MenuItem::make()
                     ->label(function () {
                         $githubService = app(
@@ -271,14 +267,18 @@ class AppPanelProvider extends PanelProvider
                         );
                         $version = $githubService->getLatestTag();
 
-                        return 'Changelogs (' .
-                            (str()->startsWith($version, 'v')
+                        return "Changelogs (" .
+                            (str()->startsWith($version, "v")
                                 ? $version
-                                : 'v' . $version) .
-                            ')';
+                                : "v" . $version) .
+                            ")";
                     })
-                    ->url(fn() => \App\Filament\Pages\Changelogs::getUrl())
-                    ->icon('heroicon-o-document-text'),
+                    ->url(
+                        fn() => \App\Filament\Pages\Changelogs::getUrl([
+                            "tenant" => Auth::user()?->currentTeam->id ?? 1,
+                        ])
+                    )
+                    ->icon("heroicon-o-document-text"),
             ])
             ->widgets([
                 Widgets\AccountWidget::class,
@@ -300,8 +300,8 @@ class AppPanelProvider extends PanelProvider
         if (Features::hasApiFeatures()) {
             $panel->userMenuItems([
                 MenuItem::make()
-                    ->label('API Tokens')
-                    ->icon('heroicon-o-key')
+                    ->label("API Tokens")
+                    ->icon("heroicon-o-key")
                     ->url(
                         fn() => $this->shouldRegisterMenuItem()
                             ? url(ApiTokens::getUrl())
@@ -350,25 +350,25 @@ class AppPanelProvider extends PanelProvider
          * Register custom routes for team switching
          */
         Route::middleware([
-            'web',
-            'auth:sanctum',
-            config('jetstream.auth_session'),
-            'verified',
+            "web",
+            "auth:sanctum",
+            config("jetstream.auth_session"),
+            "verified",
         ])->group(function () {
-            Route::post('/app/team/switch/{team}', function (Team $team) {
+            Route::post("/app/team/switch/{team}", function (Team $team) {
                 // This will trigger the TenantSet event which is handled by SwitchTeam listener
                 Filament::setTenant($team);
 
-                return redirect()->route('filament.app.pages.dashboard', [
-                    'tenant' => $team->id,
+                return redirect()->route("filament.app.pages.dashboard", [
+                    "tenant" => $team->id,
                 ]);
-            })->name('filament.app.team.switch');
+            })->name("filament.app.team.switch");
         });
     }
 
     public function shouldRegisterMenuItem(): bool
     {
-        $hasVerifiedEmail = Auth::user()?->hasVerifiedEmail();
+        // $hasVerifiedEmail = Auth::user()?->hasVerifiedEmail();
 
         return Filament::hasTenancy()
             ? $hasVerifiedEmail && Filament::getTenant()
