@@ -17,7 +17,7 @@ class AiWidget extends Component implements HasMingles
     }
 
     public function mingleData(): array
-    {   
+    {
         // dd($this->doubleIt(2));
         return [
             'message' => 'Message in a bottle',

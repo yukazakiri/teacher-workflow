@@ -45,7 +45,7 @@ const styleDropdownOpen = ref(false);
 // Resize textarea based on content
 const resize = () => {
     if (!textarea.value) return;
-    
+
     const el = textarea.value;
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, 240) + 'px'; // Max height 240px
@@ -69,31 +69,51 @@ const handleKeyDown = (event) => {
 };
 
 // Toggle model dropdown
-const toggleModelDropdown = () => {
+const toggleModelDropdown = (event) => {
+    // Stop event propagation
+    if (event) event.stopPropagation();
+    
+    // Toggle dropdown
     modelDropdownOpen.value = !modelDropdownOpen.value;
+    
+    // Close other dropdown if this one is opening
     if (modelDropdownOpen.value) {
         styleDropdownOpen.value = false;
     }
 };
 
 // Toggle style dropdown
-const toggleStyleDropdown = () => {
+const toggleStyleDropdown = (event) => {
+    // Stop event propagation
+    if (event) event.stopPropagation();
+    
+    // Toggle dropdown
     styleDropdownOpen.value = !styleDropdownOpen.value;
+    
+    // Close other dropdown if this one is opening
     if (styleDropdownOpen.value) {
         modelDropdownOpen.value = false;
     }
 };
 
 // Select a model
-const selectModel = (model) => {
+const selectModel = (model, event) => {
+    if (event) event.stopPropagation();
     emit('change-model', model);
-    modelDropdownOpen.value = false;
+    // Use setTimeout to avoid click event conflict
+    setTimeout(() => {
+        modelDropdownOpen.value = false;
+    }, 50);
 };
 
 // Select a style
-const selectStyle = (style) => {
+const selectStyle = (style, event) => {
+    if (event) event.stopPropagation();
     emit('change-style', style);
-    styleDropdownOpen.value = false;
+    // Use setTimeout to avoid click event conflict
+    setTimeout(() => {
+        styleDropdownOpen.value = false;
+    }, 50);
 };
 
 // Close dropdowns when clicking outside
@@ -101,6 +121,14 @@ const closeDropdowns = () => {
     modelDropdownOpen.value = false;
     styleDropdownOpen.value = false;
 };
+
+// Set up document click handler - this avoids the need for onMounted
+if (typeof document !== 'undefined') {
+    document.addEventListener('click', () => {
+        modelDropdownOpen.value = false;
+        styleDropdownOpen.value = false;
+    });
+}
 
 // Watch for changes in modelValue to resize textarea
 watch(() => props.modelValue, resize);
@@ -118,7 +146,7 @@ watch(() => textarea.value, (newVal) => {
 </script>
 
 <template>
-    <form @submit.prevent="emit('send-message')" class="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8" @click.away="closeDropdowns">
+    <form @submit.prevent="emit('send-message')" class="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="relative rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg transition-all duration-200 focus-within:ring-2 focus-within:ring-primary-500">
             <!-- Message input area -->
             <div class="flex p-3 gap-3 items-start">
@@ -147,25 +175,26 @@ watch(() => textarea.value, (newVal) => {
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-t border-gray-200 dark:border-gray-700 p-2 gap-2 sm:gap-0">
                 <div class="flex flex-wrap items-center gap-2">
                     <!-- Model selector -->
-                    <div class="relative">
-                        <button 
-                            type="button" 
-                            @click="toggleModelDropdown"
+                    <div class="relative model-dropdown-container">
+                        <button
+                            type="button"
+                            @click.stop="toggleModelDropdown"
                             class="flex items-center gap-1 rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-gray-400 dark:text-gray-500"><path fill-rule="evenodd" d="M15.988 3.012A2.25 2.25 0 0118 5.25v6.5A2.25 2.25 0 0115.75 14H13.5v2.25A2.25 2.25 0 0111.25 18.5h-6.5A2.25 2.25 0 012.5 16.25V7.75A2.25 2.25 0 014.75 5.5H7V3.75A2.25 2.25 0 019.25 1.5h6.5A2.25 2.25 0 0115.988 3.012zM13.5 6.75a.75.75 0 000-1.5H9.25a.75.75 0 00-.75.75V11h3.25a.75.75 0 00.75-.75V6.75zm-3 6.75h1.5a.75.75 0 01.75.75v3a.75.75 0 01-.75.75h-1.5a.75.75 0 01-.75-.75v-3a.75.75 0 01.75-.75z" clip-rule="evenodd" /></svg>
                             <span>{{ selectedModel }}</span>
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-gray-400 dark:text-gray-500"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
                         </button>
-                        <div 
-                            v-show="modelDropdownOpen"
-                            class="absolute bottom-full left-0 mb-1 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden z-20"
+                        <div
+                            v-if="modelDropdownOpen"
+                            class="absolute top-auto translate-y-[-100%] left-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden z-50"
+                            style="margin-top: -8px;"
                         >
                             <ul>
-                                <li 
-                                    v-for="model in availableModels" 
+                                <li
+                                    v-for="model in availableModels"
                                     :key="model"
-                                    @click="selectModel(model)"
+                                    @click.stop="selectModel(model)"
                                     class="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
                                 >
                                     {{ model }}
@@ -175,25 +204,26 @@ watch(() => textarea.value, (newVal) => {
                     </div>
 
                     <!-- Style selector -->
-                    <div class="relative">
-                        <button 
-                            type="button" 
-                            @click="toggleStyleDropdown"
+                    <div class="relative style-dropdown-container">
+                        <button
+                            type="button"
+                            @click.stop="toggleStyleDropdown"
                             class="flex items-center gap-1 rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-gray-400 dark:text-gray-500"> <path d="M10 3.75a.75.75 0 01.75.75v.01a.75.75 0 01-1.5 0v-.01a.75.75 0 01.75-.75zm0 3.5a.75.75 0 01.75.75v4.01a.75.75 0 01-1.5 0V8.01a.75.75 0 01.75-.75zm0 7a.75.75 0 01.75.75v.01a.75.75 0 01-1.5 0v-.01a.75.75 0 01.75-.75zm-3.25-8.5a.75.75 0 000 1.5h-.01a.75.75 0 000-1.5h.01zm-1.5 3.5a.75.75 0 01.75-.75h.01a.75.75 0 010 1.5h-.01a.75.75 0 01-.75-.75zm1.5 3.5a.75.75 0 000 1.5h-.01a.75.75 0 000-1.5h.01zM13.25 5a.75.75 0 01.75-.75h.01a.75.75 0 010 1.5h-.01a.75.75 0 01-.75-.75zm1.5 3.5a.75.75 0 000 1.5h-.01a.75.75 0 000-1.5h.01zm-1.5 3.5a.75.75 0 01.75-.75h.01a.75.75 0 010 1.5h-.01a.75.75 0 01-.75-.75z" /></svg>
                             <span>{{ availableStyles[selectedStyle] || selectedStyle }}</span>
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-gray-400 dark:text-gray-500"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
                         </button>
-                        <div 
-                            v-show="styleDropdownOpen"
-                            class="absolute bottom-full left-0 mb-1 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden z-20"
+                        <div
+                            v-if="styleDropdownOpen"
+                            class="absolute top-auto translate-y-[-100%] left-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden z-50"
+                            style="margin-top: -8px;"
                         >
                             <ul>
-                                <li 
-                                    v-for="(name, style) in availableStyles" 
+                                <li
+                                    v-for="(name, style) in availableStyles"
                                     :key="style"
-                                    @click="selectStyle(style)"
+                                    @click.stop="selectStyle(style)"
                                     class="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
                                 >
                                     {{ name }}

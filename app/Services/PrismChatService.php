@@ -32,7 +32,7 @@ class PrismChatService
         Conversation $conversation,
         string $userMessageContent // Argument kept for signature compatibility, but not used for creation
     ): ChatMessage {
-        // --- REMOVED: User message creation is now done in Chat.php before calling this service --- 
+        // --- REMOVED: User message creation is now done in Chat.php before calling this service ---
         // $userMessage = ChatMessage::create([
         //     'conversation_id' => $conversation->id,
         //     'user_id' => Auth::id(),

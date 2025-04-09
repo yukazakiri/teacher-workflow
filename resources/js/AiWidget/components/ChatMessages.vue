@@ -99,14 +99,14 @@ onMounted(() => {
 </script>
 
 <template>
-    <div 
+    <div
         ref="messagesContainer"
         class="flex-1 overflow-y-auto space-y-4 px-1 scroll-smooth"
     >
         <!-- Messages -->
         <template v-if="conversation && conversation.messages">
-            <div 
-                v-for="message in conversation.messages" 
+            <div
+                v-for="message in conversation.messages"
                 :key="`message-${message.id}`"
                 class="flex group"
                 :class="message.role === 'user' ? 'justify-end' : 'justify-start'"
@@ -125,7 +125,7 @@ onMounted(() => {
 
                     <!-- Display Mode -->
                     <div v-if="editingMessageId !== message.id">
-                        <div 
+                        <div
                             class="prose prose-sm max-w-none message-content break-words"
                             :class="message.role === 'user' ? 'prose-invert' : 'dark:prose-invert'"
                             v-html="renderMarkdown(message.content || '...')"
@@ -144,17 +144,17 @@ onMounted(() => {
                             :disabled="isProcessing || isStreaming"
                         ></textarea>
                         <div class="flex justify-end gap-2">
-                            <button 
-                                @click="cancelEdit" 
-                                type="button" 
+                            <button
+                                @click="cancelEdit"
+                                type="button"
                                 class="px-3 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600"
                             >
                                 Cancel
                             </button>
-                            <button 
-                                @click="saveEdit(message)" 
-                                type="button" 
-                                class="px-3 py-1 text-xs font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50" 
+                            <button
+                                @click="saveEdit(message)"
+                                type="button"
+                                class="px-3 py-1 text-xs font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50"
                                 :disabled="!editedContent.trim() || editedContent === message.content || isProcessing || isStreaming"
                             >
                                 Save
@@ -163,7 +163,7 @@ onMounted(() => {
                     </div>
 
                     <!-- Action Buttons (Copy, Edit) -->
-                    <div 
+                    <div
                         class="absolute -top-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 items-center z-10"
                         :class="message.role === 'user' ? 'left-2' : 'right-2'"
                     >
@@ -192,7 +192,7 @@ onMounted(() => {
                     </div>
 
                     <!-- Streaming Indicator -->
-                    <div 
+                    <div
                         v-if="message.role === 'assistant' && isStreaming && message.id === conversation.messages[conversation.messages.length - 1].id"
                         class="mt-2 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"
                     >

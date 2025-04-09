@@ -17,6 +17,11 @@ use Laravel\WorkOS\Http\Middleware\ValidateSessionWithWorkOS;
 use Laravel\WorkOS\Http\Requests\AuthKitAuthenticationRequest as RequestsAuthKitAuthenticationRequest;
 use Laravel\WorkOS\Http\Requests\AuthKitLoginRequest as RequestsAuthKitLoginRequest;
 use Laravel\WorkOS\Http\Requests\AuthKitLogoutRequest as RequestsAuthKitLogoutRequest; // Import the AppPanelProvider if needed for URL generation, though direct path is often fine.
+use App\Http\Controllers\AiStreamController;
+use App\Models\Conversation;
+use App\Services\PrismChatService;
+use Illuminate\Http\Request;
+use App\Http\Controllers\ProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -121,11 +126,90 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
 
 // Activity routes
 Route::middleware([
-    'auth:sanctum', // API/token auth if applicable
-    'auth', // Standard web auth guard check
-    $authSessionMiddleware, // Use determined session middleware
+    // 'auth:sanctum', // Keep if API token auth is needed alongside web session
+    'auth', // Standard web auth guard check for logged-in user
+    // $authSessionMiddleware, // REMOVED: Not suitable for these API-like routes
     'verified', // Email verification etc.
 ])->group(function () {
+
+
+    // Get all conversations (for API consumers)
+    Route::get('/ai/conversations', function (Request $request) {
+        $user = $request->user();
+        $currentTeamId = $user->currentTeam?->id;
+
+        if (!$currentTeamId) {
+            return response()->json([]);
+        }
+
+        return Conversation::where('team_id', $currentTeamId)
+            ->where('user_id', $user->id)
+            ->orderBy('last_activity_at', 'desc')
+            ->get()
+            ->map(function ($chat) {
+                return [
+                    'id' => $chat->id,
+                    'title' => $chat->title,
+                    'model' => $chat->model,
+                    'style' => $chat->style,
+                    'last_activity' => $chat->last_activity_at->diffForHumans(),
+                ];
+            });
+    });
+
+    // Get conversation with messages
+    Route::get('/ai/conversations/{conversation}/messages', function (Conversation $conversation, Request $request) {
+        // Check ownership
+        if ($conversation->user_id !== $request->user()->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        return [
+            'conversation' => [
+                'id' => $conversation->id,
+                'title' => $conversation->title,
+                'model' => $conversation->model,
+                'style' => $conversation->style,
+                'messages' => $conversation->messages()
+                    ->orderBy('created_at', 'asc')
+                    ->get()
+                    ->map(function ($message) {
+                        return [
+                            'id' => $message->id,
+                            'role' => $message->role,
+                            'content' => $message->content,
+                            'created_at' => $message->created_at->format('g:i A')
+                        ];
+                    })
+            ]
+        ];
+    });
+
+    // Recent conversations
+    Route::get('/chats/recent', function (Request $request) {
+        $user = $request->user();
+        $currentTeamId = $user->currentTeam?->id;
+
+        if (!$currentTeamId) {
+            return response()->json([]);
+        }
+
+        return Conversation::where('team_id', $currentTeamId)
+            ->where('user_id', $user->id)
+            ->orderBy('last_activity_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function ($chat) {
+                return [
+                    'id' => $chat->id,
+                    'title' => $chat->title,
+                    'model' => $chat->model,
+                    'last_activity' => $chat->last_activity_at->diffForHumans(),
+                ];
+            });
+    });
+
+
     // Activity progress and reporting
     Route::get('/activities/{activity}/progress', function (
         App\Models\Activity $activity
@@ -190,6 +274,98 @@ Route::middleware([
         ActivitySubmissionController::class,
         'deleteAttachment',
     ])->name('submissions.attachments.delete');
+
+    // Get available AI models
+    Route::get('/ai/models', function (Request $request, PrismChatService $chatService) {
+        return response()->json($chatService->getAvailableModels());
+    })->name('ai.models');
+
+    // Recent conversations
+    Route::get('/chats/recent', function (Request $request) {
+        $user = $request->user();
+        $currentTeamId = $user->currentTeam?->id;
+
+        if (!$currentTeamId) {
+            return response()->json([]);
+        }
+
+        return Conversation::where('team_id', $currentTeamId)
+            ->where('user_id', $user->id)
+            ->orderBy('last_activity_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function ($chat) {
+                return [
+                    'id' => $chat->id,
+                    'title' => $chat->title,
+                    'model' => $chat->model,
+                    'last_activity' => $chat->last_activity_at->diffForHumans(),
+                ];
+            });
+    })->name('chats.recent');
+
+    // Get a specific conversation
+    Route::get('/conversations/{conversation}', function (Conversation $conversation, Request $request) {
+        // Check ownership
+        if ($conversation->user_id !== $request->user()->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        return [
+            'id' => $conversation->id,
+            'title' => $conversation->title,
+            'model' => $conversation->model,
+            'style' => $conversation->style,
+            'messages' => $conversation->messages()
+                ->orderBy('created_at', 'asc')
+                ->get()
+                ->map(function ($message) {
+                    return [
+                        'id' => $message->id,
+                        'role' => $message->role,
+                        'content' => $message->content,
+                        'created_at' => $message->created_at->format('g:i A')
+                    ];
+                })
+        ];
+    })->name('conversations.show');
+
+    // Update model preference
+    Route::put('/conversations/{conversation}/model', function (Conversation $conversation, Request $request) {
+        // Check ownership
+        if ($conversation->user_id !== $request->user()->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate(['model' => 'required|string']);
+        $conversation->update(['model' => $validated['model']]);
+
+        return response()->json(['success' => true]);
+    })->name('conversations.update.model');
+
+    // Update style preference
+    Route::put('/conversations/{conversation}/style', function (Conversation $conversation, Request $request) {
+        // Check ownership
+        if ($conversation->user_id !== $request->user()->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate(['style' => 'required|string']);
+        $conversation->update(['style' => $validated['style']]);
+
+        return response()->json(['success' => true]);
+    })->name('conversations.update.style');
+
+    // Delete a conversation
+    Route::delete('/conversations/{conversation}', function (Conversation $conversation, Request $request) {
+        // Check ownership
+        if ($conversation->user_id !== $request->user()->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $conversation->delete();
+        return response()->json(['success' => true]);
+    })->name('conversations.destroy');
 });
 
 // Attendance routes
@@ -229,4 +405,19 @@ Route::middleware([
         AttendanceController::class,
         'getTeamStats',
     ])->name('attendance.stats');
+});
+
+// Add chat API routes with session authentication
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/', function () {
+        return view('dashboard');
+    })->name('dashboard');
+
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // AI Assistant routes
+    Route::post('/ai/stream', [AiStreamController::class, 'streamResponse'])
+        ->name('ai.stream');
 });
