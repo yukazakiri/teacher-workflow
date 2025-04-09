@@ -22,6 +22,7 @@
         "filament/filament": "^3.3",
         "filament/spatie-laravel-media-library-plugin": "^3.2",
         "giauphan/laravel-qr-code": "v1.0.3",
+        "ijpatricio/mingle": "^0.0.21",
         "illuminate/support": "*",
         "lara-zeus/boredom": "*",
         "laravel/framework": "^12.0",

@@ -1,7 +1,8 @@
 <x-filament-panels::page>
 
-    @livewire('chat', ['conversationId' => $conversationId ?? null])
-
+{{-- @mingles --}}
+    {{-- @livewire('chat', ['conversationId' => $conversationId ?? null]) --}}
+@livewire('ai-widget')
 
     @if($onboardingState > 0)
         <div
