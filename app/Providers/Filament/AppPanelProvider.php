@@ -32,6 +32,7 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\MenuItem;
 use Filament\Navigation\NavigationBuilder;
 use Filament\Navigation\NavigationGroup;
+use Filament\Navigation\NavigationItem;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -216,7 +217,13 @@ class AppPanelProvider extends PanelProvider
                         // Dashboard group
                         NavigationGroup::make()
                             ->label("Dashboard")
-                            ->items([...Dashboard::getNavigationItems()]),
+                            ->items([
+                                ...Dashboard::getNavigationItems(),
+                                NavigationItem::make('Chat')
+                                    ->url('/chat')
+                                    ->icon('heroicon-o-chat-bubble-left-right')
+                                    ->sort(3),
+                            ]),
                         // Academic group
                         NavigationGroup::make()
                             ->label("Academic")
