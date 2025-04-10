@@ -15,50 +15,78 @@ const token = document
     ?.getAttribute("content");
 if (token) {
     axios.defaults.headers.common["X-CSRF-TOKEN"] = token;
+} else {
+    console.warn("CSRF token not found. AI Widget POST requests might fail.");
 }
 
 const props = defineProps({
+    /**
+     * Livewire wire object (optional).
+     * @type {Object}
+     */
     wire: {
         type: Object,
         default: () => ({}),
     },
+    /**
+     * Mingle data (optional).
+     * @type {any}
+     */
     mingleData: {},
+    /**
+     * User object containing user details.
+     * @type {Object}
+     * @property {number|string} id - User ID.
+     * @property {string} name - User name.
+     */
     user: {
         type: Object,
         default: () => ({}),
     },
 });
 
-const { wire, mingleData, user } = props;
+// --- Reactive State ---
 
-// State management
+/** @type {import('vue').Ref<boolean>} Controls the visibility of the chat history sidebar. */
 const sidebarOpen = ref(false);
+/** @type {import('vue').Ref<Object|null>} Holds the currently active conversation object, including messages. */
 const conversation = ref(null);
+/** @type {import('vue').Ref<Array<Object>>} List of all fetched conversations for the user. */
 const conversations = ref([]);
+/** @type {import('vue').Ref<boolean>} Indicates if an AI request is currently being processed (sent but not yet streaming). */
 const isProcessing = ref(false);
+/** @type {import('vue').Ref<boolean>} Indicates if an AI response is currently streaming. */
 const isStreaming = ref(false);
+/** @type {import('vue').Ref<string>} The current content of the chat input field. */
 const message = ref("");
-const selectedModel = ref("gemini-2.0-flash");
-const selectedStyle = ref("balanced");
-const eventSource = ref(null);
+/** @type {import('vue').Ref<string>} The ID of the selected AI model. */
+const selectedModel = ref("gemini-2.0-flash"); // Default model
+/** @type {import('vue').Ref<string>} The selected conversation style/tone. */
+const selectedStyle = ref("balanced"); // Default style
+/** @type {import('vue').Ref<Array<string>>} List of available AI model IDs. */
 const availableModels = ref([]);
+/** @type {import('vue').Ref<Object<string, string>>} Dictionary of available conversation styles (id: name). */
 const availableStyles = ref({});
-
-const recentChats = ref([]);
-const isNewConversation = ref(true);
+/** @type {import('vue').Ref<string|null>} The ID of the currently loaded conversation. Null for a new chat. */
 const currentConversationId = ref(null);
-const messages = ref([]);
-const userMessage = ref("");
-const loading = ref(false);
+/** @type {import('vue').Ref<boolean>} Indicates if conversations are being loaded. */
 const loadingConversations = ref(true);
+/** @type {import('vue').Ref<boolean>} Indicates if AI models are being loaded. */
 const loadingModels = ref(true);
+/** @type {import('vue').Ref<boolean>} Indicates if messages for a specific conversation are being loaded. */
 const loadingMessages = ref(false);
+/** @type {import('vue').Ref<string|null>} Stores any user-facing error message. */
 const error = ref(null);
+/** @type {import('vue').Ref<boolean>} Controls the visibility of the delete confirmation dialog. */
 const showDeleteConfirm = ref(false);
+/** @type {import('vue').Ref<string|null>} The ID of the conversation marked for deletion. */
 const conversationIdToDelete = ref(null);
-const streamedResponse = ref("");
 
-// Computed properties
+// --- Computed Properties ---
+
+/**
+ * @returns {string} 'morning', 'afternoon', or 'evening' based on the current time.
+ */
 const timeOfDay = computed(() => {
     const hour = new Date().getHours();
     if (hour < 12) return "morning";
@@ -66,682 +94,756 @@ const timeOfDay = computed(() => {
     return "evening";
 });
 
-// Methods
+// --- Methods ---
+
+/**
+ * Toggles the visibility of the chat history sidebar.
+ */
 const toggleSidebar = () => {
     sidebarOpen.value = !sidebarOpen.value;
 };
 
+/**
+ * Fetches the list of recent conversations from the backend.
+ */
 const fetchRecentChats = async () => {
+    loadingConversations.value = true;
+    error.value = null;
     try {
-        loadingConversations.value = true;
-        console.log("Fetching recent conversations");
+        console.log("Fetching conversations");
         const response = await axios.get("/ai/conversations");
         conversations.value = response.data;
-        recentChats.value = response.data;
-        console.log("Received conversations:", response.data.length);
+        console.log(`Received ${response.data.length} conversations`);
     } catch (err) {
-        console.error("Failed to fetch recent chats:", err);
+        console.error("Failed to fetch conversations:", err);
         error.value =
-            "Failed to load recent conversations. Please try again later.";
+            "Failed to load conversations. Please check your connection and try again.";
     } finally {
         loadingConversations.value = false;
     }
 };
 
+/**
+ * Loads a specific conversation and its messages.
+ * @param {string|number} id - The ID of the conversation to load.
+ */
 const loadConversation = async (id) => {
+    if (currentConversationId.value === id) return; // Avoid reloading the same conversation
+
     loadingMessages.value = true;
     error.value = null;
     currentConversationId.value = id;
-    isNewConversation.value = false;
 
     try {
         console.log(`Loading conversation ${id}`);
         const response = await axios.get(`/ai/conversations/${id}/messages`);
-        conversation.value = response.data.conversation;
-        console.log("Loaded conversation:", response.data);
 
-        // Set selected model and style based on the loaded conversation
+        // Ensure messages have a consistent structure
+        const loadedConversation = response.data.conversation;
+        loadedConversation.messages = (loadedConversation.messages || []).map(
+            (msg) => ({
+                id: msg.id, // Ensure messages have unique IDs if possible
+                role: msg.role,
+                content: msg.content,
+                timestamp: new Date(msg.created_at), // Standardize timestamp
+                created_at: new Date(msg.created_at).toLocaleTimeString([], {
+                    hour: "numeric",
+                    minute: "2-digit",
+                }), // Keep original format if needed by ChatMessages
+            }),
+        );
+
+        conversation.value = loadedConversation;
+        console.log(
+            `Loaded conversation ${id} with ${conversation.value.messages.length} messages`,
+        );
+
+        // Set model and style from loaded conversation, fallback to defaults or available
         selectedModel.value =
             conversation.value.model ||
             (availableModels.value.length > 0
                 ? availableModels.value[0]
-                : null);
+                : "default-model-id"); // Provide a fallback ID
         selectedStyle.value = conversation.value.style || "balanced";
 
-        // Load messages
-        messages.value = conversation.value.messages.map((message) => ({
-            role: message.role,
-            content: message.content,
-            timestamp: new Date(message.created_at),
-        }));
-
-        console.log(`Loaded ${messages.value.length} messages for conversation ${id}`);
         scrollToBottom();
     } catch (err) {
         console.error(`Failed to load conversation ${id}:`, err);
-        error.value = "Failed to load conversation. Please try again later.";
-
-        // Reset to new conversation
-        startNewChat();
+        error.value = "Failed to load the conversation. Please try again.";
+        startNewChat(); // Reset to a new chat state on error
     } finally {
         loadingMessages.value = false;
+        sidebarOpen.value = false; // Close sidebar after loading
     }
 };
 
+/**
+ * Resets the state to start a new conversation.
+ */
 const startNewChat = () => {
     currentConversationId.value = null;
-    isNewConversation.value = true;
-    messages.value = [];
-    userMessage.value = "";
+    conversation.value = null; // Clear the conversation object
+    message.value = "";
     error.value = null;
+    isProcessing.value = false;
+    isStreaming.value = false;
 
-    // Default model and style
-    if (availableModels.value.length > 0 && !selectedModel.value) {
-        selectedModel.value = availableModels.value[0].id;
+    // Reset to default model/style if available
+    if (availableModels.value.length > 0) {
+        selectedModel.value = availableModels.value[0];
     }
-
-    if (!selectedStyle.value) {
-        selectedStyle.value = "normal";
+    if (Object.keys(availableStyles.value).length > 0) {
+        selectedStyle.value = Object.keys(availableStyles.value)[0]; // Use the first available style key
+    } else {
+        selectedStyle.value = "balanced"; // Hardcoded default if fetch fails
     }
+    console.log("Started new chat session");
 };
 
+/**
+ * Deletes a conversation permanently.
+ * @param {string|number} id - The ID of the conversation to delete.
+ */
 const deleteConversation = async (id) => {
+    // Optimistic UI update
+    const originalConversations = [...conversations.value];
+    conversations.value = conversations.value.filter((c) => c.id !== id);
+
+    // If deleting the current conversation, start a new one
+    if (currentConversationId.value === id) {
+        startNewChat();
+    }
+
+    // Hide confirmation modal
+    showDeleteConfirm.value = false;
+    conversationIdToDelete.value = null;
+
     try {
-        await axios.delete(`/conversations/${id}`);
-        conversations.value = conversations.value.filter((c) => c.id !== id);
-        recentChats.value = recentChats.value.filter((chat) => chat.id !== id);
-        if (conversation.value && conversation.value.id === id) {
-            startNewChat();
+        await axios.delete(`/ai/conversations/${id}`);
+        console.log(`Conversation ${id} deleted successfully.`);
+    } catch (err) {
+        console.error(`Error deleting conversation ${id}:`, err);
+        error.value = "Failed to delete conversation. Please try again.";
+        // Revert optimistic update on failure
+        conversations.value = originalConversations;
+        // Optionally reload the conversation if it was the current one
+        if (currentConversationId.value === id) {
+            loadConversation(id); // Attempt to reload if deletion failed
         }
-        showDeleteConfirm.value = false;
-        conversationIdToDelete.value = null;
-    } catch (error) {
-        console.error(`Error deleting conversation ${id}:`, error);
-        error.value = "Failed to delete conversation. Please try again later.";
     }
 };
 
-const closeEventSource = () => {
-    if (eventSource.value) {
-        eventSource.value.close();
-        eventSource.value = null;
-    }
-};
-
+/**
+ * Sends the user's message to the AI backend and handles the streaming response.
+ */
 const sendMessage = async () => {
-    if (!message.value.trim() || loading.value) return;
+    const trimmedMessage = message.value.trim();
+    if (!trimmedMessage || isProcessing.value || isStreaming.value) return;
 
-    loading.value = true;
-    isProcessing.value = true;
-    isStreaming.value = true;
+    isProcessing.value = true; // Indicate processing started
+    isStreaming.value = false; // Not streaming yet
     error.value = null;
 
     // Extract visible content (what the user actually sees) for display
-    const visibleContent = message.value.split('\n\nresource_uuid:')[0];
+    // Assume resource UUIDs are appended after double newline
+    const visibleContent = trimmedMessage.split("\n\nresource_uuid:")[0];
+    const fullMessageToSend = trimmedMessage; // Send the full message including any metadata
 
-    // Add user message to the conversation
-    const userMsg = {
-        role: "user",
-        content: visibleContent, // Use only the visible part for display
-        timestamp: new Date(),
-    };
-
-    // Add user message to both arrays
-    messages.value.push(userMsg);
-    
-    // Initialize conversation object if it doesn't exist yet
+    // If starting a new chat, initialize conversation object
     if (!conversation.value) {
-        conversation.value = { messages: [] };
-    }
-    
-    // Ensure conversation.messages exists
-    if (!conversation.value.messages) {
-        conversation.value.messages = [];
-    }
-    
-    // Add to conversation messages array for ChatMessages component
-    conversation.value.messages.push({
-        id: Date.now(),
-        role: "user",
-        content: userMsg.content, // Display only the visible message content
-        created_at: new Date().toLocaleTimeString([], {
-            hour: "numeric",
-            minute: "2-digit",
-        }),
-    });
-    
-    const sentMessage = message.value; // Keep full message with resource IDs for API
-    message.value = ""; // Clear input field
-
-    scrollToBottom();
-
-    // Add temporary AI message for streaming
-    const aiMessageIndex = messages.value.length;
-    messages.value.push({
-        role: "assistant",
-        content: "",
-        timestamp: new Date(),
-    });
-    
-    // Add to conversation messages array for ChatMessages component
-    conversation.value.messages.push({
-        id: Date.now() + 1,
-        role: "assistant",
-        content: "",
-        created_at: new Date().toLocaleTimeString([], {
-            hour: "numeric",
-            minute: "2-digit",
-        }),
-    });
-
-    try {
-        // Create data for the request
-        const data = {
-            message: sentMessage, // Send the full message with resource IDs
+        conversation.value = {
+            id: null, // Will be set by backend if new
+            messages: [],
             model: selectedModel.value,
             style: selectedStyle.value,
-            conversation_id: currentConversationId.value,
+            // Add other relevant conversation metadata if needed
+        };
+    }
+
+    // Add user message to the conversation's messages array
+    const userMsg = {
+        id: `user-${Date.now()}`, // Temporary unique ID for rendering
+        role: "user",
+        content: visibleContent,
+        timestamp: new Date(),
+        created_at: new Date().toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit",
+        }),
+    };
+    conversation.value.messages.push(userMsg);
+
+    // Add temporary AI message placeholder
+    const assistantMsgPlaceholder = {
+        id: `assistant-${Date.now()}`, // Temporary unique ID
+        role: "assistant",
+        content: "",
+        timestamp: new Date(),
+        created_at: new Date().toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit",
+        }),
+        isStreaming: true, // Add a flag for styling
+    };
+    conversation.value.messages.push(assistantMsgPlaceholder);
+
+    message.value = ""; // Clear input field
+    scrollToBottom();
+
+    try {
+        const data = {
+            message: fullMessageToSend,
+            model: selectedModel.value,
+            style: selectedStyle.value,
+            conversation_id: currentConversationId.value, // Send current ID (null if new)
         };
 
         console.log("Sending AI request:", {
             endpoint: "/ai/stream",
-            message: visibleContent, // Log only visible part for privacy/debugging
-            hasResources: sentMessage.includes('resource_uuid:'),
+            messagePreview: visibleContent.substring(0, 50) + "...",
+            hasResources: fullMessageToSend.includes("resource_uuid:"),
             model: selectedModel.value,
             style: selectedStyle.value,
-            conversationId: currentConversationId.value
+            conversationId: currentConversationId.value,
         });
 
-        // Use fetch with proper streaming support
         const response = await fetch("/ai/stream", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "X-CSRF-TOKEN": token,
                 "X-Requested-With": "XMLHttpRequest",
-                "Accept": "text/event-stream"
+                Accept: "text/event-stream",
             },
-            credentials: "same-origin",
+            credentials: "same-origin", // Important for CSRF
             body: JSON.stringify(data),
         });
 
-        if (!response.ok) {
+        isProcessing.value = false; // Processing done, streaming starts or error occurred
+
+        if (!response.ok || !response.body) {
             console.error("Server response error:", {
                 status: response.status,
-                statusText: response.statusText
+                statusText: response.statusText,
             });
+            const errorText = await response.text();
             throw new Error(
-                `Server responded with ${response.status}: ${response.statusText}`,
+                `Server error ${response.status}: ${errorText || response.statusText}`,
             );
         }
 
+        isStreaming.value = true; // Streaming started
+        assistantMsgPlaceholder.isStreaming = true; // Keep streaming indicator
+
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        let responseText = "";
+        let accumulatedResponse = "";
+        let conversationDataFound = null;
 
         console.log("Stream started, processing chunks...");
 
-        // Process the stream
         while (true) {
             const { done, value } = await reader.read();
-
             if (done) {
                 console.log("Stream completed.");
                 break;
             }
 
-            // Decode and handle the chunk
             const chunk = decoder.decode(value, { stream: true });
-            responseText += chunk;
+            accumulatedResponse += chunk;
 
-            console.log("Received chunk:", chunk.substring(0, 50) + (chunk.length > 50 ? "..." : ""));
+            // Temporarily hide conversation data comment during streaming
+            let displayResponse = accumulatedResponse.replace(
+                /<!-- CONVERSATION_DATA:.+?-->/,
+                "",
+            );
 
-            // Update the AI message with the current accumulated text in both arrays
-            if (messages.value[aiMessageIndex]) {
-                messages.value[aiMessageIndex].content = responseText;
-            }
-            
-            // Update in conversation messages array for ChatMessages component
-            if (conversation.value && conversation.value.messages && conversation.value.messages.length >= 2) {
-                const lastMessageIndex = conversation.value.messages.length - 1;
-                conversation.value.messages[lastMessageIndex].content = responseText;
-            }
-            
-            scrollToBottom();
-        }
+            // Update the assistant message content
+            assistantMsgPlaceholder.content = displayResponse;
 
-        // Check if we received a conversation ID from the response
-        try {
-            console.log("Checking for conversation data in response");
-            const jsonMatch = responseText.match(
+            // Check for embedded conversation data without modifying the main stream yet
+            const jsonMatch = accumulatedResponse.match(
                 /<!-- CONVERSATION_DATA:(.+?)-->/,
             );
             if (jsonMatch && jsonMatch[1]) {
-                const conversationData = JSON.parse(jsonMatch[1]);
-                console.log("Found conversation data:", conversationData);
-
-                if (conversationData.conversation_id) {
-                    currentConversationId.value = conversationData.conversation_id;
-                    isNewConversation.value = false;
-
-                    // Remove the JSON comment from the message content in both arrays
-                    if (messages.value[aiMessageIndex]) {
-                        messages.value[aiMessageIndex].content = messages.value[
-                            aiMessageIndex
-                        ].content.replace(/<!-- CONVERSATION_DATA:.+?-->/, "");
-                    }
-                    
-                    // Also clean the content in the conversation messages array
-                    if (conversation.value && conversation.value.messages && conversation.value.messages.length > 0) {
-                        const lastMessageIndex = conversation.value.messages.length - 1;
-                        conversation.value.messages[lastMessageIndex].content = 
-                            conversation.value.messages[lastMessageIndex].content.replace(/<!-- CONVERSATION_DATA:.+?-->/, "");
-                    }
-
-                    // Refresh recent chats
-                    fetchRecentChats();
+                try {
+                    conversationDataFound = JSON.parse(jsonMatch[1]);
+                } catch (parseErr) {
+                    console.error(
+                        "Failed to parse conversation data chunk:",
+                        parseErr,
+                    );
+                    // Continue streaming, handle data at the end
                 }
-            } else {
-                console.log("No conversation data found in response");
             }
-        } catch (parseErr) {
-            console.error("Failed to parse conversation data:", parseErr);
+
+            scrollToBottom(); // Scroll as content arrives
+        }
+
+        // Final processing after stream ends
+        isStreaming.value = false;
+        assistantMsgPlaceholder.isStreaming = false;
+
+        // Permanently remove conversation data comment from final content
+        assistantMsgPlaceholder.content = accumulatedResponse.replace(
+            /<!-- CONVERSATION_DATA:.+?-->/,
+            "",
+        );
+
+        if (conversationDataFound) {
+            console.log("Applying conversation data:", conversationDataFound);
+            if (
+                conversationDataFound.conversation_id &&
+                !currentConversationId.value
+            ) {
+                currentConversationId.value =
+                    conversationDataFound.conversation_id;
+                conversation.value.id = conversationDataFound.conversation_id; // Update conversation object ID
+                console.log(
+                    `New conversation ID set: ${currentConversationId.value}`,
+                );
+                fetchRecentChats(); // Refresh sidebar list
+            }
+            // Update model/style if returned by backend (optional)
+            if (conversationDataFound.model)
+                conversation.value.model = conversationDataFound.model;
+            if (conversationDataFound.style)
+                conversation.value.style = conversationDataFound.style;
+        } else {
+            console.log("No conversation data found in response.");
+            // If it was a new chat but no ID came back, something might be wrong
+            if (!currentConversationId.value) {
+                console.warn(
+                    "New chat initiated, but no conversation ID received from backend.",
+                );
+                // Optionally surface an error or retry? For now, just log.
+            }
         }
     } catch (err) {
-        console.error("Error sending message:", err);
-        error.value = "Failed to send message. Please try again later.";
-
-        // Remove the empty AI message
-        if (
-            messages.value.length === aiMessageIndex + 1 &&
-            !messages.value[aiMessageIndex].content
-        ) {
-            messages.value.pop();
-        } else if (messages.value[aiMessageIndex]) {
-            messages.value[aiMessageIndex].content +=
-                "\n\n[Error: Message transmission interrupted]";
-        }
-    } finally {
-        loading.value = false;
+        console.error("Error sending message or processing stream:", err);
+        error.value = `Failed to get response: ${err.message}. Please try again.`;
         isProcessing.value = false;
         isStreaming.value = false;
+
+        // Update placeholder message with error
+        assistantMsgPlaceholder.content = `[Error: ${err.message || "Failed to get response"}]`;
+        assistantMsgPlaceholder.isStreaming = false; // Ensure streaming indicator is off
+    } finally {
+        // Ensure flags are reset even if errors occur mid-stream
+        isProcessing.value = false;
+        isStreaming.value = false;
+        if (assistantMsgPlaceholder)
+            assistantMsgPlaceholder.isStreaming = false;
         scrollToBottom();
     }
 };
 
+/**
+ * Sets the chat input field content.
+ * @param {string} promptText - The text to set as the input value.
+ */
 const setPrompt = (promptText) => {
     message.value = promptText;
+    // Maybe focus the input field here?
+    // document.getElementById('chat-input-textarea')?.focus();
 };
 
-const changeModel = async (model) => {
-    selectedModel.value = model;
-
-    // Only update the model on the server if we have an existing conversation
-    if (conversation.value && conversation.value.id) {
-        try {
-            await axios.put(`/conversations/${conversation.value.id}/model`, {
-                model: selectedModel.value,
-            });
-        } catch (error) {
-            console.error("Failed to update model preference:", error);
-        }
+/**
+ * Updates the selected model and persists the change if in an active conversation.
+ * @param {string} modelId - The ID of the model to select.
+ */
+const changeModel = async (modelId) => {
+    if (selectedModel.value === modelId) return;
+    selectedModel.value = modelId;
+    // Update preference on backend only for existing conversations
+    if (currentConversationId.value) {
+        await updateModelPreference();
     }
 };
 
-const changeStyle = async (style) => {
-    selectedStyle.value = style;
-
-    // Only update the style on the server if we have an existing conversation
-    if (conversation.value && conversation.value.id) {
-        try {
-            await axios.put(`/conversations/${conversation.value.id}/style`, {
-                style: selectedStyle.value,
-            });
-        } catch (error) {
-            console.error("Failed to update style preference:", error);
-        }
+/**
+ * Updates the selected style and persists the change if in an active conversation.
+ * @param {string} styleId - The ID of the style to select.
+ */
+const changeStyle = async (styleId) => {
+    if (selectedStyle.value === styleId) return;
+    selectedStyle.value = styleId;
+    // Update preference on backend only for existing conversations
+    if (currentConversationId.value) {
+        await updateStylePreference();
     }
 };
 
+/**
+ * Regenerates the last assistant response based on the preceding user message.
+ */
 const regenerateLastMessage = async () => {
     if (
-        !conversation.value ||
-        !conversation.value.id ||
-        !conversation.value.messages ||
-        conversation.value.messages.length < 2
-    )
+        !conversation.value?.messages ||
+        conversation.value.messages.length < 2 ||
+        isProcessing.value ||
+        isStreaming.value
+    ) {
+        console.warn(
+            "Cannot regenerate: No conversation, not enough messages, or already processing.",
+        );
         return;
-
-    // Find the last pair of messages (user and assistant)
-    const messages = conversation.value.messages;
-    let lastAssistantIndex = -1;
-    let lastUserIndex = -1;
-
-    for (let i = messages.length - 1; i >= 0; i--) {
-        if (messages[i].role === "assistant" && lastAssistantIndex === -1) {
-            lastAssistantIndex = i;
-        } else if (
-            messages[i].role === "user" &&
-            lastAssistantIndex !== -1 &&
-            lastUserIndex === -1
-        ) {
-            lastUserIndex = i;
-            break;
-        }
     }
 
-    if (lastAssistantIndex >= 0 && lastUserIndex >= 0) {
-        isProcessing.value = true;
-        isStreaming.value = true;
+    // Find the index of the last assistant message to replace
+    const lastMessageIndex = conversation.value.messages.length - 1;
+    if (conversation.value.messages[lastMessageIndex]?.role !== "assistant") {
+        console.warn(
+            "Cannot regenerate: Last message is not from the assistant.",
+        );
+        return;
+    }
 
-        // Remove the last assistant message
-        conversation.value.messages.splice(lastAssistantIndex, 1);
+    // Find the preceding user message
+    const lastUserMessageIndex = lastMessageIndex - 1;
+    if (
+        lastUserMessageIndex < 0 ||
+        conversation.value.messages[lastUserMessageIndex]?.role !== "user"
+    ) {
+        console.warn(
+            "Cannot regenerate: Could not find preceding user message.",
+        );
+        return;
+    }
 
-        // Prepare history for regeneration
-        const history = conversation.value.messages
-            .slice(0, lastUserIndex + 1)
-            .map((m) => ({
-                role: m.role,
-                content: m.content,
-            }));
+    const lastUserMessageContent =
+        conversation.value.messages[lastUserMessageIndex].content;
 
-        console.log("Regenerating response with history:", history);
+    // Prepare history (all messages up to and including the last user message)
+    const history = conversation.value.messages
+        .slice(0, lastUserMessageIndex + 1)
+        .map((m) => ({ role: m.role, content: m.content }));
 
-        // Close any existing event source
-        closeEventSource();
+    if (!history.length) {
+        console.warn("Cannot regenerate: History is empty.");
+        return;
+    }
 
-        try {
-            // Create data for the request
-            const data = {
-                conversation_id: conversation.value.id,
-                model: selectedModel.value,
-                style: selectedStyle.value,
-                history: history,
-                message: history[history.length - 1].content, // Send the last user message as the main message
-            };
+    console.log("Regenerating response...");
 
-            console.log("Sending regeneration request:", {
-                endpoint: "/ai/stream",
-                conversationId: conversation.value.id,
-                model: selectedModel.value,
-                style: selectedStyle.value,
+    isProcessing.value = true;
+    isStreaming.value = false; // Will be set true when stream starts
+    error.value = null;
+
+    // Replace the last assistant message with a streaming placeholder
+    const assistantMsgPlaceholder = {
+        id: `assistant-regen-${Date.now()}`,
+        role: "assistant",
+        content: "",
+        timestamp: new Date(),
+        created_at: new Date().toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit",
+        }),
+        isStreaming: true,
+    };
+    // Replace the last message directly
+    conversation.value.messages.splice(
+        lastMessageIndex,
+        1,
+        assistantMsgPlaceholder,
+    );
+
+    scrollToBottom();
+
+    try {
+        const data = {
+            message: lastUserMessageContent, // The prompt is the last user message
+            model: selectedModel.value,
+            style: selectedStyle.value,
+            conversation_id: currentConversationId.value,
+            history: history, // Provide context
+        };
+
+        console.log("Sending regeneration request:", {
+            endpoint: "/ai/stream",
+            conversationId: currentConversationId.value,
+            model: selectedModel.value,
+            style: selectedStyle.value,
+            historyLength: history.length,
+        });
+
+        const response = await fetch("/ai/stream", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": token,
+                "X-Requested-With": "XMLHttpRequest",
+                Accept: "text/event-stream",
+            },
+            credentials: "same-origin",
+            body: JSON.stringify(data),
+        });
+
+        isProcessing.value = false; // Processing done
+
+        if (!response.ok || !response.body) {
+            console.error("Server response error during regeneration:", {
+                status: response.status,
+                statusText: response.statusText,
             });
+            const errorText = await response.text();
+            throw new Error(
+                `Server error ${response.status}: ${errorText || response.statusText}`,
+            );
+        }
 
-            // Use fetch with proper streaming support - much more reliable than EventSource
-            const response = await fetch("/ai/stream", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRF-TOKEN": token,
-                    "X-Requested-With": "XMLHttpRequest",
-                    "Accept": "text/event-stream"
-                },
-                credentials: "same-origin",
-                body: JSON.stringify(data),
-            });
+        isStreaming.value = true; // Stream starts
+        assistantMsgPlaceholder.isStreaming = true;
 
-            if (!response.ok) {
-                console.error("Server response error:", {
-                    status: response.status,
-                    statusText: response.statusText
-                });
-                throw new Error(
-                    `Server responded with ${response.status}: ${response.statusText}`,
-                );
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulatedResponse = "";
+
+        console.log("Regeneration stream started...");
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+                console.log("Regeneration stream completed.");
+                break;
             }
 
-            // Add placeholder for the assistant's response
-            conversation.value.messages.push({
-                id: Date.now(),
-                role: "assistant",
-                content: "",
-                created_at: new Date().toLocaleTimeString([], {
-                    hour: "numeric",
-                    minute: "2-digit",
-                }),
-            });
-
-            const lastMessageIndex = conversation.value.messages.length - 1;
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let responseText = "";
-
-            console.log("Regeneration stream started, processing chunks...");
-
-            // Process the stream
-            while (true) {
-                const { done, value } = await reader.read();
-
-                if (done) {
-                    console.log("Regeneration stream completed.");
-                    break;
-                }
-
-                // Decode and handle the chunk
-                const chunk = decoder.decode(value, { stream: true });
-                responseText += chunk;
-
-                console.log("Received chunk:", chunk.substring(0, 50) + (chunk.length > 50 ? "..." : ""));
-
-                // Update the AI message with current accumulated text
-                if (conversation.value && conversation.value.messages && lastMessageIndex < conversation.value.messages.length) {
-                    conversation.value.messages[lastMessageIndex].content = responseText;
-                }
-                
-                scrollToBottom();
-            }
-
-            // Check if we received a conversation ID from the response
-            try {
-                const jsonMatch = responseText.match(
-                    /<!-- CONVERSATION_DATA:(.+?)-->/,
-                );
-                if (jsonMatch && jsonMatch[1]) {
-                    const conversationData = JSON.parse(jsonMatch[1]);
-                    console.log("Found conversation data in regeneration:", conversationData);
-
-                    // Clean up the conversation data comment
-                    if (conversation.value && conversation.value.messages && lastMessageIndex < conversation.value.messages.length) {
-                        conversation.value.messages[lastMessageIndex].content = 
-                            conversation.value.messages[lastMessageIndex].content.replace(/<!-- CONVERSATION_DATA:.+?-->/, "");
-                    }
-                }
-            } catch (parseErr) {
-                console.error("Failed to parse conversation data:", parseErr);
-            }
-        } catch (error) {
-            console.error("Error regenerating message:", error);
-            conversation.value.messages.push({
-                id: Date.now(),
-                role: "assistant",
-                content: `Error regenerating response: ${error.message}`,
-                created_at: new Date().toLocaleTimeString([], {
-                    hour: "numeric",
-                    minute: "2-digit",
-                }),
-            });
-        } finally {
-            isStreaming.value = false;
-            isProcessing.value = false;
+            const chunk = decoder.decode(value, { stream: true });
+            accumulatedResponse += chunk;
+            assistantMsgPlaceholder.content = accumulatedResponse.replace(
+                /<!-- CONVERSATION_DATA:.+?-->/,
+                "",
+            ); // Update content, hide data tag
             scrollToBottom();
         }
+
+        isStreaming.value = false;
+        assistantMsgPlaceholder.isStreaming = false;
+        // Ensure final content doesn't have the data tag
+        assistantMsgPlaceholder.content = accumulatedResponse.replace(
+            /<!-- CONVERSATION_DATA:.+?-->/,
+            "",
+        );
+
+        // No need to handle conversation ID here as we are in an existing conversation.
+        console.log("Regeneration successful.");
+    } catch (err) {
+        console.error("Error regenerating message:", err);
+        error.value = `Failed to regenerate response: ${err.message}.`;
+        isProcessing.value = false;
+        isStreaming.value = false;
+
+        // Update placeholder with error
+        assistantMsgPlaceholder.content = `[Error regenerating: ${err.message || "Failed"}]`;
+        assistantMsgPlaceholder.isStreaming = false;
+    } finally {
+        isProcessing.value = false;
+        isStreaming.value = false;
+        if (assistantMsgPlaceholder)
+            assistantMsgPlaceholder.isStreaming = false;
+        scrollToBottom();
     }
 };
 
+/**
+ * Fetches the available AI models from the backend.
+ */
 const fetchAvailableModels = async () => {
+    loadingModels.value = true;
     try {
-        loadingModels.value = true;
         console.log("Fetching available AI models");
         const response = await axios.get("/ai/models");
-        availableModels.value = response.data;
-        console.log("Received models:", response.data);
-        
-        // Set default model if none selected and we have models
-        if (!selectedModel.value && response.data.length > 0) {
-            selectedModel.value = response.data[0];
+        availableModels.value = response.data; // Assuming response.data is an array of model IDs/objects
+        console.log("Received models:", availableModels.value);
+
+        // Set default model if none is selected or the current one isn't available
+        if (
+            (!selectedModel.value ||
+                !availableModels.value.includes(selectedModel.value)) &&
+            availableModels.value.length > 0
+        ) {
+            selectedModel.value = availableModels.value[0];
+            console.log(`Default model set to: ${selectedModel.value}`);
         }
     } catch (err) {
         console.error("Failed to fetch available models:", err);
-        error.value =
-            "Failed to load available AI models. Please try again later.";
+        error.value = "Failed to load AI models. Using default.";
+        // Keep the hardcoded default or potentially disable selection
     } finally {
         loadingModels.value = false;
     }
 };
 
+/**
+ * Fetches the available conversation styles from the backend.
+ */
 const fetchAvailableStyles = async () => {
     try {
         console.log("Fetching available AI styles");
         const response = await axios.get("/ai/styles");
-        availableStyles.value = response.data;
-        console.log("Received styles:", response.data);
-        
-        // Set default style if none selected and we have styles
-        if (!selectedStyle.value && Object.keys(response.data).length > 0) {
-            selectedStyle.value = Object.keys(response.data)[0];
+        availableStyles.value = response.data; // Assuming response.data is an object like { 'id': 'Name' }
+        console.log("Received styles:", availableStyles.value);
+
+        // Set default style if none is selected or the current one isn't available
+        const styleKeys = Object.keys(availableStyles.value);
+        if (
+            (!selectedStyle.value ||
+                !availableStyles.value[selectedStyle.value]) &&
+            styleKeys.length > 0
+        ) {
+            selectedStyle.value = styleKeys[0]; // Use the first available style key
+            console.log(`Default style set to: ${selectedStyle.value}`);
         }
     } catch (err) {
         console.error("Failed to fetch available styles:", err);
-        // Fallback to default styles if API fails
+        // Provide hardcoded fallback styles
         availableStyles.value = {
-            "default": "Default",
-            "creative": "Creative", 
-            "precise": "Precise",
-            "balanced": "Balanced"
+            balanced: "Balanced",
+            creative: "Creative",
+            precise: "Precise",
         };
-    }
-};
-
-// Debugging helper - call this from browser console with aiWidgetDebug()
-window.aiWidgetDebug = () => {
-    console.group('AiWidget Debug Information');
-    console.log('Current state:', {
-        conversation: conversation.value,
-        currentConversationId: currentConversationId.value,
-        selectedModel: selectedModel.value,
-        selectedStyle: selectedStyle.value,
-        isProcessing: isProcessing.value,
-        isStreaming: isStreaming.value,
-        isNewConversation: isNewConversation.value,
-        availableModels: availableModels.value
-    });
-    
-    // Test endpoint connectivity
-    fetch('/ai/test-student-tool')
-        .then(response => response.json())
-        .then(data => {
-            console.log('StudentTool test result:', data);
-        })
-        .catch(error => {
-            console.error('StudentTool test failed:', error);
-        });
-        
-    fetch('/ai/test-prism?prompt=Who%20is%20Emma%20in%20my%20class')
-        .then(response => response.json())
-        .then(data => {
-            console.log('Prism test result:', data);
-        })
-        .catch(error => {
-            console.error('Prism test failed:', error);
-        });
-    
-    console.groupEnd();
-    
-    return "Debug info logged to console. Check network requests for test results.";
-};
-
-// Component lifecycle hooks
-onMounted(() => {
-    fetchAvailableModels();
-    fetchRecentChats();
-    fetchAvailableStyles();
-});
-
-// Watch for changes to model/style and update preferences
-watch(selectedModel, async (newModel, oldModel) => {
-    if (
-        newModel !== oldModel &&
-        currentConversationId.value &&
-        !isNewConversation.value
-    ) {
-        await updateModelPreference();
-    }
-});
-
-watch(selectedStyle, async (newStyle, oldStyle) => {
-    if (
-        newStyle !== oldStyle &&
-        currentConversationId.value &&
-        !isNewConversation.value
-    ) {
-        await updateStylePreference();
-    }
-});
-
-/**
- * Update model preference for current conversation
- */
-const updateModelPreference = async () => {
-    if (!currentConversationId.value || isNewConversation.value) return;
-
-    try {
-        await axios.put(`/conversations/${currentConversationId.value}/model`, {
-            model: selectedModel.value,
-        });
-    } catch (err) {
-        console.error("Failed to update model preference:", err);
-        // Don't show error to user
+        if (
+            !selectedStyle.value ||
+            !availableStyles.value[selectedStyle.value]
+        ) {
+            selectedStyle.value = "balanced"; // Fallback default
+        }
+        console.warn("Using fallback styles.");
     }
 };
 
 /**
- * Update style preference for current conversation
+ * Updates the model preference for the current conversation on the backend.
+ * Debounced to avoid rapid API calls if selection changes quickly.
  */
-const updateStylePreference = async () => {
-    if (!currentConversationId.value || isNewConversation.value) return;
+const updateModelPreference = debounce(async () => {
+    if (!currentConversationId.value) return;
 
     try {
-        await axios.put(`/conversations/${currentConversationId.value}/style`, {
-            style: selectedStyle.value,
-        });
+        console.log(
+            `Updating model preference for ${currentConversationId.value} to ${selectedModel.value}`,
+        );
+        await axios.put(
+            `/ai/conversations/${currentConversationId.value}/model`,
+            {
+                model: selectedModel.value,
+            },
+        );
     } catch (err) {
-        console.error("Failed to update style preference:", err);
-        // Don't show error to user
+        console.error("Failed to update model preference on backend:", err);
+        // Non-critical, don't show user error unless necessary
     }
-};
+}, 500); // Debounce for 500ms
 
+/**
+ * Updates the style preference for the current conversation on the backend.
+ * Debounced to avoid rapid API calls.
+ */
+const updateStylePreference = debounce(async () => {
+    if (!currentConversationId.value) return;
+
+    try {
+        console.log(
+            `Updating style preference for ${currentConversationId.value} to ${selectedStyle.value}`,
+        );
+        await axios.put(
+            `/ai/conversations/${currentConversationId.value}/style`,
+            {
+                style: selectedStyle.value,
+            },
+        );
+    } catch (err) {
+        console.error("Failed to update style preference on backend:", err);
+        // Non-critical
+    }
+}, 500); // Debounce for 500ms
+
+/**
+ * Scrolls the chat messages container to the bottom.
+ * Uses a short timeout to allow the DOM to update after new messages are added.
+ */
 const scrollToBottom = () => {
     setTimeout(() => {
-        document.getElementById("chat-messages-container")?.scrollTo({
-            top: document.getElementById("chat-messages-container")
-                ?.scrollHeight,
-            behavior: "smooth",
-        });
+        const container = document.getElementById("chat-messages-container");
+        if (container) {
+            container.scrollTo({
+                top: container.scrollHeight,
+                behavior: "smooth",
+            });
+        }
     }, 100);
 };
 
-// Confirm deletion
+/**
+ * Sets the conversation ID to be deleted and shows the confirmation modal.
+ * @param {string|number} conversationId - The ID of the conversation to confirm deletion for.
+ */
 const confirmDelete = (conversationId) => {
     conversationIdToDelete.value = conversationId;
-    showDeleteConfirm.value = true;
+    showDeleteConfirm.value = true; // Assuming a modal component reacts to this
+    console.log(
+        `Confirmation requested for deleting conversation ${conversationId}`,
+    );
+    // In a real app, you'd likely use a modal component bound to showDeleteConfirm
+    // For now, we'll just call delete directly for simplicity if no modal exists.
+    // Replace this direct call with your modal logic if available.
+    if (
+        confirm(
+            `Are you sure you want to delete conversation ${conversationId}?`,
+        )
+    ) {
+        deleteConversation(conversationId);
+    } else {
+        cancelDelete();
+    }
 };
 
-// Cancel deletion
+/**
+ * Hides the delete confirmation modal and clears the ID.
+ */
 const cancelDelete = () => {
     showDeleteConfirm.value = false;
     conversationIdToDelete.value = null;
+    console.log("Deletion cancelled.");
 };
+
+// --- Lifecycle Hooks ---
+
+onMounted(() => {
+    fetchAvailableModels();
+    fetchAvailableStyles();
+    fetchRecentChats();
+    startNewChat(); // Ensure a clean initial state
+});
+
+// --- Watchers ---
+
+// Watchers trigger debounced preference updates when model/style change *during an active conversation*.
+watch(selectedModel, (newModel, oldModel) => {
+    if (newModel !== oldModel && currentConversationId.value) {
+        updateModelPreference();
+    }
+});
+
+watch(selectedStyle, (newStyle, oldStyle) => {
+    if (newStyle !== oldStyle && currentConversationId.value) {
+        updateStylePreference();
+    }
+});
 </script>
 
 <template>
-    <div class="min-h-screen bg-background" x-data="{ sidebarOpen: false }">
+    <div class="min-h-screen bg-background flex flex-col">
         <!-- Right Sidebar (Chat History) -->
         <ChatSidebar
             :open="sidebarOpen"
             @close="sidebarOpen = false"
-            :chats="recentChats"
+            :chats="conversations"
+            :current-conversation-id="currentConversationId"
+            :loading="loadingConversations"
             @load-conversation="loadConversation"
-            @delete-conversation="deleteConversation"
+            @delete-conversation="confirmDelete"
             @new-conversation="startNewChat"
         />
 
@@ -750,23 +852,42 @@ const cancelDelete = () => {
             v-show="sidebarOpen"
             class="fixed inset-0 z-30 bg-gray-900/50 lg:hidden"
             @click="sidebarOpen = false"
+            aria-hidden="true"
         ></div>
 
         <!-- Main Content Area -->
-        <div class="flex flex-col min-h-screen">
+        <div class="flex flex-col flex-1 min-h-0">
             <!-- Header -->
             <ChatHeader
                 :conversation="conversation"
+                :can-regenerate="
+                    conversation?.messages?.length >= 2 &&
+                    conversation.messages[conversation.messages.length - 1]
+                        ?.role === 'assistant'
+                "
+                :is-processing="isProcessing || isStreaming"
                 @toggle-sidebar="toggleSidebar"
                 @new-conversation="startNewChat"
                 @regenerate-last-message="regenerateLastMessage"
             />
 
-            <!-- Main Content -->
-            <main class="flex-1 flex flex-col mx-auto max-w-5xl w-full">
+            <!-- User-facing Error Display -->
+            <div
+                v-if="error"
+                class="px-4 py-2 bg-red-100 border-l-4 border-red-500 text-red-700 dark:bg-red-900 dark:border-red-700 dark:text-red-200"
+                role="alert"
+            >
+                <p class="font-bold">Error</p>
+                <p>{{ error }}</p>
+            </div>
+
+            <!-- Main Chat Area -->
+            <main class="flex-1 flex flex-col mx-auto max-w-5xl w-full min-h-0">
+                <!-- Initial State (No Active Conversation) -->
                 <template v-if="!conversation">
-                    <!-- Initial State: Welcome, Input, Quick Actions, Recent Chats Grid -->
-                    <div class="flex-1 flex flex-col items-center w-full">
+                    <div
+                        class="flex-1 flex flex-col items-center justify-center p-4 w-full"
+                    >
                         <!-- Welcome Message & Suggestions -->
                         <div class="w-full max-w-3xl mb-8 text-center">
                             <div
@@ -791,52 +912,38 @@ const cancelDelete = () => {
                                 Good {{ timeOfDay }}, Teacher!
                             </h1>
                             <p class="text-gray-600 dark:text-gray-400 mb-6">
-                                How can I help you today?
+                                How can I assist you? Select a suggestion or
+                                type your query below.
                             </p>
-
-                            <!-- Suggestion Buttons -->
                             <ChatSuggestions @set-prompt="setPrompt" />
                         </div>
 
-                        <!-- Chat Input Form (Initial State) -->
-                        <ChatInput
-                            v-model="message"
-                            :is-processing="isProcessing"
-                            :is-streaming="isStreaming"
-                            :selected-model="selectedModel"
-                            :selected-style="selectedStyle"
-                            :available-models="availableModels"
-                            :available-styles="availableStyles"
-                            @send-message="sendMessage"
-                            @change-model="changeModel"
-                            @change-style="changeStyle"
-                            @new-conversation="startNewChat"
-                        />
-
-                        <!-- Recent Chats Grid -->
+                        <!-- Recent Chats Grid (Only if not loading and has items) -->
                         <RecentChats
-                            :chats="recentChats"
+                            v-if="
+                                !loadingConversations &&
+                                conversations.length > 0
+                            "
+                            :chats="conversations"
                             @load-conversation="loadConversation"
-                            @delete-conversation="deleteConversation"
+                            @delete-conversation="confirmDelete"
                         />
+                        <div
+                            v-else-if="loadingConversations"
+                            class="text-center text-gray-500 dark:text-gray-400 mt-8"
+                        >
+                            Loading recent chats...
+                        </div>
+                        <div
+                            v-else
+                            class="text-center text-gray-500 dark:text-gray-400 mt-8"
+                        >
+                            No recent chats found. Start a new conversation!
+                        </div>
                     </div>
-                </template>
-
-                <template v-else>
-                    <!-- Active Conversation State: Messages + Fixed Input -->
-                    <div class="flex-1 flex flex-col min-h-0 pb-32">
-                        <!-- Added padding-bottom for fixed input -->
-                        <!-- Messages Container -->
-                        <ChatMessages
-                            :conversation="conversation"
-                            :is-processing="isProcessing"
-                            :is-streaming="isStreaming"
-                        />
-                    </div>
-
-                    <!-- Fixed Chat Input Form (Active Conversation) -->
+                    <!-- Chat Input Form (Always visible at bottom in initial state) -->
                     <div
-                        class="sticky bottom-0 z-10 bg-gray-50 dark:bg-gray-900 pt-4 pb-2 border-t border-gray-200 dark:border-gray-700"
+                        class="sticky bottom-0 z-10 bg-gray-50 dark:bg-gray-900 pt-4 pb-2 border-t border-gray-200 dark:border-gray-700 w-full max-w-5xl mx-auto px-4"
                     >
                         <ChatInput
                             v-model="message"
@@ -846,6 +953,40 @@ const cancelDelete = () => {
                             :selected-style="selectedStyle"
                             :available-models="availableModels"
                             :available-styles="availableStyles"
+                            :loading-models="loadingModels"
+                            @send-message="sendMessage"
+                            @change-model="changeModel"
+                            @change-style="changeStyle"
+                        />
+                    </div>
+                </template>
+
+                <!-- Active Conversation State -->
+                <template v-else>
+                    <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
+                        <!-- Messages Container - Takes remaining space, scrolls internally -->
+                        <ChatMessages
+                            id="chat-messages-container"
+                            class="flex-1 overflow-y-auto p-4"
+                            :conversation="conversation"
+                            :is-processing="isProcessing"
+                            :is-streaming="isStreaming"
+                            :loading="loadingMessages"
+                        />
+                    </div>
+                    <!-- Fixed Chat Input Form (Active Conversation) -->
+                    <div
+                        class="sticky bottom-0 z-10 bg-gray-50 dark:bg-gray-900 pt-4 pb-2 border-t border-gray-200 dark:border-gray-700 w-full max-w-5xl mx-auto px-4"
+                    >
+                        <ChatInput
+                            v-model="message"
+                            :is-processing="isProcessing"
+                            :is-streaming="isStreaming"
+                            :selected-model="selectedModel"
+                            :selected-style="selectedStyle"
+                            :available-models="availableModels"
+                            :available-styles="availableStyles"
+                            :loading-models="loadingModels"
                             :conversation="conversation"
                             @send-message="sendMessage"
                             @change-model="changeModel"
@@ -859,16 +1000,13 @@ const cancelDelete = () => {
 </template>
 
 <style>
-.typing-indicator {
-    display: inline-flex;
-    align-items: center;
-}
+/* Basic Typing Indicator (can be enhanced) */
 .typing-indicator span {
     height: 5px;
     width: 5px;
     margin: 0 1px;
-    background-color: currentColor;
-    display: block;
+    background-color: currentColor; /* Inherits text color */
+    display: inline-block; /* Changed from block */
     border-radius: 50%;
     opacity: 0.4;
     animation: typing 1s infinite ease-in-out;
@@ -882,6 +1020,7 @@ const cancelDelete = () => {
 .typing-indicator span:nth-child(3) {
     animation-delay: 0.2s;
 }
+
 @keyframes typing {
     0%,
     80%,
@@ -894,7 +1033,8 @@ const cancelDelete = () => {
         opacity: 1;
     }
 }
-/* Ensure prose styles don't add excessive margins */
+
+/* Ensure prose styles within chat messages don't add excessive margins */
 .prose :first-child {
     margin-top: 0;
 }
