@@ -38,16 +38,11 @@ const conversations = ref([]);
 const isProcessing = ref(false);
 const isStreaming = ref(false);
 const message = ref("");
-const selectedModel = ref("gpt-4");
+const selectedModel = ref("gemini-2.0-flash");
 const selectedStyle = ref("balanced");
 const eventSource = ref(null);
 const availableModels = ref([]);
-const availableStyles = ref({
-    default: "Default",
-    creative: "Creative",
-    precise: "Precise",
-    balanced: "Balanced",
-});
+const availableStyles = ref({});
 
 const recentChats = ref([]);
 const isNewConversation = ref(true);
@@ -79,9 +74,11 @@ const toggleSidebar = () => {
 const fetchRecentChats = async () => {
     try {
         loadingConversations.value = true;
+        console.log("Fetching recent conversations");
         const response = await axios.get("/ai/conversations");
         conversations.value = response.data;
         recentChats.value = response.data;
+        console.log("Received conversations:", response.data.length);
     } catch (err) {
         console.error("Failed to fetch recent chats:", err);
         error.value =
@@ -98,16 +95,18 @@ const loadConversation = async (id) => {
     isNewConversation.value = false;
 
     try {
+        console.log(`Loading conversation ${id}`);
         const response = await axios.get(`/ai/conversations/${id}/messages`);
         conversation.value = response.data.conversation;
+        console.log("Loaded conversation:", response.data);
 
         // Set selected model and style based on the loaded conversation
         selectedModel.value =
             conversation.value.model ||
             (availableModels.value.length > 0
-                ? availableModels.value[0].id
+                ? availableModels.value[0]
                 : null);
-        selectedStyle.value = conversation.value.style || "normal";
+        selectedStyle.value = conversation.value.style || "balanced";
 
         // Load messages
         messages.value = conversation.value.messages.map((message) => ({
@@ -116,6 +115,7 @@ const loadConversation = async (id) => {
             timestamp: new Date(message.created_at),
         }));
 
+        console.log(`Loaded ${messages.value.length} messages for conversation ${id}`);
         scrollToBottom();
     } catch (err) {
         console.error(`Failed to load conversation ${id}:`, err);
@@ -176,10 +176,13 @@ const sendMessage = async () => {
     isStreaming.value = true;
     error.value = null;
 
+    // Extract visible content (what the user actually sees) for display
+    const visibleContent = message.value.split('\n\nresource_uuid:')[0];
+
     // Add user message to the conversation
     const userMsg = {
         role: "user",
-        content: message.value,
+        content: visibleContent, // Use only the visible part for display
         timestamp: new Date(),
     };
 
@@ -200,14 +203,14 @@ const sendMessage = async () => {
     conversation.value.messages.push({
         id: Date.now(),
         role: "user",
-        content: userMsg.content,
+        content: userMsg.content, // Display only the visible message content
         created_at: new Date().toLocaleTimeString([], {
             hour: "numeric",
             minute: "2-digit",
         }),
     });
     
-    const sentMessage = message.value;
+    const sentMessage = message.value; // Keep full message with resource IDs for API
     message.value = ""; // Clear input field
 
     scrollToBottom();
@@ -232,27 +235,41 @@ const sendMessage = async () => {
     });
 
     try {
-        // Create form data for the request
+        // Create data for the request
         const data = {
-            message: sentMessage,
+            message: sentMessage, // Send the full message with resource IDs
             model: selectedModel.value,
             style: selectedStyle.value,
             conversation_id: currentConversationId.value,
         };
 
-        // Use fetch with POST instead of EventSource for better control
+        console.log("Sending AI request:", {
+            endpoint: "/ai/stream",
+            message: visibleContent, // Log only visible part for privacy/debugging
+            hasResources: sentMessage.includes('resource_uuid:'),
+            model: selectedModel.value,
+            style: selectedStyle.value,
+            conversationId: currentConversationId.value
+        });
+
+        // Use fetch with proper streaming support
         const response = await fetch("/ai/stream", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "X-CSRF-TOKEN": token,
                 "X-Requested-With": "XMLHttpRequest",
+                "Accept": "text/event-stream"
             },
             credentials: "same-origin",
             body: JSON.stringify(data),
         });
 
         if (!response.ok) {
+            console.error("Server response error:", {
+                status: response.status,
+                statusText: response.statusText
+            });
             throw new Error(
                 `Server responded with ${response.status}: ${response.statusText}`,
             );
@@ -262,17 +279,22 @@ const sendMessage = async () => {
         const decoder = new TextDecoder();
         let responseText = "";
 
+        console.log("Stream started, processing chunks...");
+
         // Process the stream
         while (true) {
             const { done, value } = await reader.read();
 
             if (done) {
+                console.log("Stream completed.");
                 break;
             }
 
             // Decode and handle the chunk
             const chunk = decoder.decode(value, { stream: true });
             responseText += chunk;
+
+            console.log("Received chunk:", chunk.substring(0, 50) + (chunk.length > 50 ? "..." : ""));
 
             // Update the AI message with the current accumulated text in both arrays
             if (messages.value[aiMessageIndex]) {
@@ -290,15 +312,16 @@ const sendMessage = async () => {
 
         // Check if we received a conversation ID from the response
         try {
+            console.log("Checking for conversation data in response");
             const jsonMatch = responseText.match(
                 /<!-- CONVERSATION_DATA:(.+?)-->/,
             );
             if (jsonMatch && jsonMatch[1]) {
                 const conversationData = JSON.parse(jsonMatch[1]);
+                console.log("Found conversation data:", conversationData);
 
                 if (conversationData.conversation_id) {
-                    currentConversationId.value =
-                        conversationData.conversation_id;
+                    currentConversationId.value = conversationData.conversation_id;
                     isNewConversation.value = false;
 
                     // Remove the JSON comment from the message content in both arrays
@@ -318,6 +341,8 @@ const sendMessage = async () => {
                     // Refresh recent chats
                     fetchRecentChats();
                 }
+            } else {
+                console.log("No conversation data found in response");
             }
         } catch (parseErr) {
             console.error("Failed to parse conversation data:", parseErr);
@@ -420,143 +445,125 @@ const regenerateLastMessage = async () => {
                 content: m.content,
             }));
 
+        console.log("Regenerating response with history:", history);
+
         // Close any existing event source
         closeEventSource();
 
         try {
-            // Use web route instead of api route for SSE
-            const url = new URL("/ai/stream", window.location.origin);
-
-            // Add the CSRF token to the URL for EventSource
-            const csrfToken = document.head.querySelector(
-                'meta[name="csrf-token"]',
-            )?.content;
-            if (csrfToken) {
-                url.searchParams.append("_token", csrfToken);
-            }
-
-            eventSource.value = new EventSource(url);
-
-            // Placeholder for the assistant's response
-            let assistantMessageId = null;
-            let currentResponseText = "";
-
-            // Send the regeneration request via XHR
-            const apiPayload = {
+            // Create data for the request
+            const data = {
                 conversation_id: conversation.value.id,
                 model: selectedModel.value,
                 style: selectedStyle.value,
                 history: history,
+                message: history[history.length - 1].content, // Send the last user message as the main message
             };
 
-            // Handle different event types from the server
-            eventSource.value.addEventListener("open", () => {
-                // Connection opened - now we can send our POST request
-                axios.post("/ai/stream", apiPayload);
+            console.log("Sending regeneration request:", {
+                endpoint: "/ai/stream",
+                conversationId: conversation.value.id,
+                model: selectedModel.value,
+                style: selectedStyle.value,
             });
 
-            // Same event handlers as sendMessage
-            eventSource.value.addEventListener(
-                "assistant_message_created",
-                (e) => {
-                    const data = JSON.parse(e.data);
-                    assistantMessageId = data.id;
-
-                    // Create assistant message placeholder
-                    conversation.value.messages.push({
-                        id: assistantMessageId,
-                        role: "assistant",
-                        content: "",
-                        created_at: new Date().toLocaleTimeString([], {
-                            hour: "numeric",
-                            minute: "2-digit",
-                        }),
-                    });
+            // Use fetch with proper streaming support - much more reliable than EventSource
+            const response = await fetch("/ai/stream", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": token,
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Accept": "text/event-stream"
                 },
-            );
-
-            eventSource.value.addEventListener("message_chunk", (e) => {
-                const data = JSON.parse(e.data);
-
-                if (data.text) {
-                    currentResponseText += data.text;
-
-                    // Find and update the assistant message
-                    const assistantMessage = conversation.value.messages.find(
-                        (m) => m.id === assistantMessageId,
-                    );
-                    if (assistantMessage) {
-                        assistantMessage.content = currentResponseText;
-                    }
-                }
+                credentials: "same-origin",
+                body: JSON.stringify(data),
             });
 
-            eventSource.value.addEventListener("stream_complete", (e) => {
-                const data = JSON.parse(e.data);
-
-                const assistantMessage = conversation.value.messages.find(
-                    (m) => m.id === data.message_id,
+            if (!response.ok) {
+                console.error("Server response error:", {
+                    status: response.status,
+                    statusText: response.statusText
+                });
+                throw new Error(
+                    `Server responded with ${response.status}: ${response.statusText}`,
                 );
-                if (assistantMessage) {
-                    assistantMessage.content = data.final_content;
-                }
+            }
 
-                isStreaming.value = false;
-                closeEventSource();
-            });
-
-            eventSource.value.addEventListener("stream_error", (e) => {
-                const data = JSON.parse(e.data);
-                console.error("Stream error:", data.message);
-
-                if (data.message_id) {
-                    const assistantMessage = conversation.value.messages.find(
-                        (m) => m.id === data.message_id,
-                    );
-                    if (assistantMessage) {
-                        assistantMessage.content = data.message;
-                    }
-                } else {
-                    conversation.value.messages.push({
-                        id: Date.now(),
-                        role: "assistant",
-                        content: `Error: ${data.message}`,
-                        created_at: new Date().toLocaleTimeString([], {
-                            hour: "numeric",
-                            minute: "2-digit",
-                        }),
-                    });
-                }
-
-                isStreaming.value = false;
-                closeEventSource();
-            });
-
-            eventSource.value.addEventListener("stream_end", () => {
-                isStreaming.value = false;
-                isProcessing.value = false;
-                closeEventSource();
-            });
-
-            eventSource.value.onerror = (error) => {
-                console.error("EventSource error:", error);
-                isStreaming.value = false;
-                isProcessing.value = false;
-                closeEventSource();
-            };
-        } catch (error) {
-            console.error("Error regenerating message:", error);
+            // Add placeholder for the assistant's response
             conversation.value.messages.push({
                 id: Date.now(),
                 role: "assistant",
-                content: `Sorry, an error occurred: ${error.message}`,
+                content: "",
                 created_at: new Date().toLocaleTimeString([], {
                     hour: "numeric",
                     minute: "2-digit",
                 }),
             });
-            isProcessing.value = false;
+
+            const lastMessageIndex = conversation.value.messages.length - 1;
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let responseText = "";
+
+            console.log("Regeneration stream started, processing chunks...");
+
+            // Process the stream
+            while (true) {
+                const { done, value } = await reader.read();
+
+                if (done) {
+                    console.log("Regeneration stream completed.");
+                    break;
+                }
+
+                // Decode and handle the chunk
+                const chunk = decoder.decode(value, { stream: true });
+                responseText += chunk;
+
+                console.log("Received chunk:", chunk.substring(0, 50) + (chunk.length > 50 ? "..." : ""));
+
+                // Update the AI message with current accumulated text
+                if (conversation.value && conversation.value.messages && lastMessageIndex < conversation.value.messages.length) {
+                    conversation.value.messages[lastMessageIndex].content = responseText;
+                }
+                
+                scrollToBottom();
+            }
+
+            // Check if we received a conversation ID from the response
+            try {
+                const jsonMatch = responseText.match(
+                    /<!-- CONVERSATION_DATA:(.+?)-->/,
+                );
+                if (jsonMatch && jsonMatch[1]) {
+                    const conversationData = JSON.parse(jsonMatch[1]);
+                    console.log("Found conversation data in regeneration:", conversationData);
+
+                    // Clean up the conversation data comment
+                    if (conversation.value && conversation.value.messages && lastMessageIndex < conversation.value.messages.length) {
+                        conversation.value.messages[lastMessageIndex].content = 
+                            conversation.value.messages[lastMessageIndex].content.replace(/<!-- CONVERSATION_DATA:.+?-->/, "");
+                    }
+                }
+            } catch (parseErr) {
+                console.error("Failed to parse conversation data:", parseErr);
+            }
+        } catch (error) {
+            console.error("Error regenerating message:", error);
+            conversation.value.messages.push({
+                id: Date.now(),
+                role: "assistant",
+                content: `Error regenerating response: ${error.message}`,
+                created_at: new Date().toLocaleTimeString([], {
+                    hour: "numeric",
+                    minute: "2-digit",
+                }),
+            });
+        } finally {
             isStreaming.value = false;
+            isProcessing.value = false;
+            scrollToBottom();
         }
     }
 };
@@ -564,8 +571,15 @@ const regenerateLastMessage = async () => {
 const fetchAvailableModels = async () => {
     try {
         loadingModels.value = true;
+        console.log("Fetching available AI models");
         const response = await axios.get("/ai/models");
         availableModels.value = response.data;
+        console.log("Received models:", response.data);
+        
+        // Set default model if none selected and we have models
+        if (!selectedModel.value && response.data.length > 0) {
+            selectedModel.value = response.data[0];
+        }
     } catch (err) {
         console.error("Failed to fetch available models:", err);
         error.value =
@@ -575,10 +589,72 @@ const fetchAvailableModels = async () => {
     }
 };
 
+const fetchAvailableStyles = async () => {
+    try {
+        console.log("Fetching available AI styles");
+        const response = await axios.get("/ai/styles");
+        availableStyles.value = response.data;
+        console.log("Received styles:", response.data);
+        
+        // Set default style if none selected and we have styles
+        if (!selectedStyle.value && Object.keys(response.data).length > 0) {
+            selectedStyle.value = Object.keys(response.data)[0];
+        }
+    } catch (err) {
+        console.error("Failed to fetch available styles:", err);
+        // Fallback to default styles if API fails
+        availableStyles.value = {
+            "default": "Default",
+            "creative": "Creative", 
+            "precise": "Precise",
+            "balanced": "Balanced"
+        };
+    }
+};
+
+// Debugging helper - call this from browser console with aiWidgetDebug()
+window.aiWidgetDebug = () => {
+    console.group('AiWidget Debug Information');
+    console.log('Current state:', {
+        conversation: conversation.value,
+        currentConversationId: currentConversationId.value,
+        selectedModel: selectedModel.value,
+        selectedStyle: selectedStyle.value,
+        isProcessing: isProcessing.value,
+        isStreaming: isStreaming.value,
+        isNewConversation: isNewConversation.value,
+        availableModels: availableModels.value
+    });
+    
+    // Test endpoint connectivity
+    fetch('/ai/test-student-tool')
+        .then(response => response.json())
+        .then(data => {
+            console.log('StudentTool test result:', data);
+        })
+        .catch(error => {
+            console.error('StudentTool test failed:', error);
+        });
+        
+    fetch('/ai/test-prism?prompt=Who%20is%20Emma%20in%20my%20class')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Prism test result:', data);
+        })
+        .catch(error => {
+            console.error('Prism test failed:', error);
+        });
+    
+    console.groupEnd();
+    
+    return "Debug info logged to console. Check network requests for test results.";
+};
+
 // Component lifecycle hooks
 onMounted(() => {
     fetchAvailableModels();
     fetchRecentChats();
+    fetchAvailableStyles();
 });
 
 // Watch for changes to model/style and update preferences

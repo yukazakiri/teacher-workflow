@@ -134,56 +134,10 @@ Route::middleware([
 
 
     // Get all conversations (for API consumers)
-    Route::get('/ai/conversations', function (Request $request) {
-        $user = $request->user();
-        $currentTeamId = $user->currentTeam?->id;
-
-        if (!$currentTeamId) {
-            return response()->json([]);
-        }
-
-        return Conversation::where('team_id', $currentTeamId)
-            ->where('user_id', $user->id)
-            ->orderBy('last_activity_at', 'desc')
-            ->get()
-            ->map(function ($chat) {
-                return [
-                    'id' => $chat->id,
-                    'title' => $chat->title,
-                    'model' => $chat->model,
-                    'style' => $chat->style,
-                    'last_activity' => $chat->last_activity_at->diffForHumans(),
-                ];
-            });
-    });
+    Route::get('/ai/conversations', [AiStreamController::class, 'listConversations']);
 
     // Get conversation with messages
-    Route::get('/ai/conversations/{conversation}/messages', function (Conversation $conversation, Request $request) {
-        // Check ownership
-        if ($conversation->user_id !== $request->user()->id) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
-        return [
-            'conversation' => [
-                'id' => $conversation->id,
-                'title' => $conversation->title,
-                'model' => $conversation->model,
-                'style' => $conversation->style,
-                'messages' => $conversation->messages()
-                    ->orderBy('created_at', 'asc')
-                    ->get()
-                    ->map(function ($message) {
-                        return [
-                            'id' => $message->id,
-                            'role' => $message->role,
-                            'content' => $message->content,
-                            'created_at' => $message->created_at->format('g:i A')
-                        ];
-                    })
-            ]
-        ];
-    });
+    Route::get('/ai/conversations/{conversation}/messages', [AiStreamController::class, 'getConversation']);
 
     // Recent conversations
     Route::get('/chats/recent', function (Request $request) {
@@ -276,96 +230,52 @@ Route::middleware([
     ])->name('submissions.attachments.delete');
 
     // Get available AI models
-    Route::get('/ai/models', function (Request $request, PrismChatService $chatService) {
-        return response()->json($chatService->getAvailableModels());
-    })->name('ai.models');
+    Route::get('/ai/models', [AiStreamController::class, 'getAvailableModels']);
 
-    // Recent conversations
-    Route::get('/chats/recent', function (Request $request) {
+    // Get available chat styles
+    Route::get('/ai/styles', [AiStreamController::class, 'getAvailableStyles']);
+
+    // Update conversation model preference
+    Route::put('/conversations/{conversation}/model', [AiStreamController::class, 'updateModel']);
+
+    // Update conversation style preference
+    Route::put('/conversations/{conversation}/style', [AiStreamController::class, 'updateStyle']);
+
+    // Delete conversation
+    Route::delete('/conversations/{conversation}', [AiStreamController::class, 'deleteConversation']);
+
+    // Stream AI response
+    Route::post('/ai/stream', [AiStreamController::class, 'streamResponse']);
+
+    // Class resources API route for mention feature
+    Route::get('/class-resources/list', function (Request $request) {
         $user = $request->user();
-        $currentTeamId = $user->currentTeam?->id;
-
-        if (!$currentTeamId) {
+        $team = $user->currentTeam;
+        
+        if (!$team) {
             return response()->json([]);
         }
+        
+        $resources = \App\Models\ClassResource::query()
+            ->where('team_id', $team->id)
+            ->where(fn ($q) => $q->where('is_archived', false)->orWhereNull('is_archived'))
+            ->with(['category'])
+            ->select(['id', 'title', 'category_id', 'description'])
+            ->orderBy('title')
+            ->limit(15)
+            ->get();
+        
+        return response()->json($resources);
+    });
 
-        return Conversation::where('team_id', $currentTeamId)
-            ->where('user_id', $user->id)
-            ->orderBy('last_activity_at', 'desc')
-            ->limit(5)
-            ->get()
-            ->map(function ($chat) {
-                return [
-                    'id' => $chat->id,
-                    'title' => $chat->title,
-                    'model' => $chat->model,
-                    'last_activity' => $chat->last_activity_at->diffForHumans(),
-                ];
-            });
-    })->name('chats.recent');
+    // Test student tool directly (for debugging)
+    Route::get('/ai/test-student-tool', [AiStreamController::class, 'testStudentTool']);
 
-    // Get a specific conversation
-    Route::get('/conversations/{conversation}', function (Conversation $conversation, Request $request) {
-        // Check ownership
-        if ($conversation->user_id !== $request->user()->id) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
+    // Test Prism library directly (for debugging)
+    Route::get('/ai/test-prism', [AiStreamController::class, 'testPrismTools']);
 
-        return [
-            'id' => $conversation->id,
-            'title' => $conversation->title,
-            'model' => $conversation->model,
-            'style' => $conversation->style,
-            'messages' => $conversation->messages()
-                ->orderBy('created_at', 'asc')
-                ->get()
-                ->map(function ($message) {
-                    return [
-                        'id' => $message->id,
-                        'role' => $message->role,
-                        'content' => $message->content,
-                        'created_at' => $message->created_at->format('g:i A')
-                    ];
-                })
-        ];
-    })->name('conversations.show');
-
-    // Update model preference
-    Route::put('/conversations/{conversation}/model', function (Conversation $conversation, Request $request) {
-        // Check ownership
-        if ($conversation->user_id !== $request->user()->id) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
-        $validated = $request->validate(['model' => 'required|string']);
-        $conversation->update(['model' => $validated['model']]);
-
-        return response()->json(['success' => true]);
-    })->name('conversations.update.model');
-
-    // Update style preference
-    Route::put('/conversations/{conversation}/style', function (Conversation $conversation, Request $request) {
-        // Check ownership
-        if ($conversation->user_id !== $request->user()->id) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
-        $validated = $request->validate(['style' => 'required|string']);
-        $conversation->update(['style' => $validated['style']]);
-
-        return response()->json(['success' => true]);
-    })->name('conversations.update.style');
-
-    // Delete a conversation
-    Route::delete('/conversations/{conversation}', function (Conversation $conversation, Request $request) {
-        // Check ownership
-        if ($conversation->user_id !== $request->user()->id) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
-        $conversation->delete();
-        return response()->json(['success' => true]);
-    })->name('conversations.destroy');
+    // Recent conversations - keep the original route for backward compatibility
+    Route::get('/chats/recent', [AiStreamController::class, 'listRecentConversations']);
 });
 
 // Attendance routes
@@ -416,8 +326,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
-    // AI Assistant routes
-    Route::post('/ai/stream', [AiStreamController::class, 'streamResponse'])
-        ->name('ai.stream');
 });

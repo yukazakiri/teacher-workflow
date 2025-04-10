@@ -42,6 +42,7 @@ class AiStreamController extends Controller
                 "model" => "required|string",
                 "style" => "required|string",
                 "conversation_id" => "nullable|integer",
+                "history" => "nullable|array", // For regenerating responses
             ]);
 
             $user = $request->user();
@@ -54,6 +55,7 @@ class AiStreamController extends Controller
             $modelId = $validatedData["model"];
             $style = $validatedData["style"];
             $conversationId = $validatedData["conversation_id"] ?? null;
+            $history = $validatedData["history"] ?? null;
 
             // Get the user's current team
             $team = $user->currentTeam;
@@ -84,299 +86,149 @@ class AiStreamController extends Controller
             // Update conversation last activity
             $conversation->updateLastActivity();
 
-            // Save the user message
+            // If we're not regenerating (i.e. no history provided), save the user message
+            if (!$history) {
             $userMessage = ChatMessage::create([
                 "conversation_id" => $conversation->id,
                 "user_id" => $user->id,
                 "role" => "user",
                 "content" => $message,
             ]);
+            }
 
             // Create placeholder for AI response
             $aiMessage = ChatMessage::create([
                 "conversation_id" => $conversation->id,
-                "user_id" => $user->id,
+                "user_id" => null,
                 "role" => "assistant",
                 "content" => "",
                 "is_streaming" => true,
             ]);
 
-            // Get recent messages for context
-            $recentMessages = $conversation->recentMessages();
+            // Map the model to provider and model name
+            [$provider, $modelName] = $this->mapModelToProviderAndModel($modelId);
 
             // Stream the response
             return response()->stream(
                 function () use (
                     $conversation,
                     $message,
-                    $recentMessages,
-                    $modelId,
+                    $provider,
+                    $modelName,
                     $style,
-                    $aiMessage
+                    $aiMessage,
+                    $history
                 ) {
                     $aiResponse = "";
 
-                    // Always use real tools and services
                     try {
-                        // Use appropriate tools based on the query type
-                        $userQuery = strtolower($message);
-                        $response = null;
-                        $toolResult = null;
-                        $usedTool = false;
-
-                        // Detect query type for tool selection
-                        $isTeamQuery =
-                            preg_match(
-                                "/(what|which|who|tell).+(team|class)/i",
-                                $userQuery
-                            ) ||
-                            stripos($userQuery, "my team") !== false ||
-                            stripos($userQuery, "team info") !== false;
-
-                        $isStudentQuery =
-                            preg_match(
-                                "/(student|learner|pupil|class list)/i",
-                                $userQuery
-                            ) &&
-                            preg_match(
-                                "/(list|show|get|find|count|how many|detail)/i",
-                                $userQuery
-                            );
-
-                        $isActivityQuery =
-                            preg_match(
-                                "/(activity|assignment|task|homework|exercise)/i",
-                                $userQuery
-                            ) &&
-                            preg_match(
-                                "/(list|show|get|find|count|how many|detail)/i",
-                                $userQuery
-                            );
-
-                        $isExamQuery =
-                            preg_match(
-                                "/(exam|test|quiz|assessment)/i",
-                                $userQuery
-                            ) &&
-                            preg_match(
-                                "/(list|show|get|find|count|how many|detail)/i",
-                                $userQuery
-                            );
-
-                        $isScheduleQuery = preg_match(
-                            "/(schedule|timetable|calendar|weekly|class time)/i",
-                            $userQuery
-                        );
-
-                        $isResourceQuery =
-                            preg_match(
-                                "/(resource|document|material|file|handout|lesson plan)/i",
-                                $userQuery
-                            ) &&
-                            preg_match(
-                                "/(list|show|get|find|search)/i",
-                                $userQuery
-                            );
-
-                        Log::info("Query classification:", [
-                            "message" => $message,
-                            "isTeamQuery" => $isTeamQuery,
-                            "isStudentQuery" => $isStudentQuery,
-                            "isActivityQuery" => $isActivityQuery,
-                            "isExamQuery" => $isExamQuery,
-                            "isScheduleQuery" => $isScheduleQuery,
-                            "isResourceQuery" => $isResourceQuery,
+                        // Get tools collection
+                        $tools = $this->getAvailableTools();
+                        
+                        // Add debug log for request info
+                        Log::info('AI Stream Request', [
+                            'message' => $message,
+                            'provider' => $provider,
+                            'model' => $modelName,
+                            'conversation_id' => $conversation->id,
+                            'tools_available' => array_map(function($tool) {
+                                return get_class($tool);
+                            }, $tools)
                         ]);
-
-                        // Use the appropriate tool based on detected query type
-                        if ($isTeamQuery) {
-                            $teamTool = new \App\Tools\TeamInfoTool();
-                            $toolResult = $teamTool->__invoke("get_team_info");
-                            $usedTool = true;
-                        } elseif ($isStudentQuery) {
-                            $gradingService = app(
-                                \App\Services\GradingService::class
-                            );
-                            $studentTool = new \App\Tools\StudentTool(
-                                $gradingService
-                            );
-
-                            if (preg_match("/how many|count/i", $userQuery)) {
-                                $toolResult = $studentTool->__invoke(
-                                    "count_students"
+                        
+                        // Determine if we're using a history for regeneration or building from scratch
+                        if ($history) {
+                            // Build messages from provided history for regeneration
+                            $prismMessages = $this->buildPrismMessagesFromHistory(
+                                $history,
+                                $style,
+                                Auth::user(),
+                                $conversation->context
                                 );
                             } else {
-                                $toolResult = $studentTool->__invoke(
-                                    "list_students"
-                                );
-                            }
-                            $usedTool = true;
-                        } elseif ($isActivityQuery) {
-                            $activityTool = new \App\Tools\ActivityTool();
-
-                            if (preg_match("/how many|count/i", $userQuery)) {
-                                $toolResult = $activityTool->__invoke(
-                                    "count_activities"
-                                );
-                            } else {
-                                $toolResult = $activityTool->__invoke(
-                                    "list_activities"
-                                );
-                            }
-                            $usedTool = true;
-                        } elseif ($isExamQuery) {
-                            $examTool = new \App\Tools\ExamTool();
-
-                            if (preg_match("/how many|count/i", $userQuery)) {
-                                $toolResult = $examTool->__invoke(
-                                    "count_exams"
-                                );
-                            } else {
-                                $toolResult = $examTool->__invoke("list_exams");
-                            }
-                            $usedTool = true;
-                        } elseif ($isScheduleQuery) {
-                            $scheduleTool = new \App\Tools\ScheduleTool();
-                            $toolResult = $scheduleTool->__invoke();
-                            $usedTool = true;
-                        } elseif ($isResourceQuery) {
-                            $resourceTool = new \App\Tools\ClassResourceTool();
-                            $searchTerm = preg_replace(
-                                "/^.*(find|search|get|show|list)\s+/i",
-                                "",
-                                $userQuery
-                            );
-                            $searchTerm = preg_replace(
-                                "/(resource|document|material|file|handout|lesson plan)s?/i",
-                                "",
-                                $searchTerm
-                            );
-                            $searchTerm = trim($searchTerm);
-
-                            if (!empty($searchTerm)) {
-                                $toolResult = $resourceTool->__invoke(
-                                    "find_resources",
-                                    $searchTerm
-                                );
-                            } else {
-                                $toolResult = $resourceTool->__invoke(
-                                    "find_resources"
-                                );
-                            }
-                            $usedTool = true;
+                            // Build messages from conversation history for normal response
+                            $prismMessages = $this->buildMessageHistoryForStream($conversation);
                         }
 
-                        // When a tool was used, process and stream its result
-                        if ($usedTool && $toolResult) {
-                            // If it's JSON, decode it for better formatting
-                            $decodedResult = json_decode($toolResult, true);
+                        // Configure Prism for streaming response
+                        $prismRequest = Prism::text()
+                            ->using($provider, $modelName)
+                            ->withMessages($prismMessages);
 
-                            if ($decodedResult !== null) {
-                                // Format JSON data into readable text
-                                $response = $this->formatToolResult(
-                                    $decodedResult,
-                                    $userQuery
-                                );
-                            } else {
-                                // It's already text, use it directly
-                                $response = $toolResult;
-                            }
+                        // Add tools if provider supports them - ENSURE THEY ARE ACTUALLY USED
+                        $providerSupportsTools = in_array(strtolower($provider), [
+                            'openai',
+                            'anthropic',
+                            'gemini',
+                        ]);
+                        
+                        if ($providerSupportsTools && !empty($tools)) {
+                            $prismRequest = $prismRequest
+                                ->withTools($tools)
+                                ->withMaxSteps(5);  // Allow multiple tool calls
+                                
+                            // Log the tools being provided to debug
+                            Log::info('Adding tools to Prism request', [
+                                'tools_count' => count($tools),
+                                'provider_supports_tools' => $providerSupportsTools
+                            ]);
+                        }
 
-                            // Stream the tool response
-                            if (!empty($response)) {
-                                $words = explode(" ", $response);
-                                foreach ($words as $word) {
-                                    echo $word . " ";
-                                    $aiResponse .= $word . " ";
-                                    ob_flush();
+                        // Start streaming
+                        $stream = $prismRequest->asStream();
+                        $hasToolInteraction = false;
+                        
+                        // Process the response chunks
+                        foreach ($stream as $chunk) {
+                            // Handle text chunks
+                            if (isset($chunk->text) && !is_null($chunk->text)) {
+                                echo $chunk->text;
+                                $aiResponse .= $chunk->text;
+                                
+                                // Update the message in the database periodically to show progress
+                                $aiMessage->update(['content' => $aiResponse]);
+                                
+                                // Flush output for immediate display
+                                if (ob_get_level() > 0) ob_flush();
                                     flush();
-                                    usleep(10000); // 10ms delay
-                                }
                             }
-                        } else {
-                            // No tool matched or appropriate, fall back to the PrismChatService
-                            $service = app(
-                                \App\Services\PrismChatService::class
-                            );
-                            $messages = [];
-
-                            // System message based on style
-                            $systemInstructions = $this->getSystemInstructions(
-                                $style
-                            );
-                            if ($systemInstructions) {
-                                $messages[] = [
-                                    "role" => "system",
-                                    "content" => $systemInstructions,
-                                ];
+                            
+                            // Log tool calls and results if debugging is needed
+                            if (isset($chunk->toolCalls) && !empty($chunk->toolCalls)) {
+                                Log::info('Tool calls during stream:', ['calls' => $chunk->toolCalls]);
+                                $hasToolInteraction = true;
                             }
-
-                            // Add conversation history
-                            foreach ($recentMessages as $historyMessage) {
-                                $messages[] = [
-                                    "role" => $historyMessage->role,
-                                    "content" => $historyMessage->content,
-                                ];
-                            }
-
-                            // Add the latest user message again to ensure it's the last one
-                            $messages[] = [
-                                "role" => "user",
-                                "content" => $message,
-                            ];
-
-                            // Create a new conversation in PrismChatService
-                            $conversation->updateLastActivity();
-                            $response = null;
-
-                            // Get conversation for sending to service
-                            $messagesCollection = collect($messages);
-
-                            // Use PrismChatService's generateResponseFromHistory method
-                            // This assumes the method returns or streams content
-                            // You may need to adjust this part based on the actual method signature
-                            try {
-                                // Note: Using sendMessage would require the exact implementation
-                                // Here we're simulating a response stream
-                                $fallbackResponse =
-                                    "I understand your question. To provide you with accurate information, I need to use AI services to process your request. Please note that I have access to information about your team, students, activities, exams, schedule, and learning resources. How can I assist you further with your teaching workflow?";
-
-                                $words = explode(" ", $fallbackResponse);
-                                foreach ($words as $word) {
-                                    echo $word . " ";
-                                    $aiResponse .= $word . " ";
-                                    ob_flush();
-                                    flush();
-                                    usleep(15000); // 15ms delay
-                                }
-                            } catch (\Exception $serviceException) {
-                                Log::error("PrismChatService error:", [
-                                    "exception" => $serviceException->getMessage(),
-                                    "trace" => $serviceException->getTraceAsString(),
-                                ]);
-
-                                $errorResponse =
-                                    "I encountered an issue processing your request. Please try again later.";
-                                echo $errorResponse;
-                                $aiResponse .= $errorResponse;
+                            
+                            if (isset($chunk->toolResults) && !empty($chunk->toolResults)) {
+                                Log::info('Tool results during stream:', ['results' => $chunk->toolResults]);
+                                $hasToolInteraction = true;
                             }
                         }
+                        
+                        // If we didn't see any tool interactions, log that too
+                        if (!$hasToolInteraction) {
+                            Log::warning('No tool interactions were observed during stream', [
+                                'message' => $message,
+                                'model' => $modelName,
+                                'provider' => $provider
+                            ]);
+                        }
+                        
                     } catch (\Exception $e) {
                         // Log the error
-                        Log::error("AI response error: " . $e->getMessage(), [
+                        Log::error("AI response streaming error: " . $e->getMessage(), [
                             "exception" => $e,
                             "conversation_id" => $conversation->id,
+                            "trace" => $e->getTraceAsString()
                         ]);
 
                         // Send an error message
-                        echo "Sorry, I encountered an error: " .
-                            $e->getMessage();
-                        $aiResponse =
-                            "Sorry, I encountered an error: " .
-                            $e->getMessage();
+                        $errorMessage = "Sorry, I encountered an error: " . $e->getMessage();
+                        echo $errorMessage;
+                        $aiResponse = $errorMessage;
                     }
 
-                    // Save the AI response
+                    // Save the final AI response
                     $aiMessage->update([
                         "content" => trim($aiResponse),
                         "is_streaming" => false,
@@ -391,16 +243,12 @@ class AiStreamController extends Controller
                         "-->";
                 },
                 200,
-                [
-                    "Cache-Control" => "no-cache",
-                    "Content-Type" => "text/event-stream",
-                    "X-Accel-Buffering" => "no",
-                    "Connection" => "keep-alive",
-                ]
+                $this->getStreamHeaders()
             );
         } catch (\Exception $e) {
             Log::error("Stream response error: " . $e->getMessage(), [
                 "exception" => $e,
+                "trace" => $e->getTraceAsString(),
             ]);
 
             return response()->json(["error" => $e->getMessage()], 500);
@@ -601,14 +449,20 @@ class AiStreamController extends Controller
         $toolInstructions = <<<PROMPT
 
 You have access to the following tools to retrieve specific user data:
-*   `student_data`: Use for questions about students (listing, details, summaries, counts).
+*   `student_data`: Use for questions about students (listing, details, summaries, counts). **ALWAYS USE THIS TOOL WHENEVER USERS ASK ABOUT STUDENTS BY NAME OR ASK TO LIST STUDENTS.**
 *   `activity_data`: Use for questions about activities (listing, details, counts).
 *   `exam_data`: Use for questions about exams (listing, details, counts).
 *   `schedule_data`: Use to fetch the weekly schedule.
 *   `user_team_info`: Use for questions about the current user or team settings (like grading system).
 *   `class_resource_data`: Use to find class resources/documents (`find_resources`) or get the content of a specific resource by its ID (`get_resource_content`).
 
-Use these tools ONLY when the user explicitly asks about THEIR specific data related to these categories. Ask clarifying questions if the request is ambiguous. State clearly when you are retrieving data using a tool.
+IMPORTANT: You MUST use these tools when the user asks questions about their specific data. For example:
+- "Who is Emma in my class?" → Use `student_data` tool to search for students
+- "How many students do I have?" → Use `student_data` with query_type="count_students"
+- "Show me my activities" → Use `activity_data` tool with query_type="list_activities"
+- "What's on my schedule?" → Use `schedule_data` tool
+
+Do not guess or make up information - use the tools to get accurate data.
 
 **Using `class_resource_data` for Content:**
 If the user's message contains a string formatted EXACTLY like `resource_uuid:SOME_UUID_VALUE` (where SOME_UUID_VALUE is the actual UUID):
@@ -630,16 +484,49 @@ PROMPT;
      */
     private function getAvailableTools(): array
     {
-        $gradingService = app(GradingService::class); // Resolve GradingService
+        try {
+            $gradingService = app(GradingService::class); // Resolve GradingService
+            $user = Auth::user();
+            $team = $user?->currentTeam;
+            
+            if (!$team) {
+                Log::warning('No team context available for tools initialization');
+                return [];
+            }
 
-        return [
-            new StudentTool($gradingService),
-            new ActivityTool(),
-            new ExamTool(),
-            new ScheduleTool(),
-            new TeamInfoTool(),
-            new ClassResourceTool(),
-        ];
+            // Create all tool instances and store the current team in a property or pass to constructor if needed
+            $tools = [
+                new StudentTool($gradingService),
+                new ActivityTool(),
+                new ExamTool(),
+                new ScheduleTool(),
+                new TeamInfoTool(),
+                new ClassResourceTool(),
+            ];
+            
+            // Log created tools
+            Log::info('Created tool instances', [
+                'tool_count' => count($tools),
+                'team_id' => $team->id,
+                'tools' => array_map(function($tool) {
+                    return [
+                        'class' => get_class($tool),
+                        'name' => $tool->name ?? 'unnamed',
+                        'description' => $tool->description ?? 'no description'
+                    ];
+                }, $tools)
+            ]);
+            
+            return $tools;
+        } catch (\Exception $e) {
+            Log::error('Error initializing tools: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Return empty array if tool initialization fails
+            return [];
+        }
     }
 
     /**
@@ -876,5 +763,439 @@ PROMPT;
     private function getFakeResponse(string $message): string
     {
         return "This method is no longer in use. Please use real response providers instead.";
+    }
+
+    /**
+     * Get available AI models for the frontend.
+     */
+    public function getAvailableModels()
+    {
+        try {
+            // First try to get models from PrismServer if configured
+            $registeredModels = PrismServer::prisms()->pluck('name')->toArray();
+            
+            if (!empty($registeredModels)) {
+                return response()->json($registeredModels);
+            }
+            
+            // Fallback to predefined list if PrismServer doesn't provide models
+            $fallbackModels = [
+                'GPT-4o', 'GPT-4 Turbo', 'GPT-3.5 Turbo',
+                'Gemini 1.5 Pro', 'Gemini 1.5 Flash',
+                'Claude 3 Opus', 'Claude 3 Sonnet', 'Claude 3 Haiku',
+                'GPT-4o Mini',
+            ];
+            
+            return response()->json($fallbackModels);
+        } catch (\Exception $e) {
+            Log::error('Error fetching available models: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json(['error' => 'Could not retrieve available models'], 500);
+        }
+    }
+
+    /**
+     * Get available chat styles for the frontend.
+     */
+    public function getAvailableStyles()
+    {
+        $styles = [
+            'default' => 'Default',
+            'creative' => 'Creative',
+            'precise' => 'Precise',
+            'balanced' => 'Balanced',
+        ];
+        
+        return response()->json($styles);
+    }
+
+    /**
+     * List all conversations for the current user.
+     */
+    public function listConversations()
+    {
+        try {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json(['error' => 'Unauthenticated'], 401);
+            }
+            
+            $currentTeamId = $user->currentTeam?->id;
+            
+            if (!$currentTeamId) {
+                return response()->json([]);
+            }
+            
+            $conversations = Conversation::where('team_id', $currentTeamId)
+                ->where('user_id', $user->id)
+                ->orderBy('last_activity_at', 'desc')
+                ->get()
+                ->map(function ($chat) {
+                    return [
+                        'id' => $chat->id,
+                        'title' => $chat->title,
+                        'model' => $chat->model,
+                        'style' => $chat->style,
+                        'last_activity' => $chat->last_activity_at->diffForHumans(),
+                    ];
+                });
+            
+            return response()->json($conversations);
+        } catch (\Exception $e) {
+            Log::error('Error listing conversations: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json(['error' => 'Could not retrieve conversations'], 500);
+        }
+    }
+    
+    /**
+     * Get a single conversation with its messages.
+     */
+    public function getConversation($id)
+    {
+        try {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json(['error' => 'Unauthenticated'], 401);
+            }
+            
+            $conversation = Conversation::where('id', $id)
+                ->where('user_id', $user->id)
+                ->firstOrFail();
+            
+            // Format response to match expected structure in AiWidget.vue
+            return response()->json([
+                'conversation' => [
+                    'id' => $conversation->id,
+                    'title' => $conversation->title,
+                    'model' => $conversation->model,
+                    'style' => $conversation->style,
+                    'messages' => $conversation->messages()
+                        ->orderBy('created_at', 'asc')
+                        ->get()
+                        ->map(function ($message) {
+                            return [
+                                'id' => $message->id,
+                                'role' => $message->role,
+                                'content' => $message->content,
+                                'created_at' => $message->created_at->format('g:i A')
+                            ];
+                        })
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error retrieving conversation: ' . $e->getMessage(), [
+                'exception' => $e,
+                'conversation_id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json(['error' => 'Could not retrieve conversation'], 500);
+        }
+    }
+    
+    /**
+     * Update conversation model.
+     */
+    public function updateModel(Request $request, $id)
+    {
+        try {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json(['error' => 'Unauthenticated'], 401);
+            }
+            
+            $validatedData = $request->validate([
+                'model' => 'required|string'
+            ]);
+            
+            $conversation = Conversation::where('id', $id)
+                ->where('user_id', $user->id)
+                ->firstOrFail();
+            
+            $conversation->update([
+                'model' => $validatedData['model'],
+                'last_activity_at' => now()
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'conversation' => $conversation
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error updating conversation model: ' . $e->getMessage(), [
+                'exception' => $e,
+                'conversation_id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json(['error' => 'Could not update conversation model'], 500);
+        }
+    }
+    
+    /**
+     * Update conversation style.
+     */
+    public function updateStyle(Request $request, $id)
+    {
+        try {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json(['error' => 'Unauthenticated'], 401);
+            }
+            
+            $validatedData = $request->validate([
+                'style' => 'required|string'
+            ]);
+            
+            $conversation = Conversation::where('id', $id)
+                ->where('user_id', $user->id)
+                ->firstOrFail();
+            
+            $conversation->update([
+                'style' => $validatedData['style'],
+                'last_activity_at' => now()
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'conversation' => $conversation
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error updating conversation style: ' . $e->getMessage(), [
+                'exception' => $e,
+                'conversation_id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json(['error' => 'Could not update conversation style'], 500);
+        }
+    }
+    
+    /**
+     * Delete a conversation.
+     */
+    public function deleteConversation($id)
+    {
+        try {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json(['error' => 'Unauthenticated'], 401);
+            }
+            
+            $conversation = Conversation::where('id', $id)
+                ->where('user_id', $user->id)
+                ->firstOrFail();
+            
+            // Delete associated messages first
+            $conversation->messages()->delete();
+            
+            // Then delete the conversation
+            $conversation->delete();
+            
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            Log::error('Error deleting conversation: ' . $e->getMessage(), [
+                'exception' => $e,
+                'conversation_id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json(['error' => 'Could not delete conversation'], 500);
+        }
+    }
+
+    /**
+     * List recent conversations for the current user (limited to 5).
+     */
+    public function listRecentConversations()
+    {
+        try {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json(['error' => 'Unauthenticated'], 401);
+            }
+            
+            $currentTeamId = $user->currentTeam?->id;
+            
+            if (!$currentTeamId) {
+                return response()->json([]);
+            }
+            
+            $conversations = Conversation::where('team_id', $currentTeamId)
+                ->where('user_id', $user->id)
+                ->orderBy('last_activity_at', 'desc')
+                ->limit(5)
+                ->get()
+                ->map(function ($chat) {
+                    return [
+                        'id' => $chat->id,
+                        'title' => $chat->title,
+                        'model' => $chat->model,
+                        'last_activity' => $chat->last_activity_at->diffForHumans(),
+                    ];
+                });
+            
+            return response()->json($conversations);
+        } catch (\Exception $e) {
+            Log::error('Error listing recent conversations: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json(['error' => 'Could not retrieve recent conversations'], 500);
+        }
+    }
+
+    /**
+     * Test direct tool execution (for debugging)
+     */
+    public function testStudentTool(Request $request)
+    {
+        try {
+            $query = $request->input('query', 'Who is Emma in my class?');
+            $gradingService = app(GradingService::class);
+            $studentTool = new StudentTool($gradingService);
+            
+            // Log the tool test attempt
+            Log::info('Testing StudentTool directly', [
+                'query' => $query
+            ]);
+            
+            // Try to search for students
+            $result = $studentTool->__invoke('list_students', $query);
+            
+            // Format the result
+            $formattedResult = is_string($result) ? $result : json_encode($result, JSON_PRETTY_PRINT);
+            
+            return response()->json([
+                'success' => true,
+                'query' => $query,
+                'raw_result' => $result,
+                'formatted_result' => $formattedResult
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error testing StudentTool: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Direct test of Prism library with tools enabled (for debugging)
+     */
+    public function testPrismTools(Request $request)
+    {
+        try {
+            $prompt = $request->input('prompt', 'Who is Emma in my class?');
+            $modelId = $request->input('model', 'GPT-4o');
+            
+            // Get user for context
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json(['error' => 'User not authenticated'], 401);
+            }
+            
+            // Map model to provider
+            [$provider, $modelName] = $this->mapModelToProviderAndModel($modelId);
+            
+            // Get tools
+            $tools = $this->getAvailableTools();
+            
+            // Build a simple system prompt with tool usage info
+            $systemPrompt = "You are a Teacher Assistant helping with student information. " . 
+                "Use the tools provided to answer questions about students. " .
+                "For student queries like 'Who is [name]', always use the student_data tool.";
+            
+            // Log the test
+            Log::info('Testing Prism directly', [
+                'prompt' => $prompt,
+                'provider' => $provider,
+                'model' => $modelName,
+                'tools_count' => count($tools)
+            ]);
+            
+            // Build the request to Prism
+            $prismRequest = Prism::text()
+                ->using($provider, $modelName)
+                ->withSystemPrompt($systemPrompt)
+                ->withPrompt($prompt);
+                
+            // Add tools if supported
+            $providerSupportsTools = in_array(strtolower($provider), ['openai', 'anthropic', 'gemini']);
+            if ($providerSupportsTools && !empty($tools)) {
+                $prismRequest = $prismRequest
+                    ->withTools($tools)
+                    ->withMaxSteps(3);
+                    
+                Log::info('Added tools to Prism test request');
+            }
+            
+            // Generate response
+            $response = $prismRequest->generate();
+            
+            // Extract tool usage info
+            $toolCalls = [];
+            $toolResults = [];
+            
+            if (isset($response->toolCalls)) {
+                foreach ($response->toolCalls as $call) {
+                    $toolCalls[] = [
+                        'name' => $call->name,
+                        'arguments' => $call->arguments ?? $call->args ?? []
+                    ];
+                }
+            }
+            
+            if (isset($response->toolResults)) {
+                foreach ($response->toolResults as $result) {
+                    $toolResults[] = [
+                        'name' => $result->toolName,
+                        'result' => $result->result
+                    ];
+                }
+            }
+            
+            // Return the result
+            return response()->json([
+                'success' => true,
+                'prompt' => $prompt,
+                'response' => $response->text,
+                'tool_calls' => $toolCalls,
+                'tool_results' => $toolResults,
+                'finish_reason' => $response->finishReason ? $response->finishReason->value : null,
+                'provider_used' => $provider,
+                'model_used' => $modelName
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error testing Prism directly: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
