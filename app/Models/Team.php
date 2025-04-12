@@ -200,6 +200,22 @@ class Team extends JetstreamTeam
     }
 
     /**
+     * Get the channel categories for the team.
+     */
+    public function channelCategories(): HasMany
+    {
+        return $this->hasMany(ChannelCategory::class);
+    }
+
+    /**
+     * Get the channels for the team.
+     */
+    public function channels(): HasMany
+    {
+        return $this->hasMany(Channel::class);
+    }
+
+    /**
      * Check if the team has a user with a specific role.
      */
     public function hasUserWithRole(User $user, string $role): bool
