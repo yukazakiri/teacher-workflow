@@ -8,10 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Message extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -35,7 +36,32 @@ class Message extends Model
     protected $casts = [
         'is_pinned' => 'boolean',
         'edited_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
+
+    /**
+     * Boot the model.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::deleting(function ($message) {
+            // When deleting a message, detach mentions
+            $message->mentions()->detach();
+            
+            // When force deleting, also delete attachments and reactions
+            if (method_exists($message, 'isForceDeleting') && $message->isForceDeleting()) {
+                $message->attachments->each(function ($attachment) {
+                    $attachment->delete();
+                });
+                
+                $message->reactions->each(function ($reaction) {
+                    $reaction->delete();
+                });
+            }
+        });
+    }
 
     /**
      * Get the channel that owns the message.
@@ -92,5 +118,19 @@ class Message extends Model
     {
         return $this->belongsToMany(User::class, 'message_mentions')
             ->withTimestamps();
+    }
+
+    /**
+     * Check if a user can manage (edit/delete) the message.
+     */
+    public function canManage(User $user): bool
+    {
+        // Message owners can manage their own messages
+        if ($this->user_id === $user->id) {
+            return true;
+        }
+        
+        // Team owners and channel admins can manage any message in channels they manage
+        return $this->channel->canManage($user);
     }
 }

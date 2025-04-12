@@ -37,8 +37,10 @@ class MessageSent implements ShouldBroadcast
      */
     public function broadcastOn(): array
     {
+        $channelName = 'channel.' . $this->message->channel_id;
+        \Illuminate\Support\Facades\Log::info('Broadcasting MessageSent event on channel: ' . $channelName, ['message_id' => $this->message->id]);
         return [
-            new PrivateChannel('channel.' . $this->message->channel_id),
+            new PrivateChannel($channelName),
         ];
     }
     
@@ -62,6 +64,7 @@ class MessageSent implements ShouldBroadcast
         return [
             'id' => $this->message->id,
             'content' => $this->message->content,
+            'channel_id' => $this->message->channel_id,
             'user' => [
                 'id' => $this->message->user->id,
                 'name' => $this->message->user->name,

@@ -9,6 +9,7 @@ use App\Filament\Pages\CreateTeam;
 use App\Filament\Pages\EditProfile;
 use App\Filament\Pages\EditTeam;
 use App\Filament\Pages\Gradesheet;
+use App\Filament\Pages\Messages;
 use App\Filament\Pages\WeeklySchedule;
 use App\Filament\Resources\ActivityResource;
 use App\Filament\Resources\AttendanceQrCodeResource;
@@ -219,10 +220,7 @@ class AppPanelProvider extends PanelProvider
                             ->label("Dashboard")
                             ->items([
                                 ...Dashboard::getNavigationItems(),
-                                NavigationItem::make('Chat')
-                                    ->url('/chat')
-                                    ->icon('heroicon-o-chat-bubble-left-right')
-                                    ->sort(3),
+                               ...Messages::getNavigationItems(),
                             ]),
                         // Academic group
                         NavigationGroup::make()

@@ -34,6 +34,12 @@ class ChatSystemSeeder extends Seeder
                 'position' => 1,
             ]);
 
+            $resourcesCategory = ChannelCategory::create([
+                'team_id' => $team->id,
+                'name' => 'Resources',
+                'position' => 2,
+            ]);
+
             // Create default channels for each team
             $generalChannel = Channel::create([
                 'team_id' => $team->id,
@@ -78,22 +84,55 @@ class ChatSystemSeeder extends Seeder
                 'is_private' => false,
                 'position' => 1,
             ]);
+            
+            $filesChannel = Channel::create([
+                'team_id' => $team->id,
+                'category_id' => $resourcesCategory->id,
+                'name' => 'files',
+                'slug' => 'files',
+                'description' => 'Share files and resources',
+                'type' => 'media',
+                'is_private' => false,
+                'position' => 0,
+            ]);
+            
+            $linksChannel = Channel::create([
+                'team_id' => $team->id,
+                'category_id' => $resourcesCategory->id,
+                'name' => 'links',
+                'slug' => 'links',
+                'description' => 'Share useful links',
+                'type' => 'text',
+                'is_private' => false,
+                'position' => 1,
+            ]);
 
             // Add all team members to the channels
             $teamMembers = $team->users;
+            $teamOwner = User::find($team->user_id);
             
             foreach ($teamMembers as $member) {
-                $generalChannel->members()->attach($member->id);
-                $announcementsChannel->members()->attach($member->id);
-                $homeworkChannel->members()->attach($member->id);
-                $questionsChannel->members()->attach($member->id);
+                // Default permissions for all members
+                $memberPermissions = 'read,write'; 
+                
+                // Extended permissions for team owner
+                if ($member->id === $team->user_id) {
+                    $memberPermissions = 'read,write,manage';
+                }
+                
+                $generalChannel->members()->attach($member->id, ['permissions' => $memberPermissions]);
+                $announcementsChannel->members()->attach($member->id, ['permissions' => $memberPermissions]);
+                $homeworkChannel->members()->attach($member->id, ['permissions' => $memberPermissions]);
+                $questionsChannel->members()->attach($member->id, ['permissions' => $memberPermissions]);
+                $filesChannel->members()->attach($member->id, ['permissions' => $memberPermissions]);
+                $linksChannel->members()->attach($member->id, ['permissions' => $memberPermissions]);
                 
                 // Add some sample messages from team owner
                 if ($member->id === $team->user_id) {
                     Message::create([
                         'channel_id' => $generalChannel->id,
                         'user_id' => $member->id,
-                        'content' => 'Welcome to the ' . $team->name . ' chat!',
+                        'content' => 'Welcome to the ' . $team->name . ' chat! Feel free to create new channels as needed.',
                     ]);
                     
                     Message::create([
@@ -105,7 +144,19 @@ class ChatSystemSeeder extends Seeder
                     Message::create([
                         'channel_id' => $homeworkChannel->id,
                         'user_id' => $member->id,
-                        'content' => 'Your first assignment is due next week.',
+                        'content' => 'Your first assignment is due next week. You can use this channel to ask questions about the assignments.',
+                    ]);
+                    
+                    Message::create([
+                        'channel_id' => $filesChannel->id,
+                        'user_id' => $member->id,
+                        'content' => 'Upload course materials and resources here.',
+                    ]);
+                    
+                    Message::create([
+                        'channel_id' => $linksChannel->id,
+                        'user_id' => $member->id,
+                        'content' => 'Share useful websites and resources for the course here.',
                     ]);
                 }
             }
