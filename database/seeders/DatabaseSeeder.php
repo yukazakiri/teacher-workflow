@@ -43,6 +43,9 @@ class DatabaseSeeder extends Seeder
 
         // Seed exams
         $this->call(ExamSeeder::class);
+
+        // Seed chat system
+        $this->call(ChatSystemSeeder::class);
     }
 
     /**

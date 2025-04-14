@@ -2,23 +2,27 @@
 
 namespace App\Filament\Pages;
 
-use App\Filament\Resources\ActivityResource;
-use App\Filament\Resources\StudentResource;
-use App\Filament\Widgets\PendingInvitationsTableWidget;
-use App\Filament\Widgets\TeamMembersTableWidget;
-use App\Models\Student;
 use App\Models\Team;
 use App\Models\User;
-use App\Services\PrismChatService;
+use App\Models\Student;
+use Filament\Pages\Page;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
+use App\Services\PrismChatService;
+use Filament\View\PanelsRenderHook;
+use Illuminate\Support\Facades\Vite;
+use Illuminate\Support\Facades\Blade;
 use Filament\Forms\Components\Livewire;
-use Filament\Pages\Dashboard as PagesDashboard;
-use Filament\Pages\Page;
 use Filament\Support\Facades\FilamentIcon;
+use Filament\Support\Facades\FilamentView;
 use Illuminate\Contracts\Support\Htmlable;
+use App\Filament\Resources\StudentResource;
+use App\Filament\Resources\ActivityResource;
+use Filament\Pages\Dashboard as PagesDashboard;
+use App\Filament\Widgets\TeamMembersTableWidget;
 use Illuminate\Support\Facades\Auth; // Added import
 use Prism\Prism\Facades\PrismServer; // Added import
+use App\Filament\Widgets\PendingInvitationsTableWidget;
 
 class Dashboard extends PagesDashboard
 {
@@ -33,6 +37,13 @@ class Dashboard extends PagesDashboard
     public static function getNavigationLabel(): string
     {
         return __("Home");
+    }
+    public function mount()
+    {
+        FilamentView::registerRenderHook(
+            name: PanelsRenderHook::HEAD_START,
+            hook: fn() => Blade::render('@mingles'),
+        );
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Events\MessageSent;
 use App\Listeners\CreateStudentFromTeamMember;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
@@ -22,6 +23,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         TeamMemberAdded::class => [
             CreateStudentFromTeamMember::class,
+        ],
+        MessageSent::class => [
+            // You can add custom listeners here if needed
         ],
     ];
 

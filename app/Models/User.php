@@ -44,7 +44,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenant
      *
      * @var array<int, string>
      */
-    protected $fillable = ['name', 'email', 'password'];
+    protected $fillable = ['name', 'email', 'password',  'workos_id',      'avatar',];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -53,6 +53,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenant
      */
     protected $hidden = [
         'password',
+        'workos_id',
         'remember_token',
         'two_factor_recovery_codes',
         'two_factor_secret',
@@ -113,5 +114,40 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenant
     public function getAvatarUrlAttribute(): ?string
     {
         return $this->profile_photo_url;
+    }
+
+    /**
+     * Get the channels that the user is a member of.
+     */
+    public function channels()
+    {
+        return $this->belongsToMany(Channel::class, 'channel_members')
+            ->withPivot('permissions')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the messages that the user has sent.
+     */
+    public function messages(): HasMany
+    {
+        return $this->hasMany(Message::class);
+    }
+
+    /**
+     * Get the message reactions that the user has made.
+     */
+    public function messageReactions(): HasMany
+    {
+        return $this->hasMany(MessageReaction::class);
+    }
+
+    /**
+     * Get the messages where the user is mentioned.
+     */
+    public function mentions()
+    {
+        return $this->belongsToMany(Message::class, 'message_mentions')
+            ->withTimestamps();
     }
 }

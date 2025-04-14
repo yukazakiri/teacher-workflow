@@ -8,6 +8,7 @@ return new class extends Migration
 {
     public function up()
     {
+
         Schema::create('socialite_users', function (Blueprint $table) {
             $table->id();
 
@@ -20,9 +21,6 @@ return new class extends Migration
             $table->unique(['provider', 'provider_id']);
         });
 
-        Schema::table('users', function (Blueprint $table) {
-            $table->string('password')->nullable()->change();
-        });
     }
 
     public function down()

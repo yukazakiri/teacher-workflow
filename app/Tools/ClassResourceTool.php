@@ -63,11 +63,8 @@ class ClassResourceTool extends BaseTool
         ?string $resource_id = null
     ): string {
         $user = Auth::user();
-        // Note: Using Filament facade for tenant might be specific to Filament context.
-        // Ensure this works correctly in the context where Prism/tools are invoked.
-        // If running outside Filament HTTP requests, consider passing Team explicitly or resolving differently.
-        $team = Filament::getTenant(); // Or $user?->currentTeam; ensure consistency
-
+        $team = $user?->currentTeam;
+        
         if (! $user || ! $team) {
             return $this->encodeError('User or team context not found.');
         }
@@ -81,40 +78,84 @@ class ClassResourceTool extends BaseTool
             'resource_id' => $resource_id,
         ]);
 
-        // --- Start: Extract UUID if using resource_uuid: prefix ---
+        // --- Extract context ---
         $actual_resource_id = $resource_id;
-        if ($query_type === 'get_resource_content' && $resource_id && Str::startsWith($resource_id, 'resource_uuid:')) {
-            $actual_resource_id = Str::after($resource_id, 'resource_uuid:');
-            Log::info('Extracted UUID from prefixed ID', ['original' => $resource_id, 'extracted' => $actual_resource_id]);
+        $resource_title = null;  // Initialize title variable
+        
+        // Look for resource title in the message
+        if ($query_type === 'get_resource_content') {
+            // First extract the resource_uuid part if present
+            if ($resource_id && Str::contains($resource_id, 'resource_uuid:')) {
+                $actual_resource_id = Str::after($resource_id, 'resource_uuid:');
+                Log::info('Extracted UUID from prefix', [
+                    'original' => $resource_id,
+                    'extracted' => $actual_resource_id
+                ]);
+            }
+            
+            // Try to extract title from the full resource_id string
+            // Look for a title followed by resource_uuid pattern
+            if (preg_match('/@([^\s]+)\s+resource_uuid:/i', $resource_id, $matches)) {
+                $resource_title = $matches[1];
+                Log::info('Extracted resource title from resource_id', ['title' => $resource_title]);
+            }
+            // If we didn't find it there, check if it's just the resource_id by itself
+            elseif (preg_match('/^@([^\s]+)$/i', $resource_id, $matches)) {
+                $resource_title = $matches[1];
+                Log::info('Extracted resource title directly', ['title' => $resource_title]);
+            }
+            
+            // Clean UUID for searching
+            $actual_resource_id = trim($actual_resource_id);
+            
+            // Ensure the UUID is properly formatted to avoid SQL errors
+            if (!empty($actual_resource_id)) {
+                // Remove any characters that aren't valid in a UUID
+                $actual_resource_id = preg_replace('/[^a-f0-9\-]/i', '', $actual_resource_id);
+                
+                // If we have something close to a UUID length, make sure it's properly formatted
+                if (strlen($actual_resource_id) >= 32) {
+                    // Ensure we have a properly formatted UUID with dashes
+                    if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $actual_resource_id)) {
+                        // Remove any existing dashes
+                        $actual_resource_id = str_replace('-', '', $actual_resource_id);
+                        // Truncate or pad to exactly 32 chars
+                        $actual_resource_id = substr(str_pad($actual_resource_id, 32, '0'), 0, 32);
+                        // Insert dashes in the correct positions
+                        $actual_resource_id = substr($actual_resource_id, 0, 8) . '-' . 
+                                              substr($actual_resource_id, 8, 4) . '-' . 
+                                              substr($actual_resource_id, 12, 4) . '-' . 
+                                              substr($actual_resource_id, 16, 4) . '-' . 
+                                              substr($actual_resource_id, 20, 12);
+                        
+                        Log::info('Reformatted UUID for compatibility', [
+                            'reformatted' => $actual_resource_id
+                        ]);
+                    }
+                }
+            }
+            
+            Log::info('Final lookup parameters', [
+                'resource_id' => $actual_resource_id, 
+                'resource_title' => $resource_title
+            ]);
         }
-        // --- End: Extract UUID ---
-
-        // Parameter validation using the potentially extracted ID
-        if ($query_type === 'get_resource_content' && ! $actual_resource_id) {
-            return $this->encodeError('The resource_id parameter is required (or could not be extracted) for query_type: get_resource_content.');
+        
+        // Basic parameter validation
+        if ($query_type === 'get_resource_content' && empty($actual_resource_id) && empty($resource_title)) {
+            return "I need a resource ID or title to retrieve content. Try mentioning a specific resource using @.";
         }
-         if ($query_type === 'find_resources' && $actual_resource_id) {
-             // Avoid confusion if both search and specific ID are provided for wrong query type
-             Log::warning('Resource ID provided for find_resources query type, ignoring it.', ['resource_id' => $actual_resource_id]);
-             // $actual_resource_id = null; // Don't nullify here, just ignore in findClassResources logic
-         }
-         if ($query_type === 'get_resource_content' && ($search_query || $category_type)) {
-             Log::warning('Search query or category type provided for get_resource_content query type, ignoring them.');
-             $search_query = null;
-             $category_type = null;
-         }
 
         try {
-            // Use $actual_resource_id for getResourceContent
+            // Use resource ID and/or title
             $result = match ($query_type) {
-                'find_resources' => $this->findClassResources($team, $user, $search_query, $category_type), // findClassResources doesn't use resource_id
-                'get_resource_content' => $this->getResourceContent($team, $user, $actual_resource_id),
+                'find_resources' => $this->findClassResources($team, $user, $search_query, $category_type),
+                'get_resource_content' => $this->getResourceContent($team, $user, $actual_resource_id, $resource_title),
                 default => ['error' => 'Invalid query_type for ClassResourceTool: '.$query_type],
             };
         } catch (\Exception $e) {
             Log::error('ClassResourceTool Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            // Return error as string for direct output
-            return $this->encodeError('An internal error occurred: '.$e->getMessage());
+            return "I encountered an issue when trying to access that resource. The error was: " . $e->getMessage();
         }
 
         // findClassResources and getResourceContent already return strings
@@ -192,23 +233,189 @@ class ClassResourceTool extends BaseTool
         return trim($output);
     }
 
-    private function getResourceContent($team, $user, string $resourceId): string
+    private function getResourceContent($team, $user, string $resourceId, ?string $resourceTitle = null): string
     {
-        Log::debug('getResourceContent internal call', compact('resourceId'));
+        Log::debug('getResourceContent internal call', compact('resourceId', 'resourceTitle'));
 
-        // Validate UUID format
-        if (! Str::isUuid($resourceId)) {
-             Log::warning('Invalid resource ID format provided.', compact('resourceId'));
-             return "Error: Invalid resource ID format provided.";
+        // Clean the resource ID of any non-alphanumeric and hyphen characters
+        $cleanResourceId = preg_replace('/[^a-f0-9\-]/i', '', $resourceId);
+        
+        Log::info('Attempting to find resource with ID', [
+            'original' => $resourceId,
+            'cleaned' => $cleanResourceId,
+            'title' => $resourceTitle
+        ]);
+        
+        try {
+            $resource = null;
+            
+            // Approach 1: Try exact UUID match if it looks like a valid UUID
+            if (!empty($cleanResourceId) && strlen($cleanResourceId) >= 32) {
+                // Format UUID with dashes if they're missing
+                if (!Str::contains($cleanResourceId, '-')) {
+                    $formattedUuid = substr($cleanResourceId, 0, 8) . '-' . 
+                                     substr($cleanResourceId, 8, 4) . '-' . 
+                                     substr($cleanResourceId, 12, 4) . '-' . 
+                                     substr($cleanResourceId, 16, 4) . '-' . 
+                                     substr($cleanResourceId, 20);
+                    Log::info('Formatted UUID for lookup', ['formatted' => $formattedUuid]);
+                } else {
+                    $formattedUuid = $cleanResourceId;
+                }
+                
+                try {
+                    // Use a try/catch to handle potential PostgreSQL UUID format errors
+                    // Use query bindings to let Laravel handle the type correctly
+                    $resource = ClassResource::query()
+                        ->where('team_id', $team->id)
+                        ->whereRaw('id::text = ?', [$formattedUuid])
+                        ->first();
+                    
+                    if ($resource) {
+                        Log::info('Found resource by exact UUID match', [
+                            'id' => $resource->id,
+                            'title' => $resource->title
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('UUID lookup failed', ['error' => $e->getMessage()]);
+                    // Continue to other approaches
+                }
+            }
+            
+            // Approach 2: Exact title match
+            if (!$resource && !empty($resourceTitle)) {
+                $resource = ClassResource::where('title', $resourceTitle)
+                    ->where('team_id', $team->id)
+                    ->first();
+                
+                if ($resource) {
+                    Log::info('Found resource by exact title match', [
+                        'id' => $resource->id,
+                        'title' => $resource->title
+                    ]);
+                }
+            }
+            
+            // Approach 3: Case-insensitive title match
+            if (!$resource && !empty($resourceTitle)) {
+                $resource = ClassResource::whereRaw('LOWER(title) = ?', [strtolower($resourceTitle)])
+                    ->where('team_id', $team->id)
+                    ->first();
+                
+                if ($resource) {
+                    Log::info('Found resource by case-insensitive title match', [
+                        'id' => $resource->id,
+                        'title' => $resource->title
+                    ]);
+                }
+            }
+            
+            // Approach 4: Partial UUID match (first 8 characters)
+            if (!$resource && !empty($cleanResourceId) && strlen($cleanResourceId) >= 8) {
+                $idPrefix = substr($cleanResourceId, 0, 8);
+                
+                Log::info('Trying partial UUID match with prefix', ['prefix' => $idPrefix]);
+                
+                try {
+                    // Use text casting for PostgreSQL UUID type compatibility with proper binding
+                    $resources = ClassResource::query()
+                        ->where('team_id', $team->id)
+                        ->whereRaw('CAST(id AS TEXT) LIKE ?', [$idPrefix.'%'])
+                        ->orderBy('updated_at', 'desc')
+                        ->limit(5)
+                        ->get();
+                    
+                    if ($resources->isNotEmpty()) {
+                        $resource = $resources->first();
+                        Log::info('Found resource with partial UUID match', [
+                            'search_prefix' => $idPrefix,
+                            'matched_id' => $resource->id,
+                            'candidates_count' => $resources->count()
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Partial UUID lookup failed', ['error' => $e->getMessage()]);
+                    // Continue to other approaches
+                }
+            }
+            
+            // Approach 5: Title partial match (more flexible search)
+            if (!$resource && !empty($resourceTitle)) {
+                // Try to find resources with similar titles
+                $resources = ClassResource::where('title', 'LIKE', "%$resourceTitle%")
+                    ->where('team_id', $team->id)
+                    ->orderBy('is_pinned', 'desc')
+                    ->orderBy('updated_at', 'desc')
+                    ->limit(1)
+                    ->get();
+                
+                if ($resources->isNotEmpty()) {
+                    $resource = $resources->first();
+                    Log::info('Found resource by partial title match', [
+                        'id' => $resource->id, 
+                        'title' => $resource->title,
+                        'search_title' => $resourceTitle
+                    ]);
+                }
+            }
+            
+            // Approach 6: Fuzzy search - first few letters of each word
+            if (!$resource && !empty($resourceTitle) && strlen($resourceTitle) >= 3) {
+                $words = explode(' ', $resourceTitle);
+                $firstFewLetters = [];
+                
+                foreach ($words as $word) {
+                    if (strlen($word) >= 3) {
+                        $firstFewLetters[] = substr($word, 0, 3);
+                    }
+                }
+                
+                if (!empty($firstFewLetters)) {
+                    $query = ClassResource::where('team_id', $team->id);
+                    
+                    foreach ($firstFewLetters as $letters) {
+                        $query->where('title', 'LIKE', "%$letters%");
+                    }
+                    
+                    $resource = $query->orderBy('updated_at', 'desc')->first();
+                    
+                    if ($resource) {
+                        Log::info('Found resource by fuzzy search', [
+                            'id' => $resource->id,
+                            'title' => $resource->title,
+                            'search_patterns' => $firstFewLetters
+                        ]);
+                    }
+                }
+            }
+            
+            // Fallback: Most recent resource as last resort
+            if (!$resource) {
+                Log::warning('All lookup approaches failed, using most recent as fallback');
+                $resource = ClassResource::where('team_id', $team->id)
+                    ->where(fn ($q) => $q->where('is_archived', false)->orWhereNull('is_archived'))
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+                
+                if ($resource) {
+                    Log::info('Using fallback resource (most recent)', [
+                        'resource_id' => $resource->id,
+                        'title' => $resource->title
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Error finding resource', [
+                'error' => $e->getMessage(),
+                'id' => $cleanResourceId,
+                'title' => $resourceTitle
+            ]);
+            return "I couldn't find the resource you mentioned. The error was: " . $e->getMessage();
         }
 
-        $resource = ClassResource::where('id', $resourceId)
-                                ->where('team_id', $team->id)
-                                ->first();
-
         if (! $resource) {
-            Log::warning('Resource not found or doesn\'t belong to team.', compact('resourceId', 'team'));
-            return "Error: Resource with ID '{$resourceId}' not found in this team.";
+            return "I couldn't find any resources in this team. Would you like me to help you create some?";
         }
 
         // Check Permissions
