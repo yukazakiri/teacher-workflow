@@ -2,59 +2,60 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Pages\ApiTokens;
-use App\Filament\Pages\AttendanceManager;
-use App\Filament\Pages\ClassesResources;
-use App\Filament\Pages\CreateTeam;
-use App\Filament\Pages\EditProfile;
-use App\Filament\Pages\EditTeam;
-use App\Filament\Pages\Gradesheet;
-use App\Filament\Pages\Messages;
-use App\Filament\Pages\WeeklySchedule;
-use App\Filament\Resources\ActivityResource;
-use App\Filament\Resources\AttendanceQrCodeResource;
-use App\Filament\Resources\AttendanceResource;
-use App\Filament\Resources\ExamResource;
-use App\Filament\Resources\ResourceCategoryResource;
-use App\Filament\Resources\StudentResource;
-use App\Listeners\SwitchTeam;
+use Filament\Panel;
 use App\Models\Team;
 use App\Models\User;
-use AssistantEngine\Filament\Chat\Pages\AssistantChat;
-use AssistantEngine\Filament\FilamentAssistantPlugin;
-use Devonab\FilamentEasyFooter\EasyFooterPlugin;
-use DutchCodingCompany\FilamentSocialite\FilamentSocialitePlugin;
-use DutchCodingCompany\FilamentSocialite\Provider;
+use Filament\Widgets;
+use Filament\PanelProvider;
+use Laravel\Fortify\Fortify;
+use App\Listeners\SwitchTeam;
+use Filament\Pages\Dashboard;
 use Filament\Events\TenantSet;
 use Filament\Facades\Filament;
-use Filament\Http\Middleware\Authenticate;
-use Filament\Http\Middleware\DisableBladeIconComponents;
-use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Laravel\Jetstream\Features;
+use App\Filament\Pages\EditTeam;
+use App\Filament\Pages\Messages;
+use Laravel\Jetstream\Jetstream;
+use App\Filament\Pages\ApiTokens;
 use Filament\Navigation\MenuItem;
-use Filament\Navigation\NavigationBuilder;
-use Filament\Navigation\NavigationGroup;
-use Filament\Navigation\NavigationItem;
-use Filament\Pages\Dashboard;
-use Filament\Panel;
-use Filament\PanelProvider;
+use App\Filament\Pages\CreateTeam;
+use App\Filament\Pages\Gradesheet;
 use Filament\Support\Colors\Color;
-use Filament\Widgets;
-use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
-use Illuminate\Cookie\Middleware\EncryptCookies;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
-use Illuminate\Routing\Middleware\SubstituteBindings;
-use Illuminate\Session\Middleware\AuthenticateSession;
-use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\HtmlString;
+use App\Filament\Pages\EditProfile;
 use Illuminate\Support\Facades\Auth;
+use LaraZeus\Boredom\Enums\Variants;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\HtmlString;
+use App\Filament\Pages\WeeklySchedule;
+use Filament\Navigation\NavigationItem;
+use App\Filament\Pages\ClassesResources;
+use App\Filament\Resources\ExamResource;
+use Filament\Navigation\NavigationGroup;
+use App\Filament\Pages\AttendanceManager;
+use Filament\Http\Middleware\Authenticate;
+use Filament\Navigation\NavigationBuilder;
+use App\Filament\Resources\StudentResource;
+use App\Filament\Resources\ActivityResource;
+use App\Filament\Resources\AttendanceResource;
+use Illuminate\Session\Middleware\StartSession;
+use Devonab\FilamentEasyFooter\EasyFooterPlugin;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use DutchCodingCompany\FilamentSocialite\Provider;
+use App\Filament\Resources\AttendanceQrCodeResource;
+use App\Filament\Resources\ResourceCategoryResource;
+use AssistantEngine\Filament\FilamentAssistantPlugin;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use AssistantEngine\Filament\Chat\Pages\AssistantChat;
+use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Laravel\Fortify\Fortify;
-use Laravel\Jetstream\Features;
-use Laravel\Jetstream\Jetstream;
+use Laravel\WorkOS\Http\Requests\AuthKitLogoutRequest;
+use Filament\Http\Middleware\DisableBladeIconComponents;
+use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Laravel\Socialite\Contracts\User as SocialiteUserContract;
-use LaraZeus\Boredom\Enums\Variants;
+use DutchCodingCompany\FilamentSocialite\FilamentSocialitePlugin;
 
 class AppPanelProvider extends PanelProvider
 {
@@ -64,15 +65,15 @@ class AppPanelProvider extends PanelProvider
             ->default()
             ->id("app")
             ->path("app")
-            ->login()
+            // ->login()
             ->spa()
             ->brandName("FilaGrade")
             // ->sidebarCollapsibleOnDesktop(true)
             ->sidebarFullyCollapsibleOnDesktop()
-            ->emailVerification()
+            // ->emailVerification()
             // ->topNavigation()
-            ->registration()
-            ->passwordReset()
+            // ->registration()
+            // ->passwordReset()
             ->emailVerification()
             ->viteTheme("resources/css/filament/app/theme.css")
             ->colors([
@@ -167,30 +168,7 @@ class AppPanelProvider extends PanelProvider
 
                         return $user; // Return the created user
                     }),
-                EasyFooterPlugin::make()
-                    ->withLoadTime()
-                    ->withSentence(
-                        new HtmlString(
-                            '<img src="https://static.cdnlogo.com/logos/l/23/filament.svg" style="margin-right:.5rem;" alt="Laravel Logo" width="20" height="20"> Laravel'
-                        )
-                    )
-                    ->withGithub(showLogo: true, showUrl: true)
-                    ->withLogo(
-                        "https://static.cdnlogo.com/logos/l/23/laravel.svg",
-                        "https://laravel.com",
-                        "Powered by Laravel"
-                    )
-                    ->withLinks([
-                        [
-                            "title" => "About",
-                            "url" => "https://filagrade.koamishin.org/about",
-                        ],
-                        [
-                            "title" => "Privacy Policy",
-                            "url" => "https://filagrade.koamishin.org/privacy",
-                        ],
-                    ])
-                    ->withBorder(),
+              
                 FilamentAssistantPlugin::make(),
                 \LaraZeus\Boredom\BoringAvatarPlugin::make()
 
@@ -284,6 +262,7 @@ class AppPanelProvider extends PanelProvider
                         ])
                     )
                     ->icon("heroicon-o-document-text"),
+                    'logout' => MenuItem::make()->label('Log out 1')->postAction(fn (AuthKitLogoutRequest $request) =>  $request->logout()),
             ])
             ->widgets([
                 Widgets\AccountWidget::class,

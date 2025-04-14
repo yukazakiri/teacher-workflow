@@ -44,7 +44,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenant
      *
      * @var array<int, string>
      */
-    protected $fillable = ['name', 'email', 'password'];
+    protected $fillable = ['name', 'email', 'password',  'workos_id',      'avatar',];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -53,6 +53,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenant
      */
     protected $hidden = [
         'password',
+        'workos_id',
         'remember_token',
         'two_factor_recovery_codes',
         'two_factor_secret',

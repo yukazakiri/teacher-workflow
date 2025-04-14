@@ -2,27 +2,30 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\ActivityController;
-use App\Http\Controllers\ActivitySubmissionController;
-use App\Http\Controllers\AttendanceController;
-use App\Http\Controllers\ExamController;
+use App\Livewire\ChatPage;
+use App\Models\Conversation;
+use Illuminate\Http\Request;
 use App\Livewire\TeamAttendance;
-use App\Providers\Filament\AppPanelProvider;
-use Illuminate\Session\Middleware\AuthenticateSession;
+use App\Services\PrismChatService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Session; // Keep this line, even if unused for now, as it might be used elsewhere or intended for future use.
-use Laravel\Jetstream\Http\Controllers\TeamInvitationController;
-use Laravel\WorkOS\Http\Middleware\ValidateSessionWithWorkOS;
-use Laravel\WorkOS\Http\Requests\AuthKitAuthenticationRequest as RequestsAuthKitAuthenticationRequest;
-use Laravel\WorkOS\Http\Requests\AuthKitLoginRequest as RequestsAuthKitLoginRequest;
-use Laravel\WorkOS\Http\Requests\AuthKitLogoutRequest as RequestsAuthKitLogoutRequest; // Import the AppPanelProvider if needed for URL generation, though direct path is often fine.
-use App\Http\Controllers\AiStreamController;
-use App\Models\Conversation;
-use App\Services\PrismChatService;
-use Illuminate\Http\Request;
+use App\Http\Controllers\ExamController;
 use App\Http\Controllers\ProfileController;
-use App\Livewire\ChatPage;
+use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\AiStreamController;
+use App\Providers\Filament\AppPanelProvider;
+use App\Http\Controllers\AttendanceController;
+use Laravel\WorkOS\Http\Requests\AuthKitLoginRequest;
+use App\Http\Controllers\ActivitySubmissionController;
+use Illuminate\Session\Middleware\AuthenticateSession;
+use Laravel\WorkOS\Http\Requests\AuthKitLogoutRequest;
+use Laravel\WorkOS\Http\Middleware\ValidateSessionWithWorkOS;
+use Laravel\WorkOS\Http\Requests\AuthKitAuthenticationRequest;
+use Laravel\Jetstream\Http\Controllers\TeamInvitationController;
+use Laravel\WorkOS\Http\Requests\AuthKitLoginRequest as RequestsAuthKitLoginRequest;
+use Laravel\WorkOS\Http\Requests\AuthKitAuthenticationRequest as RequestsAuthKitAuthenticationRequest;
+use Illuminate\Support\Facades\Session; // Keep this line, even if unused for now, as it might be used elsewhere or intended for future use.
+use Laravel\WorkOS\Http\Requests\AuthKitLogoutRequest as RequestsAuthKitLogoutRequest; // Import the AppPanelProvider if needed for URL generation, though direct path is often fine.
 
 /*
 |--------------------------------------------------------------------------
@@ -34,10 +37,10 @@ use App\Livewire\ChatPage;
 | be assigned to the "web" middleware group. Make something great!
 |
 */
-
+Route::get('logs', [\Rap2hpoutre\LaravelLogViewer\LogViewerController::class, 'index']);
 // Determine the appropriate session authentication middleware
-$authSessionMiddleware = config('app.use_workos', false)
-    ? ValidateSessionWithWorkOS::class
+$authSessionMiddleware = config('app.use_workos', true)
+    ?  ValidateSessionWithWorkOS::class
     : AuthenticateSession::class; // Or config('jetstream.auth_session') if Jetstream's default is preferred
 
 // Route::get("/", fn() => redirect("/login"))->name("welcome");
@@ -55,37 +58,20 @@ Route::get('/', function () {
 })->name('welcome');
 
 if (config('app.use_workos', true)) {
-    // WorkOS Authentication Routes
-    Route::get('login', function (RequestsAuthKitLoginRequest $request) {
+    Route::get('login', function (AuthKitLoginRequest $request) {
         return $request->redirect();
-    })
-        ->middleware(['guest'])
-        ->name('login');
+    })->middleware(['guest'])->name('login');
+        Route::get('authenticate', function (AuthKitAuthenticationRequest $request) {
+            return tap(to_route('dashboard'), fn () => $request->authenticate());
+        })->middleware(['guest']);
 
-    Route::get('authenticate', function (
-        RequestsAuthKitAuthenticationRequest $request
-    ) {
-        // Ensure the intended redirect goes to the application's dashboard path
-        return tap(
-            redirect()->intended('/app'),
-            fn () => $request->authenticate()
-        );
-    })->middleware(['guest']);
-
-    Route::post('logout', function (RequestsAuthKitLogoutRequest $request) {
-        Auth::guard('web')->logout();
-
-        Session::invalidate();
-        Session::regenerateToken();
-
-        // The $request->logout() handles redirecting to WorkOS for logout
-        return $request->logout();
-    })
-        ->middleware(['auth'])
-        ->name('logout');
+   
+Route::post('logout', function (AuthKitLogoutRequest $request) {
+    return $request->logout();
+})->middleware(['auth'])->name('logout');
 
     // Redirect dashboard to the application root under WorkOS context if needed
-    Route::redirect('/dashboard', '/app')->name('dashboard');
+    // Route::redirect('/dashboard', '/app')->name('dashboard');
 
     // Disable standard registration if using WorkOS for authentication
     // Route::redirect("/register", "/app/register")->name("register"); // Or handle differently

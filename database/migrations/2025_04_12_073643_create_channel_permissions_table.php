@@ -22,12 +22,7 @@ return new class extends Migration
             $table->unique(['team_id', 'role']);
         });
         
-        // Add permissions column to channel_members pivot table if it doesn't exist
-        if (!Schema::hasColumn('channel_members', 'permissions')) {
-            Schema::table('channel_members', function (Blueprint $table) {
-                $table->string('permissions')->default('read,write')->after('user_id');
-            });
-        }
+      
     }
 
     /**
