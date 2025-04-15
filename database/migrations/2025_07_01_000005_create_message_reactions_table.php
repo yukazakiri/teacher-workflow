@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
             $table->string('emoji');
             $table->timestamps();
-            
+            $table->softDeletes();
             // Ensure a user can only react once with the same emoji to a message
             $table->unique(['message_id', 'user_id', 'emoji']);
         });

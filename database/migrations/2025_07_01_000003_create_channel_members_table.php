@@ -17,7 +17,8 @@ return new class extends Migration
             $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
             $table->json('permissions')->nullable();
             $table->timestamps();
-            
+            $table->softDeletes();
+
             // Ensure a user can only be a member of a channel once
             $table->unique(['channel_id', 'user_id']);
         });

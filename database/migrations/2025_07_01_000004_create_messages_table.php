@@ -20,7 +20,7 @@ return new class extends Migration
             $table->boolean('is_pinned')->default(false);
             $table->timestamp('edited_at')->nullable();
             $table->timestamps();
-            
+            $table->softDeletes();
             // Add index for faster message retrieval by channel
             $table->index('channel_id');
         });

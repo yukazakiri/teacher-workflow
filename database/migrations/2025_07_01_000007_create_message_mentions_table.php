@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignUuid('message_id')->constrained()->cascadeOnDelete();
             $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
             $table->timestamps();
-            
+            $table->softDeletes();
             // Ensure a user can only be mentioned once in a message
             $table->unique(['message_id', 'user_id']);
         });

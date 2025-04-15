@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('file_type');
             $table->integer('file_size');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

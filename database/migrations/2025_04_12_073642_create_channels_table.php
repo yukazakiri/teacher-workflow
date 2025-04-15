@@ -22,7 +22,8 @@ return new class extends Migration
             $table->boolean('is_private')->default(false);
             $table->integer('position')->default(0);
             $table->timestamps();
-            
+            $table->softDeletes();
+
             // Ensure channel names are unique within a team
             $table->unique(['team_id', 'slug']);
         });
