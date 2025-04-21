@@ -245,7 +245,7 @@ class CreateTeam extends RegisterTenant
      */
     protected function joinExistingTeam(
         array $data
-    ): \Illuminate\Http\RedirectResponse {
+    ) {
         if (empty($data["join_code"])) {
             throw ValidationException::withMessages([
                 "join_code" => "Please enter a valid class code.",
