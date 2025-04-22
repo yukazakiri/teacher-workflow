@@ -2,8 +2,13 @@
 
 namespace App\Filament\Admin\Pages;
 
-use App\Filament\Admin\Widgets\StatisticsDashboard;
+use App\Filament\Admin\Widgets\ActivityStatsChart;
+use App\Filament\Admin\Widgets\ExamScoresChart;
+use App\Filament\Admin\Widgets\ExamStatsChart;
+use App\Filament\Admin\Widgets\ResourceStatsChart;
+use App\Filament\Admin\Widgets\RoleDistributionChart;
 use App\Filament\Admin\Widgets\StatsOverview;
+use App\Filament\Admin\Widgets\UserStatsChart;
 use Filament\Pages\Page;
 
 class AnalyticsDashboard extends Page
@@ -32,7 +37,12 @@ class AnalyticsDashboard extends Page
     public function getFooterWidgets(): array
     {
         return [
-            StatisticsDashboard::class,
+            UserStatsChart::class,
+            RoleDistributionChart::class,
+            ActivityStatsChart::class,
+            ExamStatsChart::class,
+            ExamScoresChart::class,
+            ResourceStatsChart::class,
         ];
     }
     
