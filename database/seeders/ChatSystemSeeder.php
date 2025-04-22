@@ -21,114 +21,135 @@ class ChatSystemSeeder extends Seeder
         $teams = Team::all();
 
         foreach ($teams as $team) {
-            // Create default categories for each team
-            $generalCategory = ChannelCategory::create([
-                'team_id' => $team->id,
-                'name' => 'General',
-                'position' => 0,
-            ]);
+            // Create default categories for each team if they don't exist
+            $generalCategory = ChannelCategory::firstOrCreate(
+                ['team_id' => $team->id, 'name' => 'General'],
+                ['position' => 0]
+            );
 
-            $classworkCategory = ChannelCategory::create([
-                'team_id' => $team->id,
-                'name' => 'Classwork',
-                'position' => 1,
-            ]);
+            $classworkCategory = ChannelCategory::firstOrCreate(
+                ['team_id' => $team->id, 'name' => 'Classwork'],
+                ['position' => 1]
+            );
 
-            $resourcesCategory = ChannelCategory::create([
-                'team_id' => $team->id,
-                'name' => 'Resources',
-                'position' => 2,
-            ]);
+            $resourcesCategory = ChannelCategory::firstOrCreate(
+                ['team_id' => $team->id, 'name' => 'Resources'],
+                ['position' => 2]
+            );
 
-            // Create default channels for each team
-            $generalChannel = Channel::create([
-                'team_id' => $team->id,
-                'category_id' => $generalCategory->id,
-                'name' => 'general',
-                'slug' => 'general',
-                'description' => 'General discussion channel',
-                'type' => 'text',
-                'is_private' => false,
-                'position' => 0,
-            ]);
+            // Create default channels for each team if they don't exist
+            $generalChannel = Channel::firstOrCreate(
+                ['team_id' => $team->id, 'slug' => 'general'],
+                [
+                    'category_id' => $generalCategory->id,
+                    'name' => 'general',
+                    'description' => 'General discussion channel',
+                    'type' => 'text',
+                    'is_private' => false,
+                    'position' => 0,
+                ]
+            );
 
-            $announcementsChannel = Channel::create([
-                'team_id' => $team->id,
-                'category_id' => $generalCategory->id,
-                'name' => 'announcements',
-                'slug' => 'announcements',
-                'description' => 'Important announcements',
-                'type' => 'announcement',
-                'is_private' => false,
-                'position' => 1,
-            ]);
+            $announcementsChannel = Channel::firstOrCreate(
+                ['team_id' => $team->id, 'slug' => 'announcements'],
+                [
+                    'category_id' => $generalCategory->id,
+                    'name' => 'announcements',
+                    'description' => 'Important announcements',
+                    'type' => 'announcement',
+                    'is_private' => false,
+                    'position' => 1,
+                ]
+            );
 
-            $homeworkChannel = Channel::create([
-                'team_id' => $team->id,
-                'category_id' => $classworkCategory->id,
-                'name' => 'homework',
-                'slug' => 'homework',
-                'description' => 'Homework discussion',
-                'type' => 'text',
-                'is_private' => false,
-                'position' => 0,
-            ]);
+            $homeworkChannel = Channel::firstOrCreate(
+                ['team_id' => $team->id, 'slug' => 'homework'],
+                [
+                    'category_id' => $classworkCategory->id,
+                    'name' => 'homework',
+                    'description' => 'Homework discussion',
+                    'type' => 'text',
+                    'is_private' => false,
+                    'position' => 0,
+                ]
+            );
 
-            $questionsChannel = Channel::create([
-                'team_id' => $team->id,
-                'category_id' => $classworkCategory->id,
-                'name' => 'questions',
-                'slug' => 'questions',
-                'description' => 'Ask questions about the class',
-                'type' => 'text',
-                'is_private' => false,
-                'position' => 1,
-            ]);
+            $questionsChannel = Channel::firstOrCreate(
+                ['team_id' => $team->id, 'slug' => 'questions'],
+                [
+                    'category_id' => $classworkCategory->id,
+                    'name' => 'questions',
+                    'description' => 'Ask questions about the class',
+                    'type' => 'text',
+                    'is_private' => false,
+                    'position' => 1,
+                ]
+            );
             
-            $filesChannel = Channel::create([
-                'team_id' => $team->id,
-                'category_id' => $resourcesCategory->id,
-                'name' => 'files',
-                'slug' => 'files',
-                'description' => 'Share files and resources',
-                'type' => 'media',
-                'is_private' => false,
-                'position' => 0,
-            ]);
+            $filesChannel = Channel::firstOrCreate(
+                ['team_id' => $team->id, 'slug' => 'files'],
+                [
+                    'category_id' => $resourcesCategory->id,
+                    'name' => 'files',
+                    'description' => 'Share files and resources',
+                    'type' => 'media',
+                    'is_private' => false,
+                    'position' => 0,
+                ]
+            );
             
-            $linksChannel = Channel::create([
-                'team_id' => $team->id,
-                'category_id' => $resourcesCategory->id,
-                'name' => 'links',
-                'slug' => 'links',
-                'description' => 'Share useful links',
-                'type' => 'text',
-                'is_private' => false,
-                'position' => 1,
-            ]);
+            $linksChannel = Channel::firstOrCreate(
+                ['team_id' => $team->id, 'slug' => 'links'],
+                [
+                    'category_id' => $resourcesCategory->id,
+                    'name' => 'links',
+                    'description' => 'Share useful links',
+                    'type' => 'text',
+                    'is_private' => false,
+                    'position' => 1,
+                ]
+            );
 
-            // Add all team members to the channels
+            // Add team members to channels if they're not already members
             $teamMembers = $team->users;
             $teamOwner = User::find($team->user_id);
             
             foreach ($teamMembers as $member) {
-                // Default permissions for all members
-                $memberPermissions = 'read,write'; 
+                // Default permissions for all members in JSON format
+                $memberPermissions = '["read", "write"]'; 
                 
-                // Extended permissions for team owner
+                // Extended permissions for team owner in JSON format
                 if ($member->id === $team->user_id) {
-                    $memberPermissions = 'read,write,manage';
+                    $memberPermissions = '["read", "write", "manage"]';
                 }
                 
-                $generalChannel->members()->attach($member->id, ['permissions' => $memberPermissions]);
-                $announcementsChannel->members()->attach($member->id, ['permissions' => $memberPermissions]);
-                $homeworkChannel->members()->attach($member->id, ['permissions' => $memberPermissions]);
-                $questionsChannel->members()->attach($member->id, ['permissions' => $memberPermissions]);
-                $filesChannel->members()->attach($member->id, ['permissions' => $memberPermissions]);
-                $linksChannel->members()->attach($member->id, ['permissions' => $memberPermissions]);
+                // Only attach member if not already attached
+                if (!$generalChannel->members()->where('user_id', $member->id)->exists()) {
+                    $generalChannel->members()->attach($member->id, ['permissions' => $memberPermissions]);
+                }
                 
-                // Add some sample messages from team owner
-                if ($member->id === $team->user_id) {
+                if (!$announcementsChannel->members()->where('user_id', $member->id)->exists()) {
+                    $announcementsChannel->members()->attach($member->id, ['permissions' => $memberPermissions]);
+                }
+                
+                if (!$homeworkChannel->members()->where('user_id', $member->id)->exists()) {
+                    $homeworkChannel->members()->attach($member->id, ['permissions' => $memberPermissions]);
+                }
+                
+                if (!$questionsChannel->members()->where('user_id', $member->id)->exists()) {
+                    $questionsChannel->members()->attach($member->id, ['permissions' => $memberPermissions]);
+                }
+                
+                if (!$filesChannel->members()->where('user_id', $member->id)->exists()) {
+                    $filesChannel->members()->attach($member->id, ['permissions' => $memberPermissions]);
+                }
+                
+                if (!$linksChannel->members()->where('user_id', $member->id)->exists()) {
+                    $linksChannel->members()->attach($member->id, ['permissions' => $memberPermissions]);
+                }
+                
+                // Add sample messages from team owner if they don't exist
+                if ($member->id === $team->user_id && !Message::where('channel_id', $generalChannel->id)->exists()) {
                     Message::create([
                         'channel_id' => $generalChannel->id,
                         'user_id' => $member->id,

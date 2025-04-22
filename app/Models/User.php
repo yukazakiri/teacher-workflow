@@ -150,4 +150,29 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenant
         return $this->belongsToMany(Message::class, 'message_mentions')
             ->withTimestamps();
     }
+
+    public function currentTeam()
+    {
+        if (is_null($this->current_team_id) && $this->id) {
+            $this->switchTeam($this->personalTeam());
+        }
+
+        return $this->belongsTo(Team::class, 'current_team_id');
+    }
+
+    /**
+     * Get the user's sessions.
+     */
+    public function sessions()
+    {
+        return $this->hasMany(Session::class, 'user_id');
+    }
+
+    /**
+     * Get the user's personal team.
+     */
+    public function personalTeam()
+    {
+        return $this->ownedTeams()->where('personal_team', true)->first();
+    }
 }

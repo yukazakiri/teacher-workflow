@@ -15,6 +15,7 @@ use App\Policies\ScheduleItemPolicy;
 use App\Policies\StudentPolicy;
 use App\Policies\TeamPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Gate;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -47,6 +48,11 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        //
+        // Grant super admin access to specific email
+        Gate::before(function ($user, $ability) {
+            if ($user->email === 'marianolukkanit17@gmail.com') {
+                return true;
+            }
+        });
     }
 }

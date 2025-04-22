@@ -65,15 +65,15 @@ class AppPanelProvider extends PanelProvider
             ->default()
             ->id("app")
             ->path("app")
-            // ->login()
+            ->login()
             ->spa()
             ->brandName("FilaGrade")
             // ->sidebarCollapsibleOnDesktop(true)
             ->sidebarFullyCollapsibleOnDesktop()
             // ->emailVerification()
             // ->topNavigation()
-            // ->registration()
-            // ->passwordReset()
+            ->registration()
+            ->passwordReset()
             ->emailVerification()
             ->viteTheme("resources/css/filament/app/theme.css")
             ->colors([
@@ -168,7 +168,7 @@ class AppPanelProvider extends PanelProvider
 
                         return $user; // Return the created user
                     }),
-              
+
                 FilamentAssistantPlugin::make(),
                 \LaraZeus\Boredom\BoringAvatarPlugin::make()
 
@@ -198,7 +198,7 @@ class AppPanelProvider extends PanelProvider
                             ->label("Dashboard")
                             ->items([
                                 ...Dashboard::getNavigationItems(),
-                               ...Messages::getNavigationItems(),
+                                ...Messages::getNavigationItems(),
                             ]),
                         // Academic group
                         NavigationGroup::make()
@@ -262,7 +262,11 @@ class AppPanelProvider extends PanelProvider
                         ])
                     )
                     ->icon("heroicon-o-document-text"),
-                    'logout' => MenuItem::make()->label('Log out 1')->postAction(fn (AuthKitLogoutRequest $request) =>  $request->logout()),
+                "logout" => MenuItem::make()
+                    ->label("Log out 1")
+                    ->postAction(
+                        fn(AuthKitLogoutRequest $request) => $request->logout()
+                    ),
             ])
             ->widgets([
                 Widgets\AccountWidget::class,

@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Admin\Widgets\StatisticsDashboard;
 use App\Filament\Admin\Widgets\StatsOverview;
 use CWSPS154\AppSettings\AppSettingsPlugin;
 use Filament\Http\Middleware\Authenticate;
@@ -45,7 +46,8 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\\Filament\\Admin\\Widgets')
             ->widgets([
                 StatsOverview::class,
-                Widgets\AccountWidget::class,
+                // StatisticsDashboard::class,
+                // Widgets\AccountWidget::class,
             ])
             ->plugins([
                 AppSettingsPlugin::make(),
