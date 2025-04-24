@@ -198,7 +198,7 @@ class AttendanceResource extends Resource
                                 $record->update(['status' => $data['status']]);
                             }
                         })
-                        ->visible(fn () => Auth::user()->hasTeamRole(Auth::user()->currentTeam, 'teacher')),
+                        ->visible(fn () => Auth::user()->ownsTeam(Auth::user()->currentTeam)),
                 ]),
             ]);
     }
@@ -222,21 +222,20 @@ class AttendanceResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
-
+        
         // Filter by team
         if (Auth::user()->currentTeam) {
-            $query->whereHas('team', function (Builder $query) {
-                $query->where('id', Auth::user()->currentTeam->id);
-            });
-        }
+            $query->where('team_id', Auth::user()->currentTeam->id);
+                }
 
-        // For students, only show their own attendance records
-        if (Auth::user()->hasTeamRole(Auth::user()->currentTeam, 'student')) {
-            $query->whereHas('student', function (Builder $query) {
-                $query->where('user_id', Auth::user()->id);
-            });
-        }
+        // // For students, only show their own attendance records
+        // if (Auth::user()->hasTeamRole(Auth::user()->currentTeam, 'student')) {
+        //     $query->whereHas('student', function (Builder $query) {
+        //         $query->where('user_id', Auth::user()->id);
+        //     });
+        // }
 
+        // Order by most recent first
         return $query;
     }
 
