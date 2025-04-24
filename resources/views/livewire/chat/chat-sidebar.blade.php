@@ -9,7 +9,8 @@
         channelContextMenu: { show: false, x: 0, y: 0, id: null },
         showCreateChannelForm: false,
         showCreateCategoryForm: false,
-        showMembers: @js($showMembers) // Sync Alpine state with Livewire
+        showMembers: @js($showMembers), // Sync Alpine state with Livewire
+        unreadChannels: new Set() // Track unread channels
     }"
     @click.away="channelContextMenu.show = false"
     @channel-delete-initiated.window="showDeleteConfirm = true; selectedChannel = $event.detail"
@@ -24,16 +25,18 @@
     @category-creation-complete.window="showCreateCategoryForm = false"
     @category-creation-cancelled.window="showCreateCategoryForm = false"
     @keydown.escape.window="channelContextMenu.show = false; showDeleteConfirm = false; editingChannelId = null; showCreateChannelForm = false; showCreateCategoryForm = false"
+    @new-message.window="if($event.detail.channelId && $event.detail.channelId !== '{{ $activeChannelId }}') { unreadChannels.add($event.detail.channelId); }"
+    @channel-read.window="unreadChannels.delete($event.detail.channelId);"
 >
     {{-- Team/Server Header --}}
-    <div class="flex-shrink-0 h-14 flex items-center justify-between px-3 shadow-md bg-gray-900 z-10">
-        <span class="text-white font-semibold text-lg truncate">{{ $team->name ?? 'Team' }}</span>
+    <div class="flex-shrink-0 h-12 flex items-center justify-between px-4 shadow-md bg-discord-dark border-b border-discord-light-gray z-10">
+        <span class="text-white font-medium text-base truncate">{{ $team->name ?? 'Team' }}</span>
         <div class="flex items-center space-x-1 md:space-x-2">
             <button 
                 @click="showMembers = !showMembers"
                 wire:click="toggleMembersList"
-                class="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-md focus:outline-none transition-colors duration-150"
-                :class="{ 'bg-gray-700 text-gray-200': showMembers }"
+                class="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-discord-hover rounded-md focus:outline-none transition-colors duration-150"
+                :class="{ 'bg-discord-hover text-gray-200': showMembers }"
                 x-tooltip="Members"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -42,7 +45,7 @@
             </button>
             <button 
                 wire:click="startCreateChannel()" 
-                class="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-md focus:outline-none transition-colors duration-150"
+                class="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-discord-hover rounded-md focus:outline-none transition-colors duration-150"
                 x-tooltip="New Channel"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -51,7 +54,7 @@
             </button>
             <button 
                 wire:click="startCreateCategory" 
-                class="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-md focus:outline-none transition-colors duration-150"
+                class="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-discord-hover rounded-md focus:outline-none transition-colors duration-150"
                 x-tooltip="New Category"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -62,7 +65,7 @@
     </div>
 
     {{-- Main Content (Channel List or Members List) --}}
-    <div class="flex-1 overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-850">
+    <div class="flex-1 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-discord-scrollbar scrollbar-track-discord-dark">
         
         {{-- Modal: Delete Channel Confirmation --}}
         <div 
@@ -77,7 +80,7 @@
             x-transition:leave-end="opacity-0"
         >
             <div 
-                class="bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6"
+                class="bg-discord-dark rounded-lg shadow-xl w-full max-w-md p-6"
                 x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 scale-95"
                 x-transition:enter-end="opacity-100 scale-100"
@@ -92,7 +95,7 @@
                 
                 <div class="flex justify-end space-x-3">
                     <button 
-                        class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-md transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                        class="px-4 py-2 bg-discord-light-gray hover:bg-discord-hover text-gray-200 rounded-md transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-discord-blurple"
                         @click="showDeleteConfirm = false"
                     >
                         Cancel
@@ -331,13 +334,13 @@
         
         {{-- Members List (Conditionally Shown) --}}
         <div x-show="showMembers" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
-            <h3 class="font-semibold text-gray-400 text-sm uppercase tracking-wide mb-2 px-1">Members ({{ count($teamMembers) }})</h3>
-            <ul class="space-y-1">
+            <h3 class="font-semibold text-gray-400 text-xs uppercase tracking-wide mb-2 px-1">Members ({{ count($teamMembers) }})</h3>
+            <ul class="space-y-0.5">
                 @foreach($teamMembers as $member)
-                    <li class="flex items-center space-x-3 p-2 rounded-md hover:bg-gray-800 transition-colors duration-150 cursor-default">
+                    <li class="flex items-center space-x-2.5 p-1.5 rounded-md hover:bg-discord-hover transition-colors duration-150 cursor-default">
                         <div class="relative flex-shrink-0">
-                            <img src="{{ $member->profile_photo_url }}" alt="{{ $member->name }}" class="h-8 w-8 rounded-full object-cover border-2 border-gray-700">
-                            <span class="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-400 border-2 border-gray-850 ring-1 ring-gray-900"></span>
+                            <img src="{{ $member->profile_photo_url }}" alt="{{ $member->name }}" class="h-8 w-8 rounded-full object-cover">
+                            <span class="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-400 border-2 border-discord-dark"></span>
                         </div>
                         <span class="text-sm font-medium {{ $team->user_id === $member->id ? 'text-yellow-300' : 'text-gray-300' }} truncate">
                             {{ $member->name }}
@@ -357,20 +360,20 @@
                     <p class="mb-4">No channels found.</p>
                     <button 
                         wire:click="startCreateCategory" 
-                        class="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        class="mt-4 px-4 py-2 bg-discord-blurple hover:bg-discord-blurple-dark text-white rounded-md transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-discord-blurple"
                     >
                         Create your first category
                     </button>
                 </div>
             @else
-                <nav class="space-y-4">
+                <nav class="space-y-2">
                     @foreach ($categories as $category)
                         <div x-data="{ open: true }">
                             {{-- Category Header with Add Channel Button --}}
-                            <div class="flex items-center justify-between group mb-1">
+                            <div class="flex items-center justify-between group mb-0.5">
                                 <button 
                                     @click="open = !open" 
-                                    class="flex items-center px-1 py-1 text-xs font-semibold text-gray-400 uppercase hover:text-gray-200 focus:outline-none transition-colors duration-150 rounded"
+                                    class="flex items-center px-1 py-1 text-xs font-semibold text-gray-400 uppercase hover:text-gray-200 focus:outline-none transition-colors duration-150 rounded w-full"
                                 >
                                     <svg 
                                         xmlns="http://www.w3.org/2000/svg" 
@@ -387,7 +390,7 @@
                                 
                                 <button 
                                     wire:click="startCreateChannel('{{ $category->id }}')"
-                                    class="p-1 text-gray-500 hover:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none rounded-full hover:bg-gray-700"
+                                    class="p-1 text-gray-500 hover:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none rounded-full hover:bg-discord-hover"
                                     x-tooltip="New Channel in {{ $category->name }}"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -400,22 +403,24 @@
                             <div 
                                 x-show="open" 
                                 x-collapse
-                                class="mt-1 space-y-0.5 pl-2"
+                                class="mt-0.5 space-y-0 pl-1"
                             >
-                                <ul class="space-y-px">
+                                <ul class="space-y-0">
                                     @forelse ($category->channels as $channel)
                                         <li 
-                                            class="relative group rounded-md"
-                                            :class="{'bg-gray-800': editingChannelId === '{{ $channel->id }}'}"
+                                            class="relative group rounded flex items-center"
+                                            :class="{
+                                                'bg-[#36393f]': editingChannelId === '{{ $channel->id }}',
+                                            }"
                                             @contextmenu.prevent="channelContextMenu.show = true; channelContextMenu.x = $event.clientX; channelContextMenu.y = $event.clientY; channelContextMenu.id = '{{ $channel->id }}'"
                                         >
                                             {{-- Inline Editing --}}
-                                            <div x-show="editingChannelId === '{{ $channel->id }}'" class="flex items-center py-1 px-1.5">
+                                            <div x-show="editingChannelId === '{{ $channel->id }}'" class="flex items-center py-1 px-1.5 w-full">
                                                 <input 
                                                     type="text" 
                                                     wire:model.defer="channelName" 
                                                     x-ref="channel-name-{{ $channel->id }}"
-                                                    class="flex-grow bg-gray-700 border-gray-600 rounded-md shadow-sm py-1 px-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent"
+                                                    class="flex-grow bg-[#202225] border-none rounded py-1 px-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#5865f2]"
                                                     @keydown.enter="$wire.renameChannel('{{ $channel->id }}')"
                                                     @keydown.escape="editingChannelId = null; $wire.cancelRename()"
                                                     @click.outside="if(editingChannelId === '{{ $channel->id }}') { editingChannelId = null; $wire.cancelRename() }"
@@ -423,7 +428,7 @@
                                                 <div class="flex ml-1 space-x-0.5 flex-shrink-0">
                                                     <button 
                                                         @click="$wire.renameChannel('{{ $channel->id }}')"
-                                                        class="text-green-400 hover:text-green-300 p-1 rounded hover:bg-gray-600 transition-colors duration-150"
+                                                        class="text-green-400 hover:text-green-300 p-1 rounded hover:bg-[#36393f] transition-colors duration-150"
                                                         x-tooltip="Save"
                                                     >
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -432,7 +437,7 @@
                                                     </button>
                                                     <button 
                                                         @click="editingChannelId = null; $wire.cancelRename()"
-                                                        class="text-red-400 hover:text-red-300 p-1 rounded hover:bg-gray-600 transition-colors duration-150"
+                                                        class="text-red-400 hover:text-red-300 p-1 rounded hover:bg-[#36393f] transition-colors duration-150"
                                                         x-tooltip="Cancel"
                                                     >
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -443,39 +448,55 @@
                                             </div>
                                             
                                             {{-- Normal Channel Display --}}
-                                            <div x-show="editingChannelId !== '{{ $channel->id }}'">
+                                            <div x-show="editingChannelId !== '{{ $channel->id }}'" class="flex items-center w-full">
                                                 <button 
                                                     wire:click="selectChannel('{{ $channel->id }}')" 
-                                                    class="flex items-center w-full text-left py-1.5 px-2 rounded-md text-sm font-medium transition-colors duration-150 group"
-                                                    :class="{'bg-gray-750 text-white': '{{ $activeChannelId }}' === '{{ $channel->id }}', 'text-gray-400 hover:text-gray-200 hover:bg-gray-800': '{{ $activeChannelId }}' !== '{{ $channel->id }}'}"
+                                                    @click="unreadChannels.delete('{{ $channel->id }}'); $wire.dispatch('markChannelAsRead', { channelId: '{{ $channel->id }}' });"
+                                                    class="flex items-center w-full text-left py-1 px-2 rounded text-sm font-medium transition-colors duration-150 justify-between relative"
+                                                    :class="{
+                                                        // Discord left border for active/unread
+                                                        'border-l-4 border-[#5865f2] bg-[#393c43] text-white font-bold': '{{ $activeChannelId }}' === '{{ $channel->id }}',
+                                                        'border-l-4 border-[#43b581] bg-[#393c43] text-white font-bold': unreadChannels.has('{{ $channel->id }}') && '{{ $activeChannelId }}' !== '{{ $channel->id }}',
+                                                        'text-gray-400 hover:text-white hover:bg-[#36393f]': !unreadChannels.has('{{ $channel->id }}') && '{{ $activeChannelId }}' !== '{{ $channel->id }}',
+                                                    }"
                                                 >
-                                                    {{-- Channel icon based on type --}}
-                                                    <span class="mr-1.5 opacity-70 flex-shrink-0"
-                                                          :class="{'text-white': '{{ $activeChannelId }}' === '{{ $channel->id }}', 'text-gray-500': '{{ $activeChannelId }}' !== '{{ $channel->id }}'}"
-                                                    >
-                                                        @if($channel->type === 'text')
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-                                                        </svg>
-                                                        @elseif($channel->type === 'announcement')
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-                                                        </svg>
-                                                        @elseif($channel->type === 'voice')
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                                                        </svg>
-                                                        @elseif($channel->type === 'media')
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                        </svg>
-                                                        @endif
-                                                    </span>
-                                                    <span class="truncate flex-grow">{{ $channel->name }}</span>
-                                                    
-                                                    {{-- Channel Actions Button (dots menu) - shown on hover of the channel item --}}
+                                                    <div class="flex items-center flex-grow min-w-0">
+                                                        {{-- Channel icon based on type --}}
+                                                        <span class="mr-1.5 flex-shrink-0"
+                                                              :class="{
+                                                                'text-white': '{{ $activeChannelId }}' === '{{ $channel->id }}', 
+                                                                'text-[#43b581]': unreadChannels.has('{{ $channel->id }}') && '{{ $activeChannelId }}' !== '{{ $channel->id }}',
+                                                                'text-gray-500': !unreadChannels.has('{{ $channel->id }}') && '{{ $activeChannelId }}' !== '{{ $channel->id }}'
+                                                               }"
+                                                        >
+                                                            @if($channel->type === 'text')
+                                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                                                                </svg>
+                                                            @elseif($channel->type === 'announcement')
+                                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                                                                </svg>
+                                                            @elseif($channel->type === 'voice')
+                                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                                                </svg>
+                                                            @elseif($channel->type === 'media')
+                                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                                </svg>
+                                                            @endif
+                                                        </span>
+                                                        <span class="truncate flex-grow" :class="{ 'font-bold text-white': unreadChannels.has('{{ $channel->id }}') }">{{ $channel->name }}</span>
+                                                    </div>
+                                                    {{-- Unread indicator (Discord style) --}}
+                                                    <span 
+                                                        x-show="unreadChannels.has('{{ $channel->id }}')"
+                                                        class="ml-2 h-2.5 w-2.5 bg-[#43b581] rounded-full animate-pulse"
+                                                    ></span>
+                                                    {{-- Channel Actions Button (dots menu) - shown on hover only --}}
                                                     <button 
-                                                        class="ml-1 flex-shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 rounded-full text-gray-500 hover:text-gray-300 hover:bg-gray-700 transition-all duration-150"
+                                                        class="ml-1 flex-shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 rounded-full text-gray-500 hover:text-gray-300 hover:bg-[#36393f] transition-all duration-150"
                                                         @click.stop="channelContextMenu.show = true; channelContextMenu.x = $event.clientX; channelContextMenu.y = $event.clientY; channelContextMenu.id = '{{ $channel->id }}'"
                                                     >
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -520,7 +541,6 @@
         .scrollbar-thin::-webkit-scrollbar-thumb:hover {
             background-color: #718096; /* gray-600 */
         }
-
     </style>
     <script>
         // Add Alpine Collapse plugin if not already included globally
