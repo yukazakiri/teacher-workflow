@@ -262,11 +262,7 @@ class AppPanelProvider extends PanelProvider
                         ])
                     )
                     ->icon("heroicon-o-document-text"),
-                "logout" => MenuItem::make()
-                    ->label("Log out 1")
-                    ->postAction(
-                        fn(AuthKitLogoutRequest $request) => $request->logout()
-                    ),
+               
             ])
             ->widgets([
                 Widgets\AccountWidget::class,

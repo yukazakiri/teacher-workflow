@@ -1,3 +1,4 @@
 <div class="flex justify-center">
-    {!! $this->safeGenerateQrCode($url) !!}
+    {{-- Directly use the helper to avoid potential 'this' context issues --}}
+    {!! \App\Helpers\QrCodeHelper::generateSvg($url, $size ?? 200) !!}
 </div> 

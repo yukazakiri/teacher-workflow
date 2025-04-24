@@ -1,0 +1,83 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Laravel & Livewire Project Guidelines
+
+This document outlines the key principles, best practices, and technology stack for this project.
+
+## Key Principles
+
+- Write concise, technical responses with accurate PHP and Livewire examples.
+- Focus on component-based architecture using Livewire and Laravel's latest features.
+- Follow Laravel and Livewire best practices and conventions.
+- Use object-oriented programming with a focus on SOLID principles.
+- Prefer iteration and modularization over duplication.
+- Use descriptive variable, method, and component names.
+- Use lowercase with dashes for directories (e.g., `app/Http/Livewire`).
+- Favor dependency injection and service containers.
+
+## Technology Stack
+
+- **PHP:** 8.2+ (Utilize features like typed properties, match expressions)
+- **Laravel:** 11 (Latest stable version)
+- **Livewire:** 3.5+ (For dynamic components and real-time interactions)
+- **Alpine.js:** For lightweight JavaScript interactions
+- **Tailwind CSS:** Utility-first styling
+- **Filament:** Pre-built UI components and themes
+- **Composer:** PHP dependency management
+- **NPM/Yarn:** Frontend dependency management
+
+## PHP/Laravel Best Practices
+
+- Follow PSR-12 coding standards.
+- Use strict typing: `declare(strict_types=1);`
+- Utilize Laravel 11's built-in features and helpers.
+- Implement proper error handling and logging (Laravel's features, custom exceptions, try-catch).
+- Use Laravel's validation features (Form Requests).
+- Implement middleware for request filtering/modification.
+- Use Eloquent ORM for database interactions; Query Builder for complex queries.
+- Implement database migrations and seeders.
+- Prefer Eloquent ORM over raw SQL.
+- Consider the Repository pattern for data access.
+- Use built-in authentication and authorization.
+- Utilize caching mechanisms for performance.
+- Implement job queues for long-running tasks.
+- Use Laravel's testing tools (PHPUnit, Dusk).
+- Implement API versioning if applicable.
+- Use localization features for multi-language support.
+- Implement CSRF protection and security measures.
+- Use Laravel Mix or Vite for asset compilation.
+- Ensure proper database indexing.
+- Use built-in pagination.
+- Implement error logging and monitoring.
+- Use database transactions for data integrity.
+- Use Laravel's event/listener system for decoupled code.
+- Use built-in scheduling for recurring tasks.
+- Follow MVC and component-based architecture.
+- Use the routing system for defining endpoints.
+- Implement proper database relationships using Eloquent.
+- Use built-in authentication scaffolding.
+- Implement API resource transformations.
+
+## Livewire & Filament Best Practices
+
+- Use Livewire for dynamic components and real-time UI.
+- Utilize Livewire's lifecycle hooks and properties.
+- Use latest Livewire (3.5+) features.
+- Implement Blade components with Livewire directives (`wire:model`).
+- Handle state management and form handling via Livewire properties/actions.
+- Use `wire:loading` and `wire:target` for user feedback.
+- Apply Livewire's security measures.
+- Use Livewire components to break down complex UIs.
+- Combine Livewire and Alpine.js for complex UI patterns.
+
+## Tailwind CSS & Filament Best Practices
+
+- Use Tailwind CSS for utility-first styling.
+- Leverage Filament's pre-built components.
+- Maintain a consistent design language (Tailwind classes, Filament themes).
+- Implement responsive design and dark mode.
+- Optimize for accessibility (e.g., `aria-attributes`).
+- Use Tailwind CSS and Filament for consistent styling.

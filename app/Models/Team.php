@@ -12,6 +12,7 @@ use Laravel\Jetstream\Events\TeamCreated;
 use Laravel\Jetstream\Events\TeamDeleted;
 use Laravel\Jetstream\Events\TeamUpdated;
 use Laravel\Jetstream\Team as JetstreamTeam;
+use Illuminate\Support\Facades\Route;
 
 class Team extends JetstreamTeam
 {
@@ -200,6 +201,14 @@ class Team extends JetstreamTeam
     }
 
     /**
+     * Get the team join QR codes for the team.
+     */
+    public function teamJoinQrCodes(): HasMany
+    {
+        return $this->hasMany(TeamJoinQrCode::class);
+    }
+
+    /**
      * Get the channel categories for the team.
      */
     public function channelCategories(): HasMany
@@ -313,6 +322,16 @@ class Team extends JetstreamTeam
 
                 return 'Not Configured';
             }
+        );
+    }
+
+    /**
+     * Get the URL for joining the team via its code.
+     */
+    public function joinUrl(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => route('teams.join.show', ['join_code' => $this->join_code])
         );
     }
 }

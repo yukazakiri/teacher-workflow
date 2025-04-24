@@ -304,6 +304,21 @@ Route::middleware([
     ])->name('attendance.stats');
 });
 
+// Route for showing the team join page via code
+Route::get('/join/{join_code}', [App\Http\Controllers\TeamJoinController::class, 'show'])
+    ->middleware(['auth', 'verified'])
+    ->name('teams.join.show');
+
+// Route for processing team join via code
+Route::post('/join/{join_code}', [App\Http\Controllers\TeamJoinController::class, 'join'])
+    ->middleware(['auth', 'verified'])
+    ->name('teams.join.process');
+
+// Instant join via QR code
+Route::get('/teams/join/instant/{code}', App\Livewire\TeamJoinInstant::class)
+    ->middleware(['auth', 'verified'])
+    ->name('teams.join.instant');
+
 // Add chat API routes with session authentication
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/', function () {

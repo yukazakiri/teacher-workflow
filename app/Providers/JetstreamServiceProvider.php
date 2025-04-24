@@ -11,6 +11,9 @@ use App\Actions\Jetstream\RemoveTeamMember;
 use App\Actions\Jetstream\UpdateTeamName;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Jetstream\Jetstream;
+use App\Models\Student;
+use App\Helpers\StudentHelper;
+use Laravel\Jetstream\Events\TeamMemberAdded;
 
 class JetstreamServiceProvider extends ServiceProvider
 {
@@ -36,6 +39,9 @@ class JetstreamServiceProvider extends ServiceProvider
         Jetstream::removeTeamMembersUsing(RemoveTeamMember::class);
         Jetstream::deleteTeamsUsing(DeleteTeam::class);
         Jetstream::deleteUsersUsing(DeleteUser::class);
+        
+        // Listen for team member added event to create student record
+        $this->listenForTeamEvents();
     }
 
     /**
@@ -57,5 +63,24 @@ class JetstreamServiceProvider extends ServiceProvider
             'create',
             'update',
         ])->description('Student users have the ability to read, create, and update.');
+    }
+
+    /**
+     * Setup listeners for team events
+     */
+    protected function listenForTeamEvents(): void
+    {
+        // When a user is added to a team, create a student record
+        \Illuminate\Support\Facades\Event::listen(TeamMemberAdded::class, function (TeamMemberAdded $event) {
+            StudentHelper::createStudentRecord($event->user, $event->team);
+        });
+    }
+    
+    /**
+     * Create a student record for the user in the team
+     */
+    protected function createStudentRecord($team, $user): void
+    {
+        StudentHelper::createStudentRecord($user, $team);
     }
 }

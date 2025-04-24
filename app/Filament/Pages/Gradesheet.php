@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\HtmlString; // Added for transaction
 use Illuminate\Validation\ValidationException;
-
+use Illuminate\Support\Str;
 class Gradesheet extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-document-chart-bar';

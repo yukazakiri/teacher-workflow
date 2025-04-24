@@ -36,7 +36,7 @@
                             @if (Laravel\Jetstream\Jetstream::hasRoles())
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                                     {{ $user->membership->role === 'admin' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' }}">
-                                    {{ Laravel\Jetstream\Jetstream::findRole($user->membership->role)->name }}
+                                    {{ Laravel\Jetstream\Jetstream::findRole($user->membership->role) ? Laravel\Jetstream\Jetstream::findRole($user->membership->role)->name : $user->membership->role }}
                                 </span>
 
                                 @if (Gate::check('updateTeamMember', $team))

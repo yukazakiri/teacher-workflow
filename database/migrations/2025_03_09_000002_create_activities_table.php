@@ -26,6 +26,7 @@ return new class extends Migration
             $table->string('title');
             $table->text('description')->nullable();
             $table->text('instructions')->nullable();
+            $table->text('allow_text_entry')->nullable();
             $table
                 ->enum('format', [
                     'quiz',
