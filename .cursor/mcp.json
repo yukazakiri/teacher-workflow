@@ -1,14 +1,20 @@
 {
     "mcpServers": {
-        "github.com/modelcontextprotocol/servers/tree/main/src/postgres": {
-            "command": "npx",
+        "github.com/github/github-mcp-server": {
+            "command": "docker",
             "args": [
-                "-y",
-                "@modelcontextprotocol/server-postgres",
-                "postgresql://postgres:postgress@localhost/postgres"
+                "run",
+                "-i",
+                "--rm",
+                "-e",
+                "GITHUB_PERSONAL_ACCESS_TOKEN",
+                "ghcr.io/github/github-mcp-server"
             ],
+            "env": {
+                "GITHUB_PERSONAL_ACCESS_TOKEN": ""
+            },
             "disabled": false,
-            "autoApprove": []
+            "autoApprove": ["get_me"]
         },
         "github.com/modelcontextprotocol/servers/tree/main/src/filesystem": {
             "command": "npx",
@@ -24,8 +30,8 @@
             "command": "node",
             "args": [
                 "/home/dccp/.cursor/extensions/damms005.devdb-2.6.2-linux-x64/dist/services/mcp/server.js"
-              ]
-            },
+            ]
+        },
 
         "github.com/modelcontextprotocol/servers/tree/main/src/sqlite": {
             "command": "uv",
@@ -40,6 +46,5 @@
             "disabled": false,
             "autoApprove": []
         }
-        
     }
 }
