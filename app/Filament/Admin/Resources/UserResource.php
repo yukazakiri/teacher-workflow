@@ -11,7 +11,8 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Hash;
-
+use Rmsramos\Activitylog\RelationManagers\ActivitylogRelationManager;
+use Rmsramos\Activitylog\Actions\ActivityLogTimelineTableAction;
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
@@ -117,6 +118,17 @@ class UserResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                            ActivityLogTimelineTableAction::make('Activities')
+                ->withRelations([])
+                ->timelineIcons([
+                    'created' => 'heroicon-m-check-badge',
+                    'updated' => 'heroicon-m-pencil-square',
+                ])
+                ->timelineIconColors([
+                    'created' => 'info',
+                    'updated' => 'warning',
+                ])
+                ->limit(10),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -139,6 +151,7 @@ class UserResource extends Resource
     {
         return [
             // We'll add relation managers later
+              ActivitylogRelationManager::class,
         ];
     }
 

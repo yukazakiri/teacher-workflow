@@ -19,10 +19,12 @@ use Laravel\Jetstream\HasTeams;
 use Laravel\Sanctum\HasApiTokens;
 use LaraZeus\Boredom\Concerns\HasBoringAvatar;
 use Spatie\Permission\Traits\HasRoles;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenants
 {
-    use HasApiTokens;
+    use HasApiTokens, LogsActivity;
 
     // use HasBoringAvatar;
     /** @use HasFactory<\Database\Factories\UserFactory> */
@@ -58,7 +60,11 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenant
         'two_factor_recovery_codes',
         'two_factor_secret',
     ];
-
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+        ->logOnly(['name', 'email']);
+    }
     /**
      * The accessors to append to the model's array form.
      *

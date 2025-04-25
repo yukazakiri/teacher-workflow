@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Schedule extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, LogsActivity;
 
     /**
      * The attributes that are mass assignable.
@@ -23,7 +23,10 @@ class Schedule extends Model
         'description',
         'is_active',
     ];
-
+        public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults();
+    }
     /**
      * Get the attributes that should be cast.
      *

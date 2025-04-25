@@ -117,6 +117,12 @@ class AppPanelProvider extends PanelProvider
                             ->color(Color::hex("#4285f4"))
                             ->outlined(true)
                             ->stateless(false),
+                            Provider::make("facebook")
+                            ->label("Facebook")
+                            ->icon("fab-facebook")
+                            ->color(Color::hex("#4267B2"))
+                            ->outlined(true)
+                            ->stateless(false),
                     ])
                     ->registration(true)
                     ->createUserUsing(function (

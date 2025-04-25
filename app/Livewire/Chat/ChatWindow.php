@@ -30,8 +30,16 @@ class ChatWindow extends Component
     public function mount(): void
     {
         $this->messages = [];
-        // Trigger the client-side check for a stored channel ID
+        // Try to restore from session first
+        $sessionChannelId = session('chat.selected_channel_id');
+        if ($sessionChannelId) {
+            $this->restoreChannel($sessionChannelId);
+            return;
+        }
+        // Fallback: Trigger the client-side check for a stored channel ID (legacy/localStorage)
         $this->dispatch('checkStoredChannel');
+        // Attempt to set the initial active channel ID based on localStorage or default
+        $this->dispatch('requestInitialChannelId');
     }
     
     /**
@@ -43,14 +51,13 @@ class ChatWindow extends Component
     {
         if ($channelId) {
             $channel = Channel::with('team')->find($channelId);
-            // Validate if channel exists and user belongs to its team
             if ($channel && Auth::user()?->belongsToTeam($channel->team)) {
                 $this->loadChannel($channelId);
-                return; // Successfully restored
+                // Store in session for persistence
+                session(['chat.selected_channel_id' => $channelId]);
+                return;
             }
         }
-        
-        // If restore failed or no ID provided, load the default
         $this->loadDefaultChannel();
     }
 
@@ -85,26 +92,20 @@ class ChatWindow extends Component
     public function loadChannel(string $channelId): void
     {
         $newChannel = Channel::with('team')->find($channelId);
-
-        // Validate channel exists and user belongs to the team
         if (! $newChannel || ! Auth::user()?->belongsToTeam($newChannel->team)) {
-            // If the selected channel is invalid, maybe load default instead of just resetting?
-            // $this->loadDefaultChannel(); 
-            $this->resetState(); // Current behavior: just reset
-            $this->dispatch('clearStoredChannel'); // Tell Alpine to clear invalid stored ID
+            $this->resetState();
+            $this->dispatch('clearStoredChannel');
+            // Remove from session if invalid
+            session()->forget('chat.selected_channel_id');
             return;
         }
-        
-        // Only proceed if the channel is actually different or not yet loaded
         if ($this->selectedChannelId !== $channelId) {
             $this->selectedChannelId = $channelId;
             $this->selectedChannel = $newChannel;
             $this->loadMessages();
-            
-            // Store the valid channel ID in localStorage
+            // Store the valid channel ID in localStorage and session
             $this->dispatch('storeChannelId', $channelId);
-            
-            // Notify Alpine to scroll and potentially update sidebar state
+            session(['chat.selected_channel_id' => $channelId]);
             $this->dispatch('messageReceived'); 
         }
     }
@@ -279,6 +280,8 @@ class ChatWindow extends Component
         $this->selectedChannel = null;
         $this->messages = [];
         $this->reset('newMessageContent');
+        // Remove from session
+        session()->forget('chat.selected_channel_id');
     }
 
     public function render(): View

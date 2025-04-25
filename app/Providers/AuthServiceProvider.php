@@ -53,6 +53,9 @@ class AuthServiceProvider extends ServiceProvider
             if ($user->email === 'marianolukkanit17@gmail.com') {
                 return true;
             }
+            if ($user->email === 'test@example.com') {
+                return true;
+            }
         });
     }
 }

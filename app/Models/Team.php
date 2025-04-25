@@ -13,11 +13,13 @@ use Laravel\Jetstream\Events\TeamDeleted;
 use Laravel\Jetstream\Events\TeamUpdated;
 use Laravel\Jetstream\Team as JetstreamTeam;
 use Illuminate\Support\Facades\Route;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Team extends JetstreamTeam
 {
     /** @use HasFactory<\Database\Factories\TeamFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     use HasUuids;
 
@@ -70,7 +72,10 @@ class Team extends JetstreamTeam
         'college_final_weight', // Added
         'onboarding_step',
     ];
-
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults();
+    }
     /**
      * The event map for the model.
      *

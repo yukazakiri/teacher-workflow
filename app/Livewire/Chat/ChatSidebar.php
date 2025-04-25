@@ -23,6 +23,7 @@ class ChatSidebar extends Component
     public ?string $activeChannelId = null;
     public bool $showMembers = false;
     public ?string $selectedChannelId = null;
+    public ?string $channelId = null;
 
     #[Rule('required|min:2|max:30')]
     public ?string $channelName = null;
@@ -57,10 +58,17 @@ class ChatSidebar extends Component
         ]
     ];
 
-    public function mount(): void
+    public function mount($channelId = null): void
     {
         $this->team = Auth::user()?->currentTeam;
-
+        $this->selectedChannelId = $channelId;
+        // Sync activeChannelId with session if no channelId is provided
+        if (!$channelId) {
+            $sessionChannelId = session('chat.selected_channel_id');
+            if ($sessionChannelId) {
+                $this->activeChannelId = $sessionChannelId;
+            }
+        }
         // Attempt to set the initial active channel ID based on localStorage or default
         $this->dispatch('requestInitialChannelId');
     }

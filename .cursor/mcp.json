@@ -20,6 +20,13 @@
             "disabled": false,
             "autoApprove": []
         },
+        "devdb-mcp-server": {
+            "command": "node",
+            "args": [
+                "/home/dccp/.cursor/extensions/damms005.devdb-2.6.2-linux-x64/dist/services/mcp/server.js"
+              ]
+            },
+
         "github.com/modelcontextprotocol/servers/tree/main/src/sqlite": {
             "command": "uv",
             "args": [
@@ -33,5 +40,6 @@
             "disabled": false,
             "autoApprove": []
         }
+        
     }
 }

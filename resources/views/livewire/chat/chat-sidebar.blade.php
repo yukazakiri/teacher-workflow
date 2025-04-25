@@ -1,5 +1,5 @@
 <div 
-    class="h-full flex flex-col bg-gray-900 text-gray-300 shadow-lg"
+    class="h-full flex flex-col bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-200 shadow-lg"
     x-data="{ 
         showDeleteConfirm: false,
         editingChannelId: null,
@@ -9,8 +9,8 @@
         channelContextMenu: { show: false, x: 0, y: 0, id: null },
         showCreateChannelForm: false,
         showCreateCategoryForm: false,
-        showMembers: @js($showMembers), // Sync Alpine state with Livewire
-        unreadChannels: new Set() // Track unread channels
+        showMembers: @js($showMembers),
+        unreadChannels: new Set()
     }"
     @click.away="channelContextMenu.show = false"
     @channel-delete-initiated.window="showDeleteConfirm = true; selectedChannel = $event.detail"
@@ -29,43 +29,37 @@
     @channel-read.window="unreadChannels.delete($event.detail.channelId);"
 >
     {{-- Team/Server Header --}}
-    <div class="flex-shrink-0 h-12 flex items-center justify-between px-4 shadow-md bg-discord-dark border-b border-discord-light-gray z-10">
-        <span class="text-white font-medium text-base truncate">{{ $team->name ?? 'Team' }}</span>
+    <div class="flex-shrink-0 h-12 flex items-center justify-between px-4 shadow bg-white dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700 z-10">
+        <span class="text-gray-900 dark:text-white font-medium text-base truncate">{{ $team->name ?? 'Team' }}</span>
         <div class="flex items-center space-x-1 md:space-x-2">
             <button 
                 @click="showMembers = !showMembers"
                 wire:click="toggleMembersList"
-                class="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-discord-hover rounded-md focus:outline-none transition-colors duration-150"
-                :class="{ 'bg-discord-hover text-gray-200': showMembers }"
+                class="p-1.5 text-gray-500 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900 rounded-md focus:outline-none transition-colors duration-150"
+                :class="{ 'bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-300': showMembers }"
                 x-tooltip="Members"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
+                <x-heroicon-o-users class="h-5 w-5" />
             </button>
             <button 
                 wire:click="startCreateChannel()" 
-                class="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-discord-hover rounded-md focus:outline-none transition-colors duration-150"
+                class="p-1.5 text-gray-500 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900 rounded-md focus:outline-none transition-colors duration-150"
                 x-tooltip="New Channel"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-                </svg>
+                <x-heroicon-o-plus-circle class="h-5 w-5" />
             </button>
             <button 
                 wire:click="startCreateCategory" 
-                class="p-1.5 text-gray-400 hover:text-gray-200 hover:bg-discord-hover rounded-md focus:outline-none transition-colors duration-150"
+                class="p-1.5 text-gray-500 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900 rounded-md focus:outline-none transition-colors duration-150"
                 x-tooltip="New Category"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
+                <x-heroicon-o-folder-plus class="h-5 w-5" />
             </button>
         </div>
     </div>
 
     {{-- Main Content (Channel List or Members List) --}}
-    <div class="flex-1 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-discord-scrollbar scrollbar-track-discord-dark">
+    <div class="flex-1 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700 scrollbar-track-gray-100 dark:scrollbar-track-gray-900">
         
         {{-- Modal: Delete Channel Confirmation --}}
         <div 
@@ -80,7 +74,7 @@
             x-transition:leave-end="opacity-0"
         >
             <div 
-                class="bg-discord-dark rounded-lg shadow-xl w-full max-w-md p-6"
+                class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-700"
                 x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="opacity-0 scale-95"
                 x-transition:enter-end="opacity-100 scale-100"
@@ -89,29 +83,26 @@
                 x-transition:leave-end="opacity-0 scale-95"
                 @click.away="showDeleteConfirm = false"
             >
-                <h3 class="text-lg font-bold text-white mb-4">Delete Channel</h3>
-                <p class="text-gray-300 mb-3">Are you sure you want to delete this channel? This action cannot be undone.</p>
-                <p class="text-red-400 font-medium mb-6">All messages in this channel will be permanently deleted.</p>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Delete Channel</h3>
+                <p class="text-gray-700 dark:text-gray-300 mb-3">Are you sure you want to delete this channel? This action cannot be undone.</p>
+                <p class="text-danger-600 font-medium mb-6">All messages in this channel will be permanently deleted.</p>
                 
                 <div class="flex justify-end space-x-3">
                     <button 
-                        class="px-4 py-2 bg-discord-light-gray hover:bg-discord-hover text-gray-200 rounded-md transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-discord-blurple"
+                        class="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-200 rounded-md transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary-500"
                         @click="showDeleteConfirm = false"
                     >
                         Cancel
                     </button>
                     <button 
-                        class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors duration-150 flex items-center focus:outline-none focus:ring-2 focus:ring-red-500"
+                        class="px-4 py-2 bg-danger-600 hover:bg-danger-700 text-white rounded-md transition-colors duration-150 flex items-center focus:outline-none focus:ring-2 focus:ring-danger-500"
                         wire:click="deleteChannel(selectedChannel)"
                         wire:loading.attr="disabled"
                         wire:target="deleteChannel"
                     >
                         <span wire:loading.remove wire:target="deleteChannel">Delete Channel</span>
                         <span wire:loading wire:target="deleteChannel" class="flex items-center">
-                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
+                            <x-heroicon-o-arrow-path class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" />
                             Deleting...
                         </span>
                     </button>
