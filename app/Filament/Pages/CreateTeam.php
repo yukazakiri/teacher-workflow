@@ -8,7 +8,6 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Card;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Placeholder;
-use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
@@ -21,6 +20,10 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\HtmlString;
 use Illuminate\Validation\ValidationException;
+use JaOcero\RadioDeck\Forms\Components\RadioDeck;
+use Filament\Support\Enums\IconSize;
+use Filament\Support\Enums\Alignment;
+use Filament\Support\Enums\IconPosition;
 
 class CreateTeam extends RegisterTenant
 {
@@ -46,166 +49,75 @@ class CreateTeam extends RegisterTenant
     public function form(Form $form): Form
     {
         return $form->schema([
-            CreateTeamLayout::make()->schema([
-                Section::make()->schema([
-                    Grid::make()
-                        ->schema([
-                            Radio::make("option")
-                                ->label("Choose an option")
-                                ->options([
-                                    "create" => "Create New Class",
-                                    "join" => "Join Existing Class",
-                                ])
-                                ->default($this->activeOption)
-                                ->live()
-                                ->inline()
-                                ->afterStateUpdated(function (string $state) {
-                                    $this->activeOption = $state;
-                                })
-                                ->columnSpanFull(),
+            Section::make()
+                ->schema([
+                    RadioDeck::make('option')
+                        ->label('What would you like to do?')
+                        ->options([
+                            'create' => 'Create New Class',
+                            'join' => 'Join Existing Class',
                         ])
-                        ->columns([
-                            "default" => 1,
-                            "md" => 2,
-                        ]),
-
-                    // Create Class Card
-                    Card::make()
-                        ->schema([
-                            Grid::make()
-                                ->schema([
-                                    Placeholder::make("create_icon")
-                                        ->content(
-                                            new HtmlString('
-                                                        <div class="flex justify-center">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                                            </svg>
-                                                        </div>
-                                                    ')
-                                        )
-                                        ->columnSpanFull(),
-
-                                    Placeholder::make("create_instructions")
-                                        ->content(
-                                            new HtmlString('
-                                                        <div class="text-sm text-gray-500 dark:text-gray-400 space-y-2">
-                                                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Create a new class</h3>
-                                                            <p>Create a new class that you will manage as a teacher.</p>
-                                                            <p>After creating your class, you can:</p>
-                                                            <ul class="list-disc pl-5 space-y-1">
-                                                                <li>Add students via email invitations</li>
-                                                                <li>Share a join code with students for self-enrollment</li>
-                                                                <li>Create activities, exams and assignments</li>
-                                                                <li>Upload teaching resources</li>
-                                                            </ul>
-                                                        </div>
-                                                    ')
-                                        )
-                                        ->columnSpanFull(),
-
-                                    TextInput::make("name")
-                                        ->label("Class Name")
-                                        ->placeholder(
-                                            "e.g., Biology 101, Math 202"
-                                        )
-                                        ->maxLength(255)
-                                        ->helperText(
-                                            "Choose a descriptive name for your class"
-                                        )
-                                        ->translateLabel()
-                                        ->required(
-                                            fn() => $this->activeOption ===
-                                                "create"
-                                        )
-                                        ->visible(
-                                            fn() => $this->activeOption ===
-                                                "create"
-                                        )
-                                        ->disabled(
-                                            fn() => $this->activeOption !==
-                                                "create"
-                                        )
-                                        ->columnSpanFull(),
-                                ])
-                                ->columns([
-                                    "default" => 1,
-                                    "sm" => 1,
-                                ]),
+                        ->descriptions([
+                            'create' => 'Start and manage a brand new class as a teacher.',
+                            'join' => 'Join a class using a class code provided by your teacher.',
                         ])
-                        ->visible(fn() => $this->activeOption === "create")
-                        ->columnSpanFull(),
-
-                    // Join Class Card
-                    Card::make()
-                        ->schema([
-                            Grid::make()
-                                ->schema([
-                                    Placeholder::make("join_icon")
-                                        ->content(
-                                            new HtmlString('
-                                                        <div class="flex justify-center">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                                                            </svg>
-                                                        </div>
-                                                    ')
-                                        )
-                                        ->columnSpanFull(),
-
-                                    Placeholder::make("join_instructions")
-                                        ->content(
-                                            new HtmlString('
-                                                        <div class="text-sm text-gray-500 dark:text-gray-400 space-y-2">
-                                                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Join an existing class</h3>
-                                                            <p>Enter the 6-character class code provided by your teacher to join an existing class.</p>
-                                                            <p>After joining, you\'ll have access to:</p>
-                                                            <ul class="list-disc pl-5 space-y-1">
-                                                                <li>Class activities and assignments</li>
-                                                                <li>Learning resources</li>
-                                                                <li>Class discussions</li>
-                                                                <li>Your grades and feedback</li>
-                                                            </ul>
-                                                        </div>
-                                                    ')
-                                        )
-                                        ->columnSpanFull(),
-
-                                    TextInput::make("join_code")
-                                        ->label("Class Code")
-                                        ->placeholder(
-                                            "Enter the 6-digit class code"
-                                        )
-                                        ->maxLength(6)
-                                        ->minLength(6)
-                                        ->helperText(
-                                            "The code should be 6 characters (letters and numbers)"
-                                        )
-                                        ->translateLabel()
-                                        ->required(
-                                            fn() => $this->activeOption ===
-                                                "join"
-                                        )
-                                        ->visible(
-                                            fn() => $this->activeOption ===
-                                                "join"
-                                        )
-                                        ->disabled(
-                                            fn() => $this->activeOption !==
-                                                "join"
-                                        )
-                                        ->columnSpanFull(),
-                                ])
-                                ->columns([
-                                    "default" => 1,
-                                    "sm" => 1,
-                                ]),
+                        ->icons([
+                            'create' => 'heroicon-m-plus-circle',
+                            'join' => 'heroicon-m-user-group',
                         ])
-                        ->visible(fn() => $this->activeOption === "join")
+                        ->required()
+                        ->iconSize(IconSize::Large)
+                        ->iconSizes([
+                            'sm' => 'h-12 w-12',
+                            'md' => 'h-14 w-14',
+                            'lg' => 'h-16 w-16',
+                        ])
+                        ->iconPosition(IconPosition::Before)
+                        ->alignment(Alignment::Center)
+                        ->gap('gap-5')
+                        ->padding('px-4 py-6')
+                        ->direction('column')
+                        ->extraCardsAttributes([
+                            'class' => 'rounded-xl shadow-lg border border-primary-100 dark:border-primary-800 bg-white dark:bg-gray-900 transition-all duration-200 hover:shadow-2xl focus:ring-2 focus:ring-primary-500',
+                        ])
+                        ->extraOptionsAttributes([
+                            'class' => 'text-xl leading-tight w-full flex flex-col items-center justify-center p-4',
+                        ])
+                        ->extraDescriptionsAttributes([
+                            'class' => 'text-sm font-light text-center text-gray-500 dark:text-gray-400',
+                        ])
+                        ->color('primary')
+                        ->columns(2)
+                        ->live()
+                        ->default($this->activeOption)
+                        ->afterStateUpdated(function ($state) {
+                            $this->activeOption = $state;
+                        })
                         ->columnSpanFull(),
                 ]),
-            ]),
-        ]);
+            // Dynamic form section based on selection
+            Section::make()
+                ->schema([
+                    TextInput::make('name')
+                        ->label('Class Name')
+                        ->placeholder('e.g., Biology 101, Math 202')
+                        ->maxLength(255)
+                        ->helperText('Choose a descriptive name for your class')
+                        ->translateLabel()
+                        ->required(fn () => $this->activeOption === 'create')
+                        ->visible(fn () => $this->activeOption === 'create'),
+                    TextInput::make('join_code')
+                        ->label('Class Code')
+                        ->placeholder('Enter your class code')
+                        ->maxLength(255)
+                        ->helperText('Ask your teacher for the class code to join')
+                        ->translateLabel()
+                        ->required(fn () => $this->activeOption === 'join')
+                        ->visible(fn () => $this->activeOption === 'join'),
+                ])
+                ->columns(1)
+                ->columnSpanFull(),
+        ])->columns(1);
     }
 
     protected function getFormActions(): array
