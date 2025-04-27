@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\ParentStudentRelationship;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasAvatar;
 use Filament\Models\Contracts\HasTenants;
@@ -180,5 +181,36 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenant
     public function personalTeam()
     {
         return $this->ownedTeams()->where('personal_team', true)->first();
+    }
+
+    /**
+     * Get the students linked to this parent user.
+     */
+    public function linkedStudents()
+    {
+        return $this->hasManyThrough(
+            Student::class,
+            ParentStudentRelationship::class,
+            'user_id', // Foreign key on ParentStudentRelationship
+            'id', // Foreign key on Student
+            'id', // Local key on User
+            'student_id' // Local key on ParentStudentRelationship
+        );
+    }
+    
+    /**
+     * Get parent-student relationships for this user.
+     */
+    public function parentStudentRelationships()
+    {
+        return $this->hasMany(ParentStudentRelationship::class, 'user_id');
+    }
+    
+    /**
+     * Check if this user has any linked students (for parents).
+     */
+    public function hasLinkedStudents(): bool
+    {
+        return $this->parentStudentRelationships()->exists();
     }
 }

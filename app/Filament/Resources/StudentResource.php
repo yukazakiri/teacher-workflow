@@ -31,7 +31,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Prism\Prism\Enums\Provider;
@@ -55,22 +54,25 @@ class StudentResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
+    public static function canAccess(): bool
+    {
+        $user = Auth::user();
+        $team = $user?->currentTeam;
+
+        if (! $team) {
+            return false;
+        }
+
+        return $team->userIsOwner($user);
+    }
+
+   
     public static function getNavigationBadge(): ?string
     {
         if (! Auth::user()->currentTeam) {
             return '0';
         }
 
-        // For students, only count their own record (which is always 1 or 0)
-        if (Auth::user()->hasTeamRole(Auth::user()->currentTeam, 'student')) {
-            return (string) static::getModel()::query()
-                ->where('team_id', Auth::user()->currentTeam->id)
-                ->where('user_id', Auth::id())
-                ->where('status', 'active')
-                ->count();
-        }
-
-        // For teachers and other roles, show all students
         return (string) static::getModel()::query()
             ->where('team_id', Auth::user()->currentTeam->id)
             ->where('status', 'active')
@@ -85,83 +87,27 @@ class StudentResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         $user = Auth::user();
-        
         if (! $user->currentTeam) {
             // Return an empty query if no team is selected to avoid errors
-            return parent::getEloquentQuery()->whereRaw('1 = 0');
+            return parent::getEloquentQuery()->whereRaw('1 = 0'); // Or ->where('team_id', null) if appropriate
         }
-        
-        $query = parent::getEloquentQuery()->where('team_id', $user->currentTeam->id);
-        
-        // If the user has student role, only show their own record
-        if ($user->hasTeamRole($user->currentTeam, 'student')) {
-            $query->where('user_id', $user->id);
-        }
-        
-        return $query;
-    }
 
-    public static function canCreate(): bool
-    {
-        $user = Auth::user();
-        if (!$user->currentTeam) {
-            return false;
-        }
-        
-        // Students cannot create new student records
-        if ($user->hasTeamRole($user->currentTeam, 'student')) {
-            return false;
-        }
-        
-        return true;
-    }
-
-    public static function canDelete(Model $record): bool
-    {
-        $user = Auth::user();
-        if (!$user->currentTeam) {
-            return false;
-        }
-        
-        // Students cannot delete records
-        if ($user->hasTeamRole($user->currentTeam, 'student')) {
-            return false;
-        }
-        
-        return true;
-    }
-
-    // Ensure edit permissions are applied
-    public static function canEdit(Model $record): bool
-    {
-        $user = Auth::user();
-        if (!$user->currentTeam) {
-            return false;
-        }
-        
-        // Students can only edit their own record
-        if ($user->hasTeamRole($user->currentTeam, 'student')) {
-            return $record->user_id === $user->id;
-        }
-        
-        return true;
+        return parent::getEloquentQuery()->where(
+            'team_id',
+            $user->currentTeam->id
+        );
     }
 
     public static function form(Form $form): Form
     {
         $teamId = Auth::user()->currentTeam?->id;
-        $user = Auth::user();
-        $isStudent = $user->currentTeam && $user->hasTeamRole($user->currentTeam, 'student');
 
         return $form->schema([
             Hidden::make('team_id')->default(fn () => $teamId),
 
             Section::make('Student Information')
                 ->schema([
-                    TextInput::make('name')
-                        ->required()
-                        ->maxLength(255)
-                        ->disabled($isStudent), // Students can't change their name
+                    TextInput::make('name')->required()->maxLength(255),
 
                     TextInput::make('email')
                         ->email()
@@ -169,31 +115,30 @@ class StudentResource extends Resource
                         ->maxLength(255)
                         ->helperText(
                             'If provided, this email can be used to link to a user account'
-                        )
-                        ->disabled($isStudent), // Students can't change their email
+                        ),
 
                     TextInput::make('student_id')
                         ->label('Student ID')
                         ->maxLength(255)
                         ->helperText(
                             'School-assigned student ID ( if available )'
-                        )
-                        ->disabled($isStudent), // Students can't change their ID
+                        ),
 
-                    Select::make('gender')
-                        ->options([
-                            'male' => 'Male',
-                            'female' => 'Female',
-                            'other' => 'Other',
-                            'prefer_not_to_say' => 'Prefer not to say',
-                        ]),
-                    
+                    Select::make('gender')->options([
+                        'male' => 'Male',
+                        'female' => 'Female',
+                        'other' => 'Other',
+                        'prefer_not_to_say' => 'Prefer not to say',
+                    ]),
                     PhoneInput::make('phone')
                         ->label('Phone Number')
+                        // ->maxLength(255)
                         ->onlyCountries(['ph'])
                         ->showFlags(false)
                         ->disallowDropdown()
                         ->helperText('student phone number ( if available )'),
+                    // DatePicker::make('birth_date')
+                    //     ->label('Birth Date'),
 
                     Select::make('status')
                         ->options([
@@ -202,16 +147,12 @@ class StudentResource extends Resource
                             'graduated' => 'Graduated',
                         ])
                         ->default('active')
-                        ->required()
-                        ->visible(!$isStudent), // Hide status field from students
+                        ->required(),
                 ])
                 ->columns(2),
 
             Section::make('Additional Information')->schema([
-                Textarea::make('notes')
-                    ->maxLength(65535)
-                    ->columnSpanFull()
-                    ->visible(!$isStudent), // Hide notes field from students
+                Textarea::make('notes')->maxLength(65535)->columnSpanFull(),
             ]),
         ]);
     }
@@ -274,20 +215,7 @@ class StudentResource extends Resource
                     ->query(fn (Builder $query) => $query->whereNull('user_id')),
             ])
             ->actions([
-                Tables\Actions\EditAction::make()
-                    ->visible(function (Student $record) {
-                        $user = Auth::user();
-                        if (!$user->currentTeam) {
-                            return false;
-                        }
-                        
-                        // Students can only edit their own record
-                        if ($user->hasTeamRole($user->currentTeam, 'student')) {
-                            return $record->user_id === $user->id;
-                        }
-                        
-                        return true;
-                    }),
+                Tables\Actions\EditAction::make(),
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\Action::make('link_user')
                     ->label('Link to User')
@@ -330,20 +258,8 @@ class StudentResource extends Resource
                         }
                     })
                     ->visible(
-                        function (Student $record) {
-                            $user = Auth::user();
-                            if (!$user->currentTeam) {
-                                return false;
-                            }
-                            
-                            // Students cannot link users
-                            if ($user->hasTeamRole($user->currentTeam, 'student')) {
-                                return false;
-                            }
-                            
-                            return $record->user_id === null &&
-                                Auth::user()->can('manageUserLinks', $record);
-                        }
+                        fn (Student $record) => $record->user_id === null &&
+                            Auth::user()->can('manageUserLinks', $record)
                     ),
 
                 Tables\Actions\Action::make('unlink_user')
@@ -365,34 +281,13 @@ class StudentResource extends Resource
                             ->send();
                     })
                     ->visible(
-                        function (Student $record) {
-                            $user = Auth::user();
-                            if (!$user->currentTeam) {
-                                return false;
-                            }
-                            
-                            // Students cannot unlink users
-                            if ($user->hasTeamRole($user->currentTeam, 'student')) {
-                                return false;
-                            }
-                            
-                            return $record->user_id !== null &&
-                                Auth::user()->can('manageUserLinks', $record);
-                        }
+                        fn (Student $record) => $record->user_id !== null &&
+                            Auth::user()->can('manageUserLinks', $record)
                     ),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->visible(function () {
-                            $user = Auth::user();
-                            if (!$user->currentTeam) {
-                                return false;
-                            }
-                            
-                            // Students cannot delete records
-                            return !$user->hasTeamRole($user->currentTeam, 'student');
-                        }),
+                    Tables\Actions\DeleteBulkAction::make(),
 
                     Tables\Actions\BulkAction::make('change_status')
                         ->label('Change Status')
@@ -422,15 +317,6 @@ class StudentResource extends Resource
                                 ->body('Selected students have been updated')
                                 ->success()
                                 ->send();
-                        })
-                        ->visible(function () {
-                            $user = Auth::user();
-                            if (!$user->currentTeam) {
-                                return false;
-                            }
-                            
-                            // Students cannot change status
-                            return !$user->hasTeamRole($user->currentTeam, 'student');
                         }),
                 ]),
             ])
@@ -449,15 +335,6 @@ class StudentResource extends Resource
                             ->maxSize(5120) // 5MB
                             ->directory('temp-imports'),
                     ])
-                    ->visible(function () {
-                        $user = Auth::user();
-                        if (!$user->currentTeam) {
-                            return false;
-                        }
-                        
-                        // Students cannot import records
-                        return !$user->hasTeamRole($user->currentTeam, 'student');
-                    })
                     ->action(function (array $data) {
                         // Removed void return type hint to allow redirect
                         $user = Auth::user();

@@ -7,6 +7,7 @@ use App\Models\Team;
 use App\Models\User;
 use Filament\Widgets;
 use Filament\PanelProvider;
+use App\Livewire\SelectRole;
 use Laravel\Fortify\Fortify;
 use App\Listeners\SwitchTeam;
 use Filament\Pages\Dashboard;
@@ -56,7 +57,9 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Laravel\Socialite\Contracts\User as SocialiteUserContract;
 use DutchCodingCompany\FilamentSocialite\FilamentSocialitePlugin;
-use App\Livewire\SelectRole;
+use DutchCodingCompany\FilamentDeveloperLogins\FilamentDeveloperLoginsPlugin;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class AppPanelProvider extends PanelProvider
 {
@@ -76,6 +79,30 @@ class AppPanelProvider extends PanelProvider
             ->registration()
             ->passwordReset()
             ->emailVerification()
+            ->homeUrl(function() {
+                $user = Auth::user();
+                $team = $user?->currentTeam;
+                
+                if (!$team) {
+                    return '/app';
+                }
+                
+                $membership = DB::table('team_user')
+                    ->where('team_id', $team->id)
+                    ->where('user_id', $user->id)
+                    ->first();
+                
+                $role = $membership->role ?? null;
+                
+                if ($role === 'student') {
+                    return route('filament.app.pages.student-dashboard', ['tenant' => $team->id]);
+                } elseif ($role === 'parent') {
+                    return route('filament.app.pages.parent-dashboard', ['tenant' => $team->id]);
+                }
+                
+                // Default to the main dashboard for teachers or undefined roles
+                return route('filament.app.pages.dashboard', ['tenant' => $team->id]);
+            })
             ->viteTheme("resources/css/filament/app/theme.css")
             ->colors([
                 "primary" => Color::hex("#eebebe"),
@@ -96,6 +123,8 @@ class AppPanelProvider extends PanelProvider
             )
             ->pages([
                 \App\Filament\Pages\Dashboard::class,
+                \App\Filament\Pages\StudentDashboard::class,
+                \App\Filament\Pages\ParentDashboard::class,
                 AssistantChat::class,
                 EditProfile::class,
                 ApiTokens::class,
@@ -176,6 +205,14 @@ class AppPanelProvider extends PanelProvider
                         return $user; // Return the created user
                     }),
 
+                        FilamentDeveloperLoginsPlugin::make()
+                            ->enabled()
+                            ->users([
+                                'teacher' => 'test@example.com',
+                                'User' => 'sdavis@student.edu',
+                                'parent' => 'your.email+fakedata38141@gmail.com'
+                            ]),
+
                 FilamentAssistantPlugin::make(),
                 \LaraZeus\Boredom\BoringAvatarPlugin::make()
 
@@ -198,8 +235,25 @@ class AppPanelProvider extends PanelProvider
             ->navigation(function (
                 NavigationBuilder $builder
             ): NavigationBuilder {
-                return $builder
-                    ->groups([
+                $user = Auth::user();
+                $team = $user?->currentTeam;
+                $role = null;
+                
+                if ($team) {
+                    $membership = DB::table('team_user')
+                        ->where('team_id', $team->id)
+                        ->where('user_id', $user->id)
+                        ->first();
+                    
+                    $role = $membership->role ?? null;
+                }
+                
+                // Start building navigation
+                $navigationBuilder = $builder->groups([]);
+                
+                // For teachers or undefined roles, show the default navigation
+                if (!$role || $role === 'teacher' || $role === 'pending') {
+                    $navigationBuilder = $builder->groups([
                         // Dashboard group
                         NavigationGroup::make()
                             ->label("Dashboard")
@@ -238,8 +292,44 @@ class AppPanelProvider extends PanelProvider
                             ->items([
                                 ...\App\Filament\Pages\Changelogs::getNavigationItems(),
                             ]),
-                    ])
-                    ->items([]);
+                    ]);
+                } 
+                // For students, show student navigation
+                else if ($role === 'student') {
+                    $navigationBuilder = $builder->groups([
+                        NavigationGroup::make()
+                            ->label("Student Dashboard")
+                            ->items([
+                                ...\App\Filament\Pages\StudentDashboard::getNavigationItems(),
+                                ...Messages::getNavigationItems(),
+                            ]),
+                        NavigationGroup::make()
+                            ->label("Academic")
+                            ->items([
+                                ...WeeklySchedule::getNavigationItems(),
+                                ...ClassesResources::getNavigationItems(),
+                                ...AttendanceResource::getNavigationItems(),
+                                ...ActivityResource::getNavigationItems(),
+                            ]),
+                    ]);
+                }
+                // For parents, show parent navigation
+                else if ($role === 'parent') {
+                    $navigationBuilder = $builder->groups([
+                        NavigationGroup::make()
+                            ->label("Parent Dashboard")
+                            ->items([
+                                ...\App\Filament\Pages\ParentDashboard::getNavigationItems(),
+                            ]),
+                        NavigationGroup::make()
+                            ->label("Academic")
+                            ->items([
+                                ...Gradesheet::getNavigationItems(),
+                            ]),
+                    ]);
+                }
+                
+                return $navigationBuilder->items([]);
             })
             ->userMenuItems([
                 MenuItem::make()

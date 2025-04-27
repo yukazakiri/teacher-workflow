@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use App\Models\ParentStudentRelationship;
 
 class Student extends Model
 {
@@ -119,5 +121,28 @@ class Student extends Model
     public function hasGraduated(): bool
     {
         return $this->status === 'graduated';
+    }
+
+    /**
+     * Get the parent users linked to this student.
+     */
+    public function parentUsers()
+    {
+        return $this->hasManyThrough(
+            User::class,
+            ParentStudentRelationship::class,
+            'student_id', // Foreign key on ParentStudentRelationship
+            'id', // Foreign key on User
+            'id', // Local key on Student
+            'user_id' // Local key on ParentStudentRelationship
+        );
+    }
+    
+    /**
+     * Get parent-student relationships for this student.
+     */
+    public function parentRelationships()
+    {
+        return $this->hasMany(ParentStudentRelationship::class, 'student_id');
     }
 }

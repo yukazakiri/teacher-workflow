@@ -27,7 +27,7 @@ use Prism\Prism\Facades\PrismServer;
 
 class Dashboard extends PagesDashboard
 {
-    protected static string $routePath = "/";
+    // protected static string $routePath = "/";
 
     protected static ?int $navigationSort = -2;
 
@@ -338,5 +338,27 @@ class Dashboard extends PagesDashboard
             ->first();
 
         return $membership && (is_null($membership->role) || $membership->role === 'pending');
+    }
+
+    /**
+     * Control access to the main dashboard.
+     * Only teachers and users without a role yet can access this.
+     */
+    public static function canAccess(): bool
+    {
+        $user = Auth::user();
+        $team = $user?->currentTeam;
+        
+        if (!$team) {
+            return true; // Allow access if no team yet
+        }
+        
+        $membership = DB::table('team_user')
+            ->where('team_id', $team->id)
+            ->where('user_id', $user->id)
+            ->first();
+        
+        // Allow access if user has no role yet or is a teacher
+        return !$membership || is_null($membership->role) || $membership->role === 'teacher' || $membership->role === 'pending';
     }
 }
