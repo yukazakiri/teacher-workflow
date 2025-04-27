@@ -114,7 +114,7 @@ class Team extends JetstreamTeam
         parent::boot();
 
         // Generate a join code when creating a new team
-        static::creating(function ($team) {
+        static::creating(function ($team): void {
             if (empty($team->join_code)) {
                 $team->generateJoinCode();
             }

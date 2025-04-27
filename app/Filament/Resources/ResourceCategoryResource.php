@@ -179,7 +179,7 @@ class ResourceCategoryResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make()
-                    ->before(function (ResourceCategory $record) {
+                    ->before(function (ResourceCategory $record): void {
                         // Set category_id to null for all resources in this category
                         $record->resources()->update(['category_id' => null]);
                     }),
@@ -187,7 +187,7 @@ class ResourceCategoryResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->before(function (ResourceCategory $records) {
+                        ->before(function (ResourceCategory $records): void {
                             // Set category_id to null for all resources in these categories
                             foreach ($records as $record) {
                                 $record->resources()->update(['category_id' => null]);

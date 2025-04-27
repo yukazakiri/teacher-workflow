@@ -195,7 +195,7 @@ class ClassResourceTool extends BaseTool
 
         if (! empty($query)) {
              $searchQuery = trim($query);
-             $resourceQuery->where(function ($q) use ($searchQuery) {
+             $resourceQuery->where(function ($q) use ($searchQuery): void {
                  $q->where('title', 'like', "%{$searchQuery}%")
                    ->orWhere('description', 'like', "%{$searchQuery}%");
              });
@@ -477,7 +477,7 @@ class ClassResourceTool extends BaseTool
             return; // Owner sees all (within team context)
         }
 
-        $query->where(function ($q) use ($user, $team) {
+        $query->where(function ($q) use ($user, $team): void {
             $q->where('access_level', 'all')
               ->orWhere('created_by', $user->id); // Creator access
 

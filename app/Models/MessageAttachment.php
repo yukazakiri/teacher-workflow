@@ -41,7 +41,7 @@ class MessageAttachment extends Model
     {
         parent::boot();
         
-        static::deleting(function ($attachment) {
+        static::deleting(function ($attachment): void {
             // Delete the physical file when the attachment record is deleted
             if ($attachment->file_path && Storage::exists($attachment->file_path)) {
                 Storage::delete($attachment->file_path);

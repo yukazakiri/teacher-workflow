@@ -63,6 +63,11 @@ class JetstreamServiceProvider extends ServiceProvider
             'create',
             'update',
         ])->description('Student users have the ability to read, create, and update.');
+
+        Jetstream::role('parent', 'Parent', [
+            'read',
+            'chat',
+        ])->description('Parents can view student data and chat with teachers.');
     }
 
     /**
@@ -71,7 +76,7 @@ class JetstreamServiceProvider extends ServiceProvider
     protected function listenForTeamEvents(): void
     {
         // When a user is added to a team, create a student record
-        \Illuminate\Support\Facades\Event::listen(TeamMemberAdded::class, function (TeamMemberAdded $event) {
+        \Illuminate\Support\Facades\Event::listen(TeamMemberAdded::class, function (TeamMemberAdded $event): void {
             StudentHelper::createStudentRecord($event->user, $event->team);
         });
     }

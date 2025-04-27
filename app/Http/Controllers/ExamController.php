@@ -60,7 +60,7 @@ class ExamController extends Controller
                 // Add options for multiple choice questions
                 if ($question->options) {
                     $options = explode("\n", $question->options);
-                    foreach ($options as $optionIndex => $option) {
+                    foreach ($options as $option) {
                         $section->addListItem(trim($option), 0);
                     }
                 }
@@ -93,7 +93,7 @@ class ExamController extends Controller
     {
         $ids = $request->input('ids', []);
         $exams = Exam::whereIn('id', $ids)
-            ->where(function ($query) {
+            ->where(function ($query): void {
                 $query->where('team_id', Auth::user()->currentTeam->id)
                     ->orWhere('teacher_id', Auth::id());
             })

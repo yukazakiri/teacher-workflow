@@ -118,7 +118,7 @@ class AiStreamController extends Controller
                     $style,
                     $aiMessage,
                     $history
-                ) {
+                ): void {
                     $aiResponse = "";
 
                     try {

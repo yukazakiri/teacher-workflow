@@ -120,7 +120,7 @@ class StudentTool extends BaseTool
             $query->where('status', $status);
         }
         if ($search = $filters['search'] ?? null) {
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search): void {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
                     ->orWhere('student_id', 'like', "%{$search}%");
@@ -139,7 +139,7 @@ class StudentTool extends BaseTool
     {
         $studentQuery = $team
             ->students()
-            ->where(function ($query) use ($identifier) {
+            ->where(function ($query) use ($identifier): void {
                 if (Str::isUuid($identifier)) {
                     $query->where('id', $identifier);
                 } else {
@@ -152,10 +152,10 @@ class StudentTool extends BaseTool
         if ($summarize) {
             $student = $studentQuery
                 ->with([
-                    'activitySubmissions' => function ($q) {
+                    'activitySubmissions' => function ($q): void {
                         $q->select('id', 'student_id', 'activity_id', 'score', 'status', 'submitted_at');
                     },
-                    'activitySubmissions.activity' => function ($q) {
+                    'activitySubmissions.activity' => function ($q): void {
                         $q->select('id', 'title', 'total_points', 'credit_units', 'component_type', 'term');
                     },
                     // 'examSubmissions', 'examSubmissions.exam:id,title,total_points' // If exams needed for grade
@@ -164,10 +164,10 @@ class StudentTool extends BaseTool
         } else {
             $student = $studentQuery
                 ->with([
-                    'activitySubmissions' => function ($q) {
+                    'activitySubmissions' => function ($q): void {
                         $q->latest('submitted_at')->limit(5)->with('activity:id,title,total_points,due_date');
                     },
-                    'examSubmissions' => function ($q) {
+                    'examSubmissions' => function ($q): void {
                         $q->latest('submitted_at')->limit(5)->with('exam:id,title,total_points');
                     },
                 ])
@@ -295,7 +295,7 @@ class StudentTool extends BaseTool
             $query->where('status', $status);
         }
         if ($search = $filters['search'] ?? null) {
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search): void {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
                     ->orWhere('student_id', 'like', "%{$search}%");
@@ -328,7 +328,7 @@ class StudentTool extends BaseTool
              $data = json_decode($jsonString, true, 512, JSON_THROW_ON_ERROR);
              $truncated = false;
 
-             $walkAndTruncate = function (&$item) use (&$walkAndTruncate, &$truncated) {
+             $walkAndTruncate = function (&$item) use (&$walkAndTruncate, &$truncated): void {
                  if (is_array($item)) {
                      if (array_keys($item) === range(0, count($item) - 1) && count($item) > 5) {
                          $item = array_slice($item, 0, 5);

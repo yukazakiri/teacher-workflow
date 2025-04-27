@@ -74,10 +74,10 @@ class ExamResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->whereHas('team', function (Builder $query) {
+            ->whereHas('team', function (Builder $query): void {
                 $query->where('id', Auth::user()->currentTeam->id);
             })
-            ->where(function (Builder $query) {
+            ->where(function (Builder $query): void {
                 // Show all exams for the team owner, but only their own exams for other team members
                 $isOwner = Auth::user()->currentTeam->user_id === Auth::id();
                 if (! $isOwner) {
@@ -128,7 +128,7 @@ class ExamResource extends Resource
                 ->options(fn (Get $get) => collect($get('choices'))->mapWithKeys(fn ($value, $key) => [$key => $key]))
                 ->required()
                 ->reactive()
-                ->afterStateHydrated(function ($state, $set) {
+                ->afterStateHydrated(function ($state, $set): void {
                     // Convert from ArrayObject to string if needed
                     if (is_object($state) && method_exists($state, 'offsetGet')) {
                         $arrayState = $state->getArrayCopy();
@@ -162,7 +162,7 @@ class ExamResource extends Resource
                             'false' => 'False',
                         ])
                         ->required()
-                        ->afterStateHydrated(function ($state, $set) {
+                        ->afterStateHydrated(function ($state, $set): void {
                             // Convert from ArrayObject to string if needed
                             if (is_object($state) && method_exists($state, 'offsetGet')) {
                                 $arrayState = $state->getArrayCopy();
@@ -193,7 +193,7 @@ class ExamResource extends Resource
             TextInput::make('correct_answer')
                 ->label('Correct Answer')
                 ->required()
-                ->afterStateHydrated(function ($state, $set) {
+                ->afterStateHydrated(function ($state, $set): void {
                     // Convert from ArrayObject to string if needed
                     if (is_object($state) && method_exists($state, 'offsetGet')) {
                         $arrayState = $state->getArrayCopy();

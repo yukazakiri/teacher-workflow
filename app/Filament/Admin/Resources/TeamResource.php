@@ -101,7 +101,7 @@ class TeamResource extends Resource
                         ])
                         ->required()
                         ->live() // Important for conditional fields
-                        ->afterStateUpdated(function (Set $set) {
+                        ->afterStateUpdated(function (Set $set): void {
                             // Reset dependent fields when type changes
                             $set('college_grading_scale', null);
                             $set('shs_ww_weight', null);

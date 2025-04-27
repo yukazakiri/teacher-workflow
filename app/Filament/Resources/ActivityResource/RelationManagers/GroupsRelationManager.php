@@ -181,7 +181,7 @@ class GroupsRelationManager extends RelationManager
                         //    ->label('Remove existing groups before assigning')
                         //    ->default(true),
                     ])
-                    ->action(function (array $data) {
+                    ->action(function (array $data): void {
                         $activity = $this->getOwnerRecord();
                         $teamId = Auth::user()->currentTeam->id;
                         $students = Student::where('team_id', $teamId)

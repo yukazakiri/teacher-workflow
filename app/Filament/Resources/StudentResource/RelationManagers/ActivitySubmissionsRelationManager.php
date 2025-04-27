@@ -194,7 +194,7 @@ class ActivitySubmissionsRelationManager extends RelationManager
                                 ->maxLength(65535),
                         ])
                         ->action(function (\Illuminate\Support\Collection $records, array $data): void {
-                            $records->each(function ($record) use ($data) {
+                            $records->each(function ($record) use ($data): void {
                                 $record->update([
                                     'score' => $data['score'],
                                     'final_grade' => $data['final_grade'],

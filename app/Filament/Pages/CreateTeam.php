@@ -90,7 +90,7 @@ class CreateTeam extends RegisterTenant
                         ->columns(2)
                         ->live()
                         ->default($this->activeOption)
-                        ->afterStateUpdated(function ($state) {
+                        ->afterStateUpdated(function ($state): void {
                             $this->activeOption = $state;
                         })
                         ->columnSpanFull(),
@@ -218,7 +218,7 @@ class CreateTeam extends RegisterTenant
             DB::table("team_user")->insert([
                 "team_id" => $team->id,
                 "user_id" => $user->id,
-                "role" => "student", // Default role when joining via code
+                "role" => 'pending', // Set role as pending to prompt role selection
                 "created_at" => now(),
                 "updated_at" => now(),
             ]);

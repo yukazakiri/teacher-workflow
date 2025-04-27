@@ -2,27 +2,28 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Resources\ActivityResource;
+use App\Filament\Resources\StudentResource;
+use App\Filament\Widgets\PendingInvitationsTableWidget;
+use App\Filament\Widgets\TeamMembersTableWidget;
+use App\Models\Student;
 use App\Models\Team;
 use App\Models\User;
-use App\Models\Student;
-use Filament\Pages\Page;
+use App\Services\PrismChatService;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
-use App\Services\PrismChatService;
-use Filament\View\PanelsRenderHook;
-use Illuminate\Support\Facades\Vite;
-use Illuminate\Support\Facades\Blade;
 use Filament\Forms\Components\Livewire;
+use Filament\Pages\Dashboard as PagesDashboard;
+use Filament\Pages\Page;
 use Filament\Support\Facades\FilamentIcon;
 use Filament\Support\Facades\FilamentView;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Contracts\Support\Htmlable;
-use App\Filament\Resources\StudentResource;
-use App\Filament\Resources\ActivityResource;
-use Filament\Pages\Dashboard as PagesDashboard;
-use App\Filament\Widgets\TeamMembersTableWidget;
-use Illuminate\Support\Facades\Auth; // Added import
-use Prism\Prism\Facades\PrismServer; // Added import
-use App\Filament\Widgets\PendingInvitationsTableWidget;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Vite;
+use Prism\Prism\Facades\PrismServer;
 
 class Dashboard extends PagesDashboard
 {
@@ -98,7 +99,7 @@ class Dashboard extends PagesDashboard
     public function getTitle(): string|Htmlable
     {
         // Personalized title
-        return "Welcome, " . auth()->user()->name;
+        return "Welcome, " . Auth::user()->name;
     }
 
     /**
@@ -321,6 +322,21 @@ class Dashboard extends PagesDashboard
                 ? ActivityResource::getUrl("create", ["tenant" => $currentTeam])
                 : "#",
             "studentThreshold" => self::ONBOARDING_STUDENT_THRESHOLD, // Pass threshold for display if needed
+            "needsRoleSelection" => $this->needsRoleSelection(),
         ];
+    }
+
+    public function needsRoleSelection(): bool
+    {
+        $user = Auth::user();
+        $team = $user?->currentTeam;
+        if (!$team) return false;
+
+        $membership = DB::table('team_user')
+            ->where('team_id', $team->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        return $membership && (is_null($membership->role) || $membership->role === 'pending');
     }
 }

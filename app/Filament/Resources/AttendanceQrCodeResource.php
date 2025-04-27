@@ -234,7 +234,7 @@ class AttendanceQrCodeResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->whereHas('team', function (Builder $query) {
+            ->whereHas('team', function (Builder $query): void {
                 $query->where('id', Auth::user()->currentTeam->id);
             });
     }

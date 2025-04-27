@@ -22,7 +22,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 // AI Chat API Routes
-Route::middleware([''])->group(function () {
+Route::middleware([''])->group(function (): void {
     // Stream AI responses
     
 });

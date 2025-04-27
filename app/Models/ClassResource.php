@@ -59,7 +59,7 @@ class ClassResource extends Model implements HasMedia
         parent::boot();
 
         // Try to extract PDF content after media has been added
-        static::updated(function ($resource) {
+        static::updated(function ($resource): void {
             if (empty($resource->description)) {
                 // Check if resource has PDF media
                 $media = $resource->getMedia('resources')->first();

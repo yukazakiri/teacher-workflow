@@ -44,7 +44,7 @@ class AiStreamControllerTest extends TestCase
     public function test_stream_response_with_new_conversation(): void
     {
         // Mock the chat service to avoid actual API calls
-        $this->mock(PrismChatService::class, function (MockInterface $mock) {
+        $this->mock(PrismChatService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('getAvailableModels')
                 ->andReturn(['GPT-4o', 'Claude 3 Sonnet']);
                 
@@ -70,7 +70,7 @@ class AiStreamControllerTest extends TestCase
     public function test_fetch_available_models(): void
     {
         // Mock the chat service
-        $this->mock(PrismChatService::class, function (MockInterface $mock) {
+        $this->mock(PrismChatService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('getAvailableModels')
                 ->once()
                 ->andReturn(['GPT-4o', 'Claude 3 Sonnet', 'Gemini 1.5 Pro']);

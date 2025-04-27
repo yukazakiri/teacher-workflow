@@ -134,7 +134,7 @@ class ActivityController extends Controller
                 'Content-Disposition' => "attachment; filename=activity_report_{$activity->id}.csv",
             ];
 
-            $callback = function () use ($reportData) {
+            $callback = function () use ($reportData): void {
                 $handle = fopen('php://output', 'w');
 
                 // Add header row

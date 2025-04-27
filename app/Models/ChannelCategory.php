@@ -41,7 +41,7 @@ class ChannelCategory extends Model
     {
         parent::boot();
         
-        static::creating(function ($category) {
+        static::creating(function ($category): void {
             // Default position to the end if not specified
             if (is_null($category->position)) {
                 $lastPosition = self::where('team_id', $category->team_id)
@@ -51,10 +51,10 @@ class ChannelCategory extends Model
             }
         });
         
-        static::deleting(function ($category) {
+        static::deleting(function ($category): void {
             // When soft deleting a category, also soft delete its channels
             if (method_exists($category, 'isForceDeleting') && !$category->isForceDeleting()) {
-                $category->channels->each(function ($channel) {
+                $category->channels->each(function ($channel): void {
                     $channel->delete();
                 });
             }

@@ -56,6 +56,7 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Laravel\Socialite\Contracts\User as SocialiteUserContract;
 use DutchCodingCompany\FilamentSocialite\FilamentSocialitePlugin;
+use App\Livewire\SelectRole;
 
 class AppPanelProvider extends PanelProvider
 {
@@ -285,7 +286,11 @@ class AppPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
-            ->authMiddleware([Authenticate::class]);
+            ->authMiddleware([Authenticate::class])
+            ->livewireComponents([
+                // Register other Livewire components
+                SelectRole::class,
+            ]);
 
         if (Features::hasApiFeatures()) {
             $panel->userMenuItems([
@@ -344,7 +349,7 @@ class AppPanelProvider extends PanelProvider
             "auth:sanctum",
             config("jetstream.auth_session"),
             "verified",
-        ])->group(function () {
+        ])->group(function (): void {
             Route::post("/app/team/switch/{team}", function (Team $team) {
                 // This will trigger the TenantSet event which is handled by SwitchTeam listener
                 Filament::setTenant($team);

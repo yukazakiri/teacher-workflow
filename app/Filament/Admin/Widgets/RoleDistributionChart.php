@@ -14,12 +14,12 @@ class RoleDistributionChart extends ChartWidget
 
     protected function getData(): array
     {
-        $teachers = User::whereHas('roles', function ($q) {
+        $teachers = User::whereHas('roles', function ($q): void {
             $q->where('name', 'teacher');
         })->count();
         
         $students = Student::count();
-        $admins = User::whereHas('roles', function ($q) {
+        $admins = User::whereHas('roles', function ($q): void {
             $q->where('name', 'admin');
         })->count();
 

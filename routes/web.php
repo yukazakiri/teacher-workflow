@@ -65,7 +65,7 @@ if (config('app.use_workos', true)) {
             return tap(to_route('dashboard'), fn () => $request->authenticate());
         })->middleware(['guest']);
 
-   
+
 Route::post('logout', function (AuthKitLogoutRequest $request) {
     return $request->logout();
 })->middleware(['auth'])->name('logout');
@@ -101,7 +101,7 @@ Route::delete('/team-invitations/{invitation}', [
     ->name('team-invitations.destroy');
 
 // Exam routes - Typically require authentication but maybe not the specific session middleware
-Route::middleware(['auth:sanctum', 'verified'])->group(function () {
+Route::middleware(['auth:sanctum', 'verified'])->group(function (): void {
     Route::get('/exams/{exam}/export', [ExamController::class, 'export'])->name(
         'exams.export'
     );
@@ -117,7 +117,7 @@ Route::middleware([
     'auth', // Standard web auth guard check for logged-in user
     // $authSessionMiddleware, // REMOVED: Not suitable for these API-like routes
     'verified', // Email verification etc.
-])->group(function () {
+])->group(function (): void {
 
 
     // Get all conversations (for API consumers)
@@ -271,7 +271,7 @@ Route::middleware([
     'auth', // Standard web auth guard check
     $authSessionMiddleware, // Use determined session middleware
     'verified', // Email verification etc.
-])->group(function () {
+])->group(function (): void {
     // Team attendance page - replaced by Filament page
     // Route::get('/team/attendance', TeamAttendance::class)->name('team.attendance');
 
@@ -320,7 +320,7 @@ Route::get('/teams/join/instant/{code}', App\Livewire\TeamJoinInstant::class)
     ->name('teams.join.instant');
 
 // Add chat API routes with session authentication
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('/', function () {
         return redirect('/app');
     })->name('dashboard');

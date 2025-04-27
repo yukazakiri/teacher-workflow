@@ -27,7 +27,7 @@ class TeamMembersTableWidget extends BaseWidget
             ->heading('Team Members')
             ->description('Members of your current team')
             ->query(
-                User::whereHas('teams', function (Builder $query) use ($currentTeam) {
+                User::whereHas('teams', function (Builder $query) use ($currentTeam): void {
                     $query->where('teams.id', $currentTeam->id);
                 })
             )

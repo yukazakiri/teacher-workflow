@@ -497,7 +497,7 @@ class ChatSidebar extends Component
         if ($this->team) {
             // Get categories with channels
             $categories = ChannelCategory::where('team_id', $this->team->id)
-                ->with(['channels' => function ($query) {
+                ->with(['channels' => function ($query): void {
                     $query->orderBy('position')->orderBy('name');
                 }])
                 ->orderBy('position')

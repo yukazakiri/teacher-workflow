@@ -80,7 +80,7 @@ class ResourceUploader extends Page implements HasForms
                             ->helperText('Max file size: 50MB. Accepts common documents, text, and images.')
                             ->required()
                             ->live()
-                            ->afterStateUpdated(function (callable $get, callable $set, ?string $state, TemporaryUploadedFile $file) {
+                            ->afterStateUpdated(function (callable $get, callable $set, ?string $state, TemporaryUploadedFile $file): void {
                                 if ($file && empty($get('title'))) {
                                      $filename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
                                      $title = Str::title(str_replace(['-', '_'], ' ', $filename));

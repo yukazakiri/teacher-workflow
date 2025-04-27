@@ -27,7 +27,7 @@ class StatsOverview extends BaseWidget
                 ->descriptionIcon('heroicon-m-users')
                 ->color('primary'),
 
-            Stat::make('Active Users (30d)', User::whereHas('sessions', function ($query) {
+            Stat::make('Active Users (30d)', User::whereHas('sessions', function ($query): void {
                 $query->where('last_activity', '>=', Carbon::now()->subDays(30)->timestamp);
             })->count())
                 ->description('Users active in last 30 days')

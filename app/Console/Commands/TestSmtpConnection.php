@@ -60,7 +60,7 @@ class TestSmtpConnection extends Command
             $this->line("Attempt #{$attempt}: Sending email...");
 
             try {
-                Mail::raw('This is a test email sent from the Laravel TestSmtpConnection command.', function ($message) use ($recipient) {
+                Mail::raw('This is a test email sent from the Laravel TestSmtpConnection command.', function ($message) use ($recipient): void {
                     $message->to($recipient)
                             ->subject('SMTP Connection Test');
                 });

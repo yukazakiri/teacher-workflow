@@ -54,7 +54,7 @@ class ActivitySubmissionController extends Controller
 
         // Get activity resources that are public or owned by the teacher
         $resources = ActivityResource::where('activity_id', $activity->id)
-            ->where(function ($query) use ($activity) {
+            ->where(function ($query) use ($activity): void {
                 $query->where('is_public', true)
                     ->orWhere('user_id', $activity->teacher_id);
             })

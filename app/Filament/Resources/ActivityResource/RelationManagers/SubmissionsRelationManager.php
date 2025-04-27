@@ -44,7 +44,7 @@ class SubmissionsRelationManager extends RelationManager
                                     ->label('Student')
                                     ->relationship('student', 'name')
                                     ->options(
-                                        User::whereHas('teams', function (Builder $query) {
+                                        User::whereHas('teams', function (Builder $query): void {
                                             $query->where('team_id', Auth::user()->currentTeam->id);
                                         })->where('id', '!=', Auth::id())->pluck('name', 'id')
                                     )

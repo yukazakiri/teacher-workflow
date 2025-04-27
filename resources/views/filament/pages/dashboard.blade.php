@@ -4,6 +4,11 @@
     {{-- @livewire('chat', ['conversationId' => $conversationId ?? null]) --}}
 @livewire('ai-widget')
 
+@if($needsRoleSelection)
+    @livewire('select-role')
+@endif
+
+@if(!$needsRoleSelection)
     @if($onboardingState > 0)
         <div
             x-data="{ open: true }"
@@ -189,5 +194,6 @@
             </div>
         </div>
     @endif
+@endif
 
 </x-filament-panels::page>

@@ -46,17 +46,17 @@ class Message extends Model
     {
         parent::boot();
         
-        static::deleting(function ($message) {
+        static::deleting(function ($message): void {
             // When deleting a message, detach mentions
             $message->mentions()->detach();
             
             // When force deleting, also delete attachments and reactions
             if (method_exists($message, 'isForceDeleting') && $message->isForceDeleting()) {
-                $message->attachments->each(function ($attachment) {
+                $message->attachments->each(function ($attachment): void {
                     $attachment->delete();
                 });
                 
-                $message->reactions->each(function ($reaction) {
+                $message->reactions->each(function ($reaction): void {
                     $reaction->delete();
                 });
             }

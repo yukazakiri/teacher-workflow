@@ -525,7 +525,7 @@ class ActivityCreator extends Component implements HasForms
                 'allowFileUploads' => ['required_if:submissionType,resource', 'boolean'],
                 'allowTextEntry' => ['required_if:submissionType,resource', 'boolean'],
                 // Custom rule: Ensure at least one is true if submission type is 'resource'
-                'allowFileUploads' => ['required_if:submissionType,resource', 'boolean', function ($attribute, $value, $fail) {
+                'allowFileUploads' => ['required_if:submissionType,resource', 'boolean', function ($attribute, $value, $fail): void {
                     if ($this->submissionType === 'resource' && ! $this->allowFileUploads && ! $this->allowTextEntry) {
                         $fail('If submission type is "File Upload / Text Entry", you must allow at least one of file uploads or text entry.');
                     }

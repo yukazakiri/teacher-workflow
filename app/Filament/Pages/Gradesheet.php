@@ -307,7 +307,7 @@ class Gradesheet extends Page
                                 Set $set,
                                 Get $get,
                                 ?string $state
-                            ) {
+                            ): void {
                                 // Reset specifics when system type changes
                                 $set('collegeGradingScale', null); // Reset college scale/type
                                 $set('collegePrelimWeight', null);
@@ -356,7 +356,7 @@ class Gradesheet extends Page
                                 Set $set,
                                 Get $get,
                                 ?string $state
-                            ) {
+                            ): void {
                                 // Reset term weights if switching away from term-based
                                 if (
                                     $state &&
@@ -1211,7 +1211,7 @@ class Gradesheet extends Page
         }
 
         // ... (CSV generation logic remains the same) ...
-        $callback = function () {
+        $callback = function (): void {
             /* ... */
         };
         $filename =

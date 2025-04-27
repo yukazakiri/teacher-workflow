@@ -33,16 +33,15 @@ class ClassesResources extends Page
 
     protected static string $view = 'filament.pages.class-resources';
 
-    protected static ?string $navigationGroup = 'Class Resources';
-
     protected static ?int $navigationSort = 19;
 
-    protected ?string $heading = 'Teaching Resources Hub';
+    protected ?string $heading = 'Class Resources Hub';
 
     protected ?string $subheading = 'Organize, discover, and share your teaching materials in one central location.';
 
     public ?array $data = [];
 
+    protected static ?string $navigationLabel = "Class Resources Hub";
     // Filter state
     public ?string $selectedType = null;
 
@@ -103,7 +102,7 @@ class ClassesResources extends Page
                         ->helperText('Upload files that can be processed by AI: PDFs, text files, and images')
                         ->required()
                         ->live()
-                        ->afterStateUpdated(function (callable $set, $state) {
+                        ->afterStateUpdated(function (callable $set, $state): void {
                             if ($state) {
                                 $filename = pathinfo($state, PATHINFO_FILENAME);
                                 $title = Str::title(str_replace(['-', '_'], ' ', $filename));
@@ -271,12 +270,12 @@ class ClassesResources extends Page
 
     public static function getNavigationLabel(): string
     {
-        return 'Teaching Resources';
+        return 'Class Resources';
     }
 
     public function getTitle(): string
     {
-        return 'Teaching Resources';
+        return 'Class Resources';
     }
 
     public function form(Form $form): Form
@@ -455,7 +454,7 @@ class ClassesResources extends Page
         // Apply permission filters based on authenticated user to Pinned Resources
         if (! $isOwner) {
             if ($user->hasTeamRole($team, 'teacher')) {
-                $pinnedQuery->where(function ($query) use ($user) {
+                $pinnedQuery->where(function ($query) use ($user): void {
                     $query->where('access_level', 'all')
                         ->orWhere('access_level', 'teacher')
                         ->orWhere('created_by', $user->id);
@@ -469,14 +468,14 @@ class ClassesResources extends Page
         // --- Main Resource Query (Non-Pinned) ---
         $mainResourceQuery = ModelsClassResource::query()
             ->where('team_id', $team->id)
-            ->where(function ($q) {
+            ->where(function ($q): void {
                 $q->where('is_pinned', false)->orWhereNull('is_pinned');
             });
 
         // Apply archived filter
         try {
             if (! $this->showArchived) {
-                $mainResourceQuery->where(function ($query) {
+                $mainResourceQuery->where(function ($query): void {
                     $query->where('is_archived', false)
                         ->orWhereNull('is_archived');
                 });
@@ -488,7 +487,7 @@ class ClassesResources extends Page
         // Apply permission filters to Main Resources
         if (! $isOwner) {
             if ($user->hasTeamRole($team, 'teacher')) {
-                $mainResourceQuery->where(function ($query) use ($user) {
+                $mainResourceQuery->where(function ($query) use ($user): void {
                     $query->where('access_level', 'all')
                         ->orWhere('access_level', 'teacher')
                         ->orWhere('created_by', $user->id);
@@ -501,7 +500,7 @@ class ClassesResources extends Page
         // Apply search filter
         if (! empty($this->searchQuery)) {
             $searchQuery = $this->searchQuery;
-            $mainResourceQuery->where(function ($query) use ($searchQuery) {
+            $mainResourceQuery->where(function ($query) use ($searchQuery): void {
                 $query->where('title', 'like', "%{$searchQuery}%")
                     ->orWhere('description', 'like', "%{$searchQuery}%");
             });
@@ -541,14 +540,14 @@ class ClassesResources extends Page
         // --- Stats Calculation Query (independent of main pagination/filters except team/permissions) ---
         $statsBaseQuery = ModelsClassResource::query()->where('team_id', $team->id);
         if (! $this->showArchived) { // Apply archived filter to stats count
-            $statsBaseQuery->where(function ($query) {
+            $statsBaseQuery->where(function ($query): void {
                 $query->where('is_archived', false)->orWhereNull('is_archived');
             });
         }
         // Apply permission filter to stats count
         if (! $isOwner) {
             if ($user->hasTeamRole($team, 'teacher')) {
-                $statsBaseQuery->where(function ($query) use ($user) {
+                $statsBaseQuery->where(function ($query) use ($user): void {
                     $query->where('access_level', 'all')->orWhere('access_level', 'teacher')->orWhere('created_by', $user->id);
                 });
             } else {

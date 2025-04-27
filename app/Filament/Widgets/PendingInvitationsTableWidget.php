@@ -56,7 +56,7 @@ class PendingInvitationsTableWidget extends BaseWidget
                     ->color('danger')
                     ->requiresConfirmation()
                     ->visible(fn () => $currentTeam->user_id === Auth::id())
-                    ->action(function (TeamInvitation $record) {
+                    ->action(function (TeamInvitation $record): void {
                         $record->delete();
 
                         Notification::make()
@@ -71,7 +71,7 @@ class PendingInvitationsTableWidget extends BaseWidget
                     ->icon('heroicon-o-paper-airplane')
                     ->color('gray')
                     ->visible(fn () => $currentTeam->user_id === Auth::id())
-                    ->action(function (TeamInvitation $record) {
+                    ->action(function (TeamInvitation $record): void {
                         $record->sendInvitationNotification();
 
                         Notification::make()
@@ -88,7 +88,7 @@ class PendingInvitationsTableWidget extends BaseWidget
                     ->color('danger')
                     ->requiresConfirmation()
                     ->visible(fn () => $currentTeam->user_id === Auth::id())
-                    ->action(function (Collection $records) {
+                    ->action(function (Collection $records): void {
                         $records->each->delete();
 
                         Notification::make()

@@ -31,7 +31,7 @@ class CreateStudentFromTeamMember implements ShouldQueue
 
         // Check if this user already has a student record in this team
         $existingStudent = Student::where('team_id', $team->id)
-            ->where(function ($query) use ($user) {
+            ->where(function ($query) use ($user): void {
                 $query->where('user_id', $user->id)
                     ->orWhere('email', $user->email);
             })

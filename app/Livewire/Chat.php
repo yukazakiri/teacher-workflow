@@ -414,7 +414,7 @@ class Chat extends Component
     {
         // Use findOrFail which eager loads messages or use load() after finding
         $this->conversation = Conversation::with([
-            'messages' => function ($query) {
+            'messages' => function ($query): void {
                 $query->orderBy('created_at', 'asc'); // Ensure messages are ordered correctly
             },
         ])->findOrFail($conversationId);
@@ -667,7 +667,7 @@ class Chat extends Component
         $resourceQuery = ClassResource::query()
             ->where('team_id', $team->id)
             ->where(DB::raw('LOWER(title)'), 'like', '%' . strtolower($this->mentionQuery) . '%') // Corrected case-insensitive
-            ->where(function ($q) { // Exclude archived
+            ->where(function ($q): void { // Exclude archived
                 $q->where('is_archived', false)->orWhereNull('is_archived');
             })
             ->select('id', 'title', 'category_id') // Select only needed fields
@@ -680,13 +680,13 @@ class Chat extends Component
         $isOwner = $team->userIsOwner($user);
         if (! $isOwner) {
              if ($user->hasTeamRole($team, 'teacher')) {
-                 $resourceQuery->where(function ($q) use ($user) {
+                 $resourceQuery->where(function ($q) use ($user): void {
                      $q->where('access_level', 'all')
                        ->orWhere('access_level', 'teacher')
                        ->orWhere('created_by', $user->id);
                  });
              } else {
-                  $resourceQuery->where(function ($q) use ($user) {
+                  $resourceQuery->where(function ($q) use ($user): void {
                      $q->where('access_level', 'all')
                         ->orWhere('created_by', $user->id);
                  });

@@ -86,7 +86,7 @@ class StudentSubmissionsRelationManager extends RelationManager
                     ->updateStateUsing(function (
                         Student $record,
                         ?string $state
-                    ) use ($activity) {
+                    ) use ($activity): void {
                         $this->updateStudentData($record->id, $activity->id, [
                             'score' => $state,
                         ]);
@@ -138,7 +138,7 @@ class StudentSubmissionsRelationManager extends RelationManager
                             ->action(function (
                                 Student $record,
                                 array $data
-                            ) use ($activity) {
+                            ) use ($activity): void {
                                 $this->updateStudentData(
                                     $record->id,
                                     $activity->id,
@@ -321,7 +321,7 @@ class StudentSubmissionsRelationManager extends RelationManager
                         ),
                         false: fn (Builder $query) => $query->where(function (
                             $q
-                        ) use ($activity) {
+                        ) use ($activity): void {
                             $q->whereDoesntHave(
                                 'submissions',
                                 fn ($sq) => $sq->where(
@@ -381,7 +381,7 @@ class StudentSubmissionsRelationManager extends RelationManager
                             ->default('completed')
                             ->required(),
                     ])
-                    ->action(function (array $data) use ($activity) {
+                    ->action(function (array $data) use ($activity): void {
                         $studentIds = $data['students'] ?? [];
                         $count = count($studentIds);
 
@@ -459,7 +459,7 @@ class StudentSubmissionsRelationManager extends RelationManager
                     ])
                     ->action(function (array $data, Student $record) use (
                         $activity
-                    ) {
+                    ): void {
                         $this->updateStudentData(
                             $record->id,
                             $activity->id,
@@ -501,7 +501,7 @@ class StudentSubmissionsRelationManager extends RelationManager
                         ->action(function (
                             Collection $records,
                             array $data
-                        ) use ($activity) {
+                        ) use ($activity): void {
                             $updateData = [
                                 'score' => $data['score'],
                                 'feedback' => $data['feedback'] ?? null,
@@ -512,7 +512,7 @@ class StudentSubmissionsRelationManager extends RelationManager
                                 $activity,
                                 $updateData,
                                 &$count
-                            ) {
+                            ): void {
                                 $this->updateStudentData(
                                     $record->id,
                                     $activity->id,

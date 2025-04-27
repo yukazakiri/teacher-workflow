@@ -117,7 +117,7 @@ class ExamTool extends BaseTool
     private function getExamDetails($team, $identifier)
     {
         $exam = $team->exams()
-            ->where(function ($query) use ($identifier) {
+            ->where(function ($query) use ($identifier): void {
                 $query->where('id', $identifier)
                       ->orWhere('title', 'like', "%{$identifier}%");
             })
@@ -172,7 +172,7 @@ class ExamTool extends BaseTool
              $data = json_decode($jsonString, true, 512, JSON_THROW_ON_ERROR);
              $truncated = false;
 
-             $walkAndTruncate = function (&$item) use (&$walkAndTruncate, &$truncated) {
+             $walkAndTruncate = function (&$item) use (&$walkAndTruncate, &$truncated): void {
                  if (is_array($item)) {
                      if (array_keys($item) === range(0, count($item) - 1) && count($item) > 5) {
                          $item = array_slice($item, 0, 5);

@@ -59,7 +59,7 @@ class Channel extends Model
     {
         parent::boot();
 
-        static::creating(function ($channel) {
+        static::creating(function ($channel): void {
             if (empty($channel->slug)) {
                 $channel->slug = Str::slug($channel->name);
             }
@@ -74,7 +74,7 @@ class Channel extends Model
             }
         });
         
-        static::deleting(function ($channel) {
+        static::deleting(function ($channel): void {
             // When deleting a channel, also detach all members
             $channel->members()->detach();
         });

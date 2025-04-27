@@ -59,7 +59,7 @@ class ClassResourcesBrowser extends Component
         // Filter by view mode (teacher materials vs student resources)
         if ($this->viewMode !== 'all') {
             $categoryType = $this->viewMode === 'teacher' ? 'teacher_material' : 'student_resource';
-            $query->whereHas('category', function ($q) use ($categoryType) {
+            $query->whereHas('category', function ($q) use ($categoryType): void {
                 $q->where('type', $categoryType);
             });
         }
@@ -71,14 +71,14 @@ class ClassResourcesBrowser extends Component
 
         // Filter by search term
         if ($this->search) {
-            $query->where(function ($q) {
+            $query->where(function ($q): void {
                 $q->where('title', 'like', "%{$this->search}%")
                     ->orWhere('description', 'like', "%{$this->search}%");
             });
         }
 
         // Filter by access level
-        $query->where(function ($q) use ($user, $team) {
+        $query->where(function ($q) use ($user, $team): void {
             // All resources accessible to everyone
             $q->where('access_level', 'all');
 

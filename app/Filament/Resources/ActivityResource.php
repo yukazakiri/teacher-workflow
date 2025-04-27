@@ -449,7 +449,7 @@ class ActivityResource extends Resource
                                             ->afterStateUpdated(function (
                                                 Set $set,
                                                 $state
-                                            ) {
+                                            ): void {
                                                 // $state is an instance of Livewire\Features\SupportFileUploads\TemporaryUploadedFile
                                                 if ($state) {
                                                     $set(
@@ -569,7 +569,7 @@ class ActivityResource extends Resource
                             Builder $query,
                             string $search
                         ): Builder {
-                            return $query->where(function ($q) use ($search) {
+                            return $query->where(function ($q) use ($search): void {
                                 $q->where(
                                     'term',
                                     'like',
@@ -732,7 +732,7 @@ class ActivityResource extends Resource
                         ->requiresConfirmation()
                         ->action(function (
                             \Illuminate\Support\Collection $records
-                        ) {
+                        ): void {
                             $count = 0;
                             foreach ($records as $record) {
                                 $record->update(['status' => 'published']);
@@ -751,7 +751,7 @@ class ActivityResource extends Resource
                         ->requiresConfirmation()
                         ->action(function (
                             \Illuminate\Support\Collection $records
-                        ) {
+                        ): void {
                             $count = 0;
                             foreach ($records as $record) {
                                 $record->update(['status' => 'archived']);
