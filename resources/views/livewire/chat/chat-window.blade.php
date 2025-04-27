@@ -26,6 +26,16 @@
         {{-- Header --}}
         <div class="flex-shrink-0 h-12 border-b border-gray-300 dark:border-gray-700 flex items-center justify-between px-4 bg-gray-50 dark:bg-gray-800">
             <div class="flex items-center min-w-0">
+                {{-- Mobile Back Button --}}
+                <button 
+                    type="button" 
+                    class="md:hidden mr-2 p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    @click="view = 'sidebar'" {{-- Directly set Alpine view state --}}
+                >
+                    <x-heroicon-o-arrow-left class="h-5 w-5" />
+                </button>
+                
+                {{-- Existing Header Content --}}
                 @if($selectedChannel->is_dm && $otherUser)
                     {{-- Direct Message Header --}}
                     <img src="{{ $otherUser->profile_photo_url }}" alt="{{ $otherUser->name }}" class="w-6 h-6 rounded-full mr-2">
