@@ -28,6 +28,7 @@ class Channel extends Model
         'description',
         'type',
         'is_private',
+        'is_dm', // Added is_dm
         'position',
     ];
 
@@ -38,6 +39,7 @@ class Channel extends Model
      */
     protected $casts = [
         'is_private' => 'boolean',
+        'is_dm' => 'boolean', // Added is_dm cast
         'position' => 'integer',
         'deleted_at' => 'datetime',
     ];
@@ -59,24 +61,38 @@ class Channel extends Model
     {
         parent::boot();
 
-        static::creating(function ($channel): void {
-            if (empty($channel->slug)) {
+        static::creating(function (Channel $channel): void {
+            // Handle slug generation differently for DMs vs regular channels
+            if ($channel->is_dm) {
+                // Slug for DMs will be set explicitly in findOrCreateDirectMessage.
+                // If somehow created without a slug, generate a fallback unique one.
+                 if (empty($channel->slug)) {
+                    // This fallback should ideally not be hit if findOrCreateDirectMessage is used.
+                    $channel->slug = 'dm-' . uniqid();
+                 }
+            } elseif (empty($channel->slug) && !empty($channel->name)) {
+                 // Generate slug from name for regular channels only if name exists
                 $channel->slug = Str::slug($channel->name);
             }
-            
-            // Default position to the end if not specified
-            if (is_null($channel->position)) {
+
+            // Default position logic - only apply to non-DMs
+            if (!$channel->is_dm && is_null($channel->position)) {
                 $lastPosition = self::where('team_id', $channel->team_id)
                     ->where('category_id', $channel->category_id)
+                    ->where('is_dm', false) // Exclude DMs from position calculation
                     ->max('position');
-                    
                 $channel->position = $lastPosition ? $lastPosition + 1 : 0;
             }
         });
-        
-        static::deleting(function ($channel): void {
+
+        static::deleting(function (Channel $channel): void {
             // When deleting a channel, also detach all members
             $channel->members()->detach();
+
+            // If force deleting, consider deleting related messages
+             if (method_exists($channel, 'isForceDeleting') && $channel->isForceDeleting()) {
+                 $channel->messages()->forceDelete(); // Example: force delete messages
+             }
         });
     }
 
@@ -93,6 +109,7 @@ class Channel extends Model
      */
     public function category(): BelongsTo
     {
+        // Category is nullable for DMs
         return $this->belongsTo(ChannelCategory::class, 'category_id');
     }
 
@@ -110,7 +127,7 @@ class Channel extends Model
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'channel_members')
-            ->withPivot('permissions')
+            ->withPivot('permissions') // Permissions might not be relevant for DMs
             ->withTimestamps();
     }
 
@@ -127,48 +144,127 @@ class Channel extends Model
      */
     public function canAccess(User $user): bool
     {
-        // If the channel is not private, any team member can access it
+         // DMs are private and only accessible by their members
+         if ($this->is_dm) {
+             return $this->hasMember($user);
+         }
+
+        // If the channel is not private (and not a DM), any team member can access it
         if (!$this->is_private) {
             return $user->belongsToTeam($this->team);
         }
 
-        // If the channel is private, only channel members can access it
+        // If the channel is private (and not a DM), only channel members can access it
         return $this->hasMember($user);
     }
-    
+
     /**
      * Check if a user can manage (edit/delete) the channel.
+     * NOTE: DMs should generally not be manageable in the same way as channels.
      */
     public function canManage(User $user): bool
     {
-        // Team owners can manage any channel
+        // Disallow managing DMs through this standard check
+        if ($this->is_dm) {
+            return false;
+        }
+
+        // Team owners can manage any (non-DM) channel
         if ($this->team->user_id === $user->id) {
             return true;
         }
-        
-        // Channel admin permissions check
+
+        // Channel admin permissions check (for non-DM channels)
         $member = $this->members()->where('user_id', $user->id)->first();
-        
         if ($member && isset($member->pivot->permissions)) {
             return str_contains($member->pivot->permissions, 'manage');
         }
-        
+
         return false;
     }
-    
+
     /**
      * Validate channel name uniqueness within a team/category.
+     * NOTE: This is not relevant for DMs as they don't have user-facing names.
      */
-    public static function validateUniqueName(string $name, string $teamId, string $categoryId, ?string $excludeChannelId = null): bool
-    {
+    public static function validateUniqueName(
+        string $name,
+        string $teamId,
+        ?string $categoryId, // Category ID can be null
+        ?string $excludeChannelId = null
+    ): bool {
         $query = self::where('team_id', $teamId)
-            ->where('category_id', $categoryId)
-            ->where('name', $name);
-            
+            ->where('name', $name)
+            ->where('is_dm', false); // Only check against non-DM channels
+
+        // Only scope by category if one is provided
+        if ($categoryId) {
+             $query->where('category_id', $categoryId);
+        } else {
+             // Handle channels without a category if that's possible in your logic
+             // $query->whereNull('category_id');
+        }
+
         if ($excludeChannelId) {
             $query->where('id', '!=', $excludeChannelId);
         }
-        
+
         return !$query->exists();
+    }
+
+    /**
+     * Find or create a direct message channel between two users.
+     */
+    public static function findOrCreateDirectMessage(User $user1, User $user2): Channel
+    {
+        // Ensure consistent ordering of user IDs to avoid duplicate DM channels
+        $userIds = collect([$user1->id, $user2->id])->sort()->values();
+        $uniqueDmSlug = 'dm-' . $userIds[0] . '-' . $userIds[1]; // Create predictable slug
+
+        // Look for an existing DM channel using the unique slug within the team
+        $channel = Channel::where('team_id', $user1->currentTeam->id)
+            ->where('slug', $uniqueDmSlug)
+            ->where('is_dm', true)
+            ->first();
+
+        // Alternatively, check based on members if slug might not exist yet (e.g., legacy data)
+        if (!$channel) {
+             $channel = Channel::where('team_id', $user1->currentTeam->id)
+                ->where('is_dm', true)
+                ->whereHas('members', function ($query) use ($userIds) {
+                    $query->whereIn('user_id', $userIds);
+                }, '=', 2)
+                ->whereHas('members', function ($query) use ($userIds) {
+                    $query->where('user_id', $userIds[0]);
+                })
+                ->whereHas('members', function ($query) use ($userIds) {
+                    $query->where('user_id', $userIds[1]);
+                })
+                ->first();
+        }
+
+        if ($channel) {
+            // Ensure the slug is set correctly if found via member check
+            if ($channel->slug !== $uniqueDmSlug) {
+                $channel->slug = $uniqueDmSlug;
+                $channel->saveQuietly(); // Save without triggering events
+            }
+            return $channel;
+        }
+
+        // If not found, create a new DM channel
+        $newChannel = Channel::create([
+            'team_id' => $user1->currentTeam->id,
+            'is_dm' => true,
+            'is_private' => true, // DMs are inherently private
+            'slug' => $uniqueDmSlug, // Set the unique DM slug explicitly
+            // name, description, category_id, position are nullable or not relevant
+        ]);
+
+        // Attach both users as members
+        // Note: Permissions might not be needed/relevant for DMs
+        $newChannel->members()->attach([$user1->id, $user2->id]);
+
+        return $newChannel;
     }
 }

@@ -7,6 +7,7 @@ namespace App\Livewire\Chat;
 use App\Events\MessageSent;
 use App\Models\Channel;
 use App\Models\Message;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Livewire\Attributes\On;
@@ -17,6 +18,8 @@ class ChatWindow extends Component
     public ?string $selectedChannelId = null;
 
     public ?Channel $selectedChannel = null;
+
+    public ?User $otherUser = null;
 
     /** @var array<int, array<string, mixed>> */
     public array $messages = [];
@@ -91,19 +94,27 @@ class ChatWindow extends Component
     #[On('channelSelected')]
     public function loadChannel(string $channelId): void
     {
-        $newChannel = Channel::with('team')->find($channelId);
+        $newChannel = Channel::with(['team', 'members'])->find($channelId);
         if (! $newChannel || ! Auth::user()?->belongsToTeam($newChannel->team)) {
             $this->resetState();
             $this->dispatch('clearStoredChannel');
-            // Remove from session if invalid
             session()->forget('chat.selected_channel_id');
             return;
         }
+        
+        // Reset other user info
+        $this->otherUser = null;
+
+        // If it's a DM channel, find the other user
+        if ($newChannel->is_dm) {
+            $currentUser = Auth::user();
+            $this->otherUser = $newChannel->members->firstWhere('id', '!=', $currentUser->id);
+        }
+
         if ($this->selectedChannelId !== $channelId) {
             $this->selectedChannelId = $channelId;
             $this->selectedChannel = $newChannel;
             $this->loadMessages();
-            // Store the valid channel ID in localStorage and session
             $this->dispatch('storeChannelId', $channelId);
             session(['chat.selected_channel_id' => $channelId]);
             $this->dispatch('messageReceived'); 
@@ -278,6 +289,7 @@ class ChatWindow extends Component
     {
         $this->selectedChannelId = null;
         $this->selectedChannel = null;
+        $this->otherUser = null;
         $this->messages = [];
         $this->reset('newMessageContent');
         // Remove from session

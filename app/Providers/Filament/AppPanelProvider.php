@@ -78,6 +78,7 @@ class AppPanelProvider extends PanelProvider
             // ->topNavigation()
             ->passwordReset()
             ->emailVerification()
+            ->databaseNotifications()
             ->homeUrl(function () {
                 $user = Auth::user();
                 $team = $user?->currentTeam;
