@@ -34,7 +34,14 @@ return [
             'path' => env('REVERB_SERVER_PATH', ''),
             'hostname' => env('REVERB_HOST'),
             'options' => [
-                'tls' => [],
+                'tls' => [
+                    'cert' => env('REVERB_SERVER_TLS_CERT'),
+                    'key' => env('REVERB_SERVER_TLS_KEY'),
+                    // Add any other necessary TLS options here, e.g.:
+                    // 'ca' => env('REVERB_SERVER_TLS_CA'),
+                    // 'verify_peer' => env('REVERB_SERVER_TLS_VERIFY_PEER', false),
+                    // 'allow_self_signed' => env('REVERB_SERVER_TLS_ALLOW_SELF_SIGNED', true),
+                ],
             ],
             'max_request_size' => env('REVERB_MAX_REQUEST_SIZE', 10_000),
             'scaling' => [

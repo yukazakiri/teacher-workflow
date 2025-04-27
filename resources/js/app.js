@@ -1,12 +1,16 @@
-import Alpine from 'alpinejs'
-import collapse from '@alpinejs/collapse'
-import './echo'
+import Alpine from "alpinejs";
+import collapse from "@alpinejs/collapse";
+import Echo from "laravel-echo";
+import Pusher from "pusher-js";
 
-Alpine.plugin(collapse)
+// Set Alpine globally immediately
+window.Alpine = Alpine;
 
-window.Alpine = Alpine
+// Apply Alpine plugins
+Alpine.plugin(collapse);
 
-// Wait for Livewire to load before starting Alpine
-document.addEventListener('livewire:init', () => {
-    Alpine.start()
-})
+// Import and initialize Echo (should set window.Echo)
+// import "./echo"; // Removed - Filament handles this now
+
+// No longer delay Alpine start until livewire:init
+// Alpine will start automatically or be started by other integrations (like Filament)

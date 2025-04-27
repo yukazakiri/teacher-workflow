@@ -2,7 +2,7 @@
     class="flex flex-col h-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200"
     x-data="{
         init() {
-            const channelIdKey = 'selectedChannelId_' + {{ Auth::user()->currentTeam->id }};
+            const channelIdKey = 'selectedChannelId_' + '{{ Auth::user()->currentTeam->id }}'; // <-- Added quotes
             $wire.on('checkStoredChannel', () => {
                 const storedChannelId = localStorage.getItem(channelIdKey);
                 $wire.restoreChannel(storedChannelId);

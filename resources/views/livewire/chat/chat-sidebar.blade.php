@@ -37,21 +37,21 @@
                 wire:click="toggleMembersList"
                 class="p-1.5 text-gray-500 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900 rounded-md focus:outline-none transition-colors duration-150"
                 :class="{ 'bg-primary-50 dark:bg-primary-900 text-primary-700 dark:text-primary-300': showMembers }"
-                x-tooltip="Members"
+                x-tooltip="'Members'"
             >
                 <x-heroicon-o-users class="h-5 w-5" />
             </button>
             <button 
                 wire:click="startCreateChannel()" 
                 class="p-1.5 text-gray-500 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900 rounded-md focus:outline-none transition-colors duration-150"
-                x-tooltip="New Channel"
+                x-tooltip="'New Channel'"
             >
                 <x-heroicon-o-plus-circle class="h-5 w-5" />
             </button>
             <button 
                 wire:click="startCreateCategory" 
                 class="p-1.5 text-gray-500 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900 rounded-md focus:outline-none transition-colors duration-150"
-                x-tooltip="New Category"
+                x-tooltip="'New Category'"
             >
                 <x-heroicon-o-folder-plus class="h-5 w-5" />
             </button>
@@ -382,7 +382,7 @@
                                 <button 
                                     wire:click="startCreateChannel('{{ $category->id }}')"
                                     class="p-1 text-gray-500 hover:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none rounded-full hover:bg-discord-hover"
-                                    x-tooltip="New Channel in {{ $category->name }}"
+                                    x-tooltip="'New Channel in {{ $category->name }}'"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -420,7 +420,7 @@
                                                     <button 
                                                         @click="$wire.renameChannel('{{ $channel->id }}')"
                                                         class="text-green-400 hover:text-green-300 p-1 rounded hover:bg-[#36393f] transition-colors duration-150"
-                                                        x-tooltip="Save"
+                                                        x-tooltip="'Save'"
                                                     >
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -429,7 +429,7 @@
                                                     <button 
                                                         @click="editingChannelId = null; $wire.cancelRename()"
                                                         class="text-red-400 hover:text-red-300 p-1 rounded hover:bg-[#36393f] transition-colors duration-150"
-                                                        x-tooltip="Cancel"
+                                                        x-tooltip="'Cancel'"
                                                     >
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -533,12 +533,4 @@
             background-color: #718096; /* gray-600 */
         }
     </style>
-    <script>
-        // Add Alpine Collapse plugin if not already included globally
-        document.addEventListener('alpine:initializing', () => {
-            if (!Alpine.plugins.collapse) {
-                Alpine.plugin(Alpine.plugins.collapse)
-            }
-        })
-    </script>
 </div>

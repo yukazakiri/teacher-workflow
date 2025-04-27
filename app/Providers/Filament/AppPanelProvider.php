@@ -76,32 +76,37 @@ class AppPanelProvider extends PanelProvider
             ->sidebarFullyCollapsibleOnDesktop()
             // ->emailVerification()
             // ->topNavigation()
-            ->registration()
             ->passwordReset()
             ->emailVerification()
-            ->homeUrl(function() {
+            ->homeUrl(function () {
                 $user = Auth::user();
                 $team = $user?->currentTeam;
-                
+
                 if (!$team) {
-                    return '/app';
+                    return "/app";
                 }
-                
-                $membership = DB::table('team_user')
-                    ->where('team_id', $team->id)
-                    ->where('user_id', $user->id)
+
+                $membership = DB::table("team_user")
+                    ->where("team_id", $team->id)
+                    ->where("user_id", $user->id)
                     ->first();
-                
+
                 $role = $membership->role ?? null;
-                
-                if ($role === 'student') {
-                    return route('filament.app.pages.student-dashboard', ['tenant' => $team->id]);
-                } elseif ($role === 'parent') {
-                    return route('filament.app.pages.parent-dashboard', ['tenant' => $team->id]);
+
+                if ($role === "student") {
+                    return route("filament.app.pages.student-dashboard", [
+                        "tenant" => $team->id,
+                    ]);
+                } elseif ($role === "parent") {
+                    return route("filament.app.pages.parent-dashboard", [
+                        "tenant" => $team->id,
+                    ]);
                 }
-                
+
                 // Default to the main dashboard for teachers or undefined roles
-                return route('filament.app.pages.dashboard', ['tenant' => $team->id]);
+                return route("filament.app.pages.dashboard", [
+                    "tenant" => $team->id,
+                ]);
             })
             ->viteTheme("resources/css/filament/app/theme.css")
             ->colors([
@@ -147,7 +152,7 @@ class AppPanelProvider extends PanelProvider
                             ->color(Color::hex("#4285f4"))
                             ->outlined(true)
                             ->stateless(false),
-                            Provider::make("facebook")
+                        Provider::make("facebook")
                             ->label("Facebook")
                             ->icon("fab-facebook")
                             ->color(Color::hex("#4267B2"))
@@ -205,13 +210,13 @@ class AppPanelProvider extends PanelProvider
                         return $user; // Return the created user
                     }),
 
-                        FilamentDeveloperLoginsPlugin::make()
-                            ->enabled()
-                            ->users([
-                                'teacher' => 'test@example.com',
-                                'User' => 'sdavis@student.edu',
-                                'parent' => 'your.email+fakedata38141@gmail.com'
-                            ]),
+                FilamentDeveloperLoginsPlugin::make()
+                    ->enabled()
+                    ->users([
+                        "teacher" => "test@example.com",
+                        "User" => "sdavis@student.edu",
+                        "parent" => "your.email+fakedata38141@gmail.com",
+                    ]),
 
                 FilamentAssistantPlugin::make(),
                 \LaraZeus\Boredom\BoringAvatarPlugin::make()
@@ -238,21 +243,21 @@ class AppPanelProvider extends PanelProvider
                 $user = Auth::user();
                 $team = $user?->currentTeam;
                 $role = null;
-                
+
                 if ($team) {
-                    $membership = DB::table('team_user')
-                        ->where('team_id', $team->id)
-                        ->where('user_id', $user->id)
+                    $membership = DB::table("team_user")
+                        ->where("team_id", $team->id)
+                        ->where("user_id", $user->id)
                         ->first();
-                    
+
                     $role = $membership->role ?? null;
                 }
-                
+
                 // Start building navigation
                 $navigationBuilder = $builder->groups([]);
-                
+
                 // For teachers or undefined roles, show the default navigation
-                if (!$role || $role === 'teacher' || $role === 'pending') {
+                if (!$role || $role === "teacher" || $role === "pending") {
                     $navigationBuilder = $builder->groups([
                         // Dashboard group
                         NavigationGroup::make()
@@ -293,9 +298,9 @@ class AppPanelProvider extends PanelProvider
                                 ...\App\Filament\Pages\Changelogs::getNavigationItems(),
                             ]),
                     ]);
-                } 
+                }
                 // For students, show student navigation
-                else if ($role === 'student') {
+                elseif ($role === "student") {
                     $navigationBuilder = $builder->groups([
                         NavigationGroup::make()
                             ->label("Student Dashboard")
@@ -314,7 +319,7 @@ class AppPanelProvider extends PanelProvider
                     ]);
                 }
                 // For parents, show parent navigation
-                else if ($role === 'parent') {
+                elseif ($role === "parent") {
                     $navigationBuilder = $builder->groups([
                         NavigationGroup::make()
                             ->label("Parent Dashboard")
@@ -323,12 +328,10 @@ class AppPanelProvider extends PanelProvider
                             ]),
                         NavigationGroup::make()
                             ->label("Academic")
-                            ->items([
-                                ...Gradesheet::getNavigationItems(),
-                            ]),
+                            ->items([...Gradesheet::getNavigationItems()]),
                     ]);
                 }
-                
+
                 return $navigationBuilder->items([]);
             })
             ->userMenuItems([
@@ -359,7 +362,6 @@ class AppPanelProvider extends PanelProvider
                         ])
                     )
                     ->icon("heroicon-o-document-text"),
-               
             ])
             ->widgets([
                 Widgets\AccountWidget::class,
