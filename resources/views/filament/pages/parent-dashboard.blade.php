@@ -41,7 +41,7 @@
         @else
             <!-- Student Selection Tabs (if multiple students) -->
             @if(count($studentDetails) > 1)
-                <div x-data="{ 
+                <div x-data="{
                     activeTab: 0,
                     init() {
                         this.$nextTick(() => {
@@ -63,8 +63,8 @@
                     <div class="relative">
                         <div x-ref="tabContainer" class="flex border-b border-gray-200 dark:border-gray-700">
                             @foreach($studentDetails as $index => $details)
-                                <button 
-                                    @click="changeTab({{ $index }})" 
+                                <button
+                                    @click="changeTab({{ $index }})"
                                     :class="{'text-primary-600 dark:text-primary-400 font-medium': activeTab === {{ $index }}, 'text-gray-500 dark:text-gray-400': activeTab !== {{ $index }}}"
                                     class="px-4 py-2 text-sm hover:text-primary-600 dark:hover:text-primary-400 focus:outline-none transition"
                                 >
@@ -72,12 +72,12 @@
                                 </button>
                             @endforeach
                         </div>
-                        <div 
-                            x-ref="indicator" 
+                        <div
+                            x-ref="indicator"
                             class="absolute bottom-0 h-0.5 bg-primary-600 dark:bg-primary-400 transition-all duration-300"
                         ></div>
                     </div>
-                    
+
                     <!-- Tab Content -->
                     @foreach($studentDetails as $index => $details)
                         <div x-show="activeTab === {{ $index }}" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="mt-4">
@@ -125,7 +125,7 @@
                                     <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ __('Based on graded submissions') }}</p>
                                 </div>
                             </div>
-                            
+
                             <div class="bg-white dark:bg-gray-800 shadow rounded-xl p-6">
                                 <div class="flex flex-col items-center">
                                     <div class="inline-flex p-3 rounded-full bg-primary-100 text-primary-600 dark:bg-primary-700/20 dark:text-primary-400 mb-4">
@@ -138,7 +138,7 @@
                                     </p>
                                 </div>
                             </div>
-                            
+
                             <div class="bg-white dark:bg-gray-800 shadow rounded-xl p-6">
                                 <div class="flex flex-col items-center">
                                     <div class="inline-flex p-3 rounded-full bg-warning-100 text-warning-600 dark:bg-warning-700/20 dark:text-warning-400 mb-4">
@@ -298,7 +298,7 @@
                             <!-- Academic Progress -->
                             <div class="bg-white dark:bg-gray-800 shadow rounded-xl p-6">
                                 <h3 class="text-lg font-medium mb-4">{{ __('Academic Progress') }}</h3>
-                                
+
                                 <!-- Attendance Progress -->
                                 <div class="mb-4">
                                     <div class="flex justify-between items-center mb-1">
@@ -332,7 +332,7 @@
                                         </p>
                                     @endif
                                 </div>
-                                
+
                                 <!-- Assignments Progress -->
                                 <div class="mb-4">
                                     <div class="flex justify-between items-center mb-1">
@@ -350,7 +350,7 @@
                                         <div class="bg-warning-500 dark:bg-warning-400 h-2 rounded-full" style="width: {{ $percentage }}%"></div>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Upcoming Activities -->
                                 <div class="mt-6">
                                     <h4 class="font-medium text-gray-700 dark:text-gray-300 mb-2">{{ __('Upcoming Activities') }}</h4>
@@ -365,7 +365,7 @@
                                                         <div>
                                                             <p class="font-medium text-sm">{{ $activity['title'] ?? 'Unnamed Activity' }}</p>
                                                             <p class="text-xs text-gray-500 dark:text-gray-400">
-                                                                {{ __('Due') }}: {{ $activity['due_date'] ?? 'No date' }} 
+                                                                {{ __('Due') }}: {{ $activity['due_date'] ?? 'No date' }}
                                                                 @if(isset($activity['days_remaining']))
                                                                     ({{ $activity['days_remaining'] }} {{ Str::plural('day', $activity['days_remaining']) }} {{ __('remaining') }})
                                                                 @endif
@@ -400,15 +400,15 @@
                                         <dl class="grid grid-cols-2 gap-x-4 gap-y-2 mt-2 text-sm">
                                             <dt class="text-gray-500 dark:text-gray-400">{{ __('Class Name') }}:</dt>
                                             <dd class="text-gray-900 dark:text-white">{{ $details['team']->name ?? 'N/A' }}</dd>
-                                            
+
                                             <dt class="text-gray-500 dark:text-gray-400">{{ __('Join Code') }}:</dt>
                                             <dd class="text-gray-900 dark:text-white font-mono">{{ $details['team']->join_code ?? 'N/A' }}</dd>
-                                            
+
                                             <dt class="text-gray-500 dark:text-gray-400">{{ __('Grading System') }}:</dt>
                                             <dd class="text-gray-900 dark:text-white">{{ $details['team']->gradingSystemDescription ?? 'N/A' }}</dd>
                                         </dl>
                                     </div>
-                                    
+
                                     <!-- Grading Information -->
                                     <div class="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-4">
                                         <div class="flex items-center gap-3 mb-2">
@@ -417,15 +417,15 @@
                                             </div>
                                             <h4 class="font-medium">{{ __('Grading Weights') }}</h4>
                                         </div>
-                                        
+
                                         @if(isset($details['team']) && $details['team']->usesShsGrading())
                                             <dl class="grid grid-cols-2 gap-x-4 gap-y-2 mt-2 text-sm">
                                                 <dt class="text-gray-500 dark:text-gray-400">{{ __('Written Work') }}:</dt>
                                                 <dd class="text-gray-900 dark:text-white">{{ $details['team']->shs_ww_weight ?? '0' }}%</dd>
-                                                
+
                                                 <dt class="text-gray-500 dark:text-gray-400">{{ __('Performance Tasks') }}:</dt>
                                                 <dd class="text-gray-900 dark:text-white">{{ $details['team']->shs_pt_weight ?? '0' }}%</dd>
-                                                
+
                                                 <dt class="text-gray-500 dark:text-gray-400">{{ __('Quarterly Assessment') }}:</dt>
                                                 <dd class="text-gray-900 dark:text-white">{{ $details['team']->shs_qa_weight ?? '0' }}%</dd>
                                             </dl>
@@ -433,13 +433,13 @@
                                             <dl class="grid grid-cols-2 gap-x-4 gap-y-2 mt-2 text-sm">
                                                 <dt class="text-gray-500 dark:text-gray-400">{{ __('Prelim') }}:</dt>
                                                 <dd class="text-gray-900 dark:text-white">{{ $details['team']->college_prelim_weight ?? '0' }}%</dd>
-                                                
+
                                                 <dt class="text-gray-500 dark:text-gray-400">{{ __('Midterm') }}:</dt>
                                                 <dd class="text-gray-900 dark:text-white">{{ $details['team']->college_midterm_weight ?? '0' }}%</dd>
-                                                
+
                                                 <dt class="text-gray-500 dark:text-gray-400">{{ __('Final') }}:</dt>
                                                 <dd class="text-gray-900 dark:text-white">{{ $details['team']->college_final_weight ?? '0' }}%</dd>
-                                                
+
                                                 <dt class="text-gray-500 dark:text-gray-400">{{ __('Scale') }}:</dt>
                                                 <dd class="text-gray-900 dark:text-white">{{ $details['team']->getCollegeNumericScale() ?? 'N/A' }}</dd>
                                             </dl>
@@ -448,7 +448,7 @@
                                         @endif
                                     </div>
                                 </div>
-                                
+
                                 <!-- Contact Teachers -->
                                 <div class="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-4">
                                     <div class="flex items-center gap-3 mb-3">
@@ -457,27 +457,15 @@
                                         </div>
                                         <h4 class="font-medium">{{ __('Contact Teacher') }}</h4>
                                     </div>
-                                    
-                                    <div class="flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded-lg">
-                                        <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                                            <span class="text-sm font-medium">
-                                                {{ isset($details['team']->owner) ? strtoupper(substr($details['team']->owner->name ?? 'T', 0, 2)) : 'T' }}
-                                            </span>
-                                        </div>
-                                        <div>
-                                            <p class="font-medium">{{ $details['team']->owner->name ?? __('Teacher') }}</p>
-                                            <p class="text-sm text-gray-500 dark:text-gray-400">{{ $details['team']->owner->email ?? __('No email available') }}</p>
-                                        </div>
-                                        <div class="ml-auto flex gap-2">
-                                            <button class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 p-1.5 rounded-md">
-                                                <x-heroicon-m-envelope class="h-4 w-4" />
-                                            </button>
-                                            <button class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 p-1.5 rounded-md">
-                                                <x-heroicon-m-chat-bubble-left-right class="h-4 w-4" />
-                                            </button>
-                                        </div>
-                                    </div>
+
+                                    {{-- Use the Livewire component --}}
+                                    @if(isset($details['team']->owner))
+                                        @livewire('parent.contact-teacher', ['teacher' => $details['team']->owner], key('contact-teacher-' . $details['student']->id . '-' . $details['team']->owner->id))
+                                    @else
+                                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">{{ __('Teacher information not available.') }}</p>
+                                    @endif
                                 </div>
+
                             </div>
                         </div>
                     </div>

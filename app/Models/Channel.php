@@ -21,15 +21,15 @@ class Channel extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'team_id',
-        'category_id',
-        'name',
-        'slug',
-        'description',
-        'type',
-        'is_private',
-        'is_dm', // Added is_dm
-        'position',
+        "team_id",
+        "category_id",
+        "name",
+        "slug",
+        "description",
+        "type",
+        "is_private",
+        "is_dm", // Added is_dm
+        "position",
     ];
 
     /**
@@ -38,20 +38,20 @@ class Channel extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'is_private' => 'boolean',
-        'is_dm' => 'boolean', // Added is_dm cast
-        'position' => 'integer',
-        'deleted_at' => 'datetime',
+        "is_private" => "boolean",
+        "is_dm" => "boolean", // Added is_dm cast
+        "position" => "integer",
+        "deleted_at" => "datetime",
     ];
 
     /**
      * Channel types available in the system.
      */
     public const TYPES = [
-        'text' => 'Text',
-        'announcement' => 'Announcement',
-        'voice' => 'Voice',
-        'media' => 'Media',
+        "text" => "Text",
+        "announcement" => "Announcement",
+        "voice" => "Voice",
+        "media" => "Media",
     ];
 
     /**
@@ -66,21 +66,21 @@ class Channel extends Model
             if ($channel->is_dm) {
                 // Slug for DMs will be set explicitly in findOrCreateDirectMessage.
                 // If somehow created without a slug, generate a fallback unique one.
-                 if (empty($channel->slug)) {
+                if (empty($channel->slug)) {
                     // This fallback should ideally not be hit if findOrCreateDirectMessage is used.
-                    $channel->slug = 'dm-' . uniqid();
-                 }
+                    $channel->slug = "dm-" . uniqid();
+                }
             } elseif (empty($channel->slug) && !empty($channel->name)) {
-                 // Generate slug from name for regular channels only if name exists
+                // Generate slug from name for regular channels only if name exists
                 $channel->slug = Str::slug($channel->name);
             }
 
             // Default position logic - only apply to non-DMs
             if (!$channel->is_dm && is_null($channel->position)) {
-                $lastPosition = self::where('team_id', $channel->team_id)
-                    ->where('category_id', $channel->category_id)
-                    ->where('is_dm', false) // Exclude DMs from position calculation
-                    ->max('position');
+                $lastPosition = self::where("team_id", $channel->team_id)
+                    ->where("category_id", $channel->category_id)
+                    ->where("is_dm", false) // Exclude DMs from position calculation
+                    ->max("position");
                 $channel->position = $lastPosition ? $lastPosition + 1 : 0;
             }
         });
@@ -90,9 +90,12 @@ class Channel extends Model
             $channel->members()->detach();
 
             // If force deleting, consider deleting related messages
-             if (method_exists($channel, 'isForceDeleting') && $channel->isForceDeleting()) {
-                 $channel->messages()->forceDelete(); // Example: force delete messages
-             }
+            if (
+                method_exists($channel, "isForceDeleting") &&
+                $channel->isForceDeleting()
+            ) {
+                $channel->messages()->forceDelete(); // Example: force delete messages
+            }
         });
     }
 
@@ -110,7 +113,7 @@ class Channel extends Model
     public function category(): BelongsTo
     {
         // Category is nullable for DMs
-        return $this->belongsTo(ChannelCategory::class, 'category_id');
+        return $this->belongsTo(ChannelCategory::class, "category_id");
     }
 
     /**
@@ -126,8 +129,8 @@ class Channel extends Model
      */
     public function members(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'channel_members')
-            ->withPivot('permissions') // Permissions might not be relevant for DMs
+        return $this->belongsToMany(User::class, "channel_members")
+            ->withPivot("permissions") // Permissions might not be relevant for DMs
             ->withTimestamps();
     }
 
@@ -136,28 +139,49 @@ class Channel extends Model
      */
     public function hasMember(User $user): bool
     {
-        return $this->members()->where('user_id', $user->id)->exists();
+        return $this->members()->where("user_id", $user->id)->exists();
     }
 
     /**
      * Check if a user can access the channel.
      */
+    /**
+     * Check if a user can access the channel.
+     */
     public function canAccess(User $user): bool
     {
-         // DMs are private and only accessible by their members
-         if ($this->is_dm) {
-             return $this->hasMember($user);
-         }
+        // Get the user's role in the channel's team context
+        $userRole = $user->teamRole($this->team); // Assumes User->teamRole(Team $team) method exists
 
-        // If the channel is not private (and not a DM), any team member can access it
+        // --- Parent Role Restrictions ---
+        if ($userRole === "parent") {
+            // Parents can ONLY access DMs they are part of.
+            if ($this->is_dm) {
+                // Check if the parent is one of the two members of this DM
+                return $this->members()->where("user_id", $user->id)->exists();
+            } else {
+                // Parents cannot access any non-DM channels (public or private)
+                return false;
+            }
+        }
+
+        // --- Other Roles (Teachers, Students, Admins etc.) ---
+
+        // If it's a DM channel (and user is not a parent), check membership
+        if ($this->is_dm) {
+            return $this->hasMember($user); // Use existing hasMember check
+        }
+
+        // If the channel is public (and not a DM), any team member (non-parent handled above) can access
         if (!$this->is_private) {
+            // Ensure the user actually belongs to the team
+            // The teamRole check implicitly does this, but belt-and-suspenders is okay.
             return $user->belongsToTeam($this->team);
         }
 
-        // If the channel is private (and not a DM), only channel members can access it
+        // If the channel is private (and not a DM), only explicit members can access
         return $this->hasMember($user);
     }
-
     /**
      * Check if a user can manage (edit/delete) the channel.
      * NOTE: DMs should generally not be manageable in the same way as channels.
@@ -175,9 +199,9 @@ class Channel extends Model
         }
 
         // Channel admin permissions check (for non-DM channels)
-        $member = $this->members()->where('user_id', $user->id)->first();
+        $member = $this->members()->where("user_id", $user->id)->first();
         if ($member && isset($member->pivot->permissions)) {
-            return str_contains($member->pivot->permissions, 'manage');
+            return str_contains($member->pivot->permissions, "manage");
         }
 
         return false;
@@ -193,20 +217,20 @@ class Channel extends Model
         ?string $categoryId, // Category ID can be null
         ?string $excludeChannelId = null
     ): bool {
-        $query = self::where('team_id', $teamId)
-            ->where('name', $name)
-            ->where('is_dm', false); // Only check against non-DM channels
+        $query = self::where("team_id", $teamId)
+            ->where("name", $name)
+            ->where("is_dm", false); // Only check against non-DM channels
 
         // Only scope by category if one is provided
         if ($categoryId) {
-             $query->where('category_id', $categoryId);
+            $query->where("category_id", $categoryId);
         } else {
-             // Handle channels without a category if that's possible in your logic
-             // $query->whereNull('category_id');
+            // Handle channels without a category if that's possible in your logic
+            // $query->whereNull('category_id');
         }
 
         if ($excludeChannelId) {
-            $query->where('id', '!=', $excludeChannelId);
+            $query->where("id", "!=", $excludeChannelId);
         }
 
         return !$query->exists();
@@ -215,30 +239,39 @@ class Channel extends Model
     /**
      * Find or create a direct message channel between two users.
      */
-    public static function findOrCreateDirectMessage(User $user1, User $user2): Channel
-    {
+    public static function findOrCreateDirectMessage(
+        User $user1,
+        User $user2
+    ): Channel {
         // Ensure consistent ordering of user IDs to avoid duplicate DM channels
-        $userIds = collect([$user1->id, $user2->id])->sort()->values();
-        $uniqueDmSlug = 'dm-' . $userIds[0] . '-' . $userIds[1]; // Create predictable slug
+        $userIds = collect([$user1->id, $user2->id])
+            ->sort()
+            ->values();
+        $uniqueDmSlug = "dm-" . $userIds[0] . "-" . $userIds[1]; // Create predictable slug
 
         // Look for an existing DM channel using the unique slug within the team
-        $channel = Channel::where('team_id', $user1->currentTeam->id)
-            ->where('slug', $uniqueDmSlug)
-            ->where('is_dm', true)
+        $channel = Channel::where("team_id", $user1->currentTeam->id)
+            ->where("slug", $uniqueDmSlug)
+            ->where("is_dm", true)
             ->first();
 
         // Alternatively, check based on members if slug might not exist yet (e.g., legacy data)
         if (!$channel) {
-             $channel = Channel::where('team_id', $user1->currentTeam->id)
-                ->where('is_dm', true)
-                ->whereHas('members', function ($query) use ($userIds) {
-                    $query->whereIn('user_id', $userIds);
-                }, '=', 2)
-                ->whereHas('members', function ($query) use ($userIds) {
-                    $query->where('user_id', $userIds[0]);
+            $channel = Channel::where("team_id", $user1->currentTeam->id)
+                ->where("is_dm", true)
+                ->whereHas(
+                    "members",
+                    function ($query) use ($userIds) {
+                        $query->whereIn("user_id", $userIds);
+                    },
+                    "=",
+                    2
+                )
+                ->whereHas("members", function ($query) use ($userIds) {
+                    $query->where("user_id", $userIds[0]);
                 })
-                ->whereHas('members', function ($query) use ($userIds) {
-                    $query->where('user_id', $userIds[1]);
+                ->whereHas("members", function ($query) use ($userIds) {
+                    $query->where("user_id", $userIds[1]);
                 })
                 ->first();
         }
@@ -254,10 +287,10 @@ class Channel extends Model
 
         // If not found, create a new DM channel
         $newChannel = Channel::create([
-            'team_id' => $user1->currentTeam->id,
-            'is_dm' => true,
-            'is_private' => true, // DMs are inherently private
-            'slug' => $uniqueDmSlug, // Set the unique DM slug explicitly
+            "team_id" => $user1->currentTeam->id,
+            "is_dm" => true,
+            "is_private" => true, // DMs are inherently private
+            "slug" => $uniqueDmSlug, // Set the unique DM slug explicitly
             // name, description, category_id, position are nullable or not relevant
         ]);
 

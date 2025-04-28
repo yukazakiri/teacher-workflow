@@ -65,30 +65,31 @@ class ChatSidebar extends Component
     public function mount($channelId = null): void
     {
         $this->team = Auth::user()?->currentTeam;
-        $this->selectedChannelId = $channelId;
         $this->viewMode = "channels"; // Default view
-        $this->directMessageChannels = new Collection(); // Initialize as empty collection
+        $this->directMessageChannels = new Collection(); // Initialize
 
-        // Sync activeChannelId with session if no channelId is provided
-        if (!$channelId) {
+        // Prioritize channelId passed directly (e.g., from URL)
+        if ($channelId) {
+            $this->activeChannelId = $channelId; // Set as active
+            $initialChannel = Channel::find($channelId);
+            if ($initialChannel && $initialChannel->is_dm) {
+                $this->viewMode = "directMessages"; // Set view mode if it's a DM
+            }
+        } else {
+            // Fallback to session if no channelId is provided
             $sessionChannelId = session("chat.selected_channel_id");
             if ($sessionChannelId) {
                 $this->activeChannelId = $sessionChannelId;
-                // Determine if the initial channel is a DM or regular to set initial viewMode
                 $initialChannel = Channel::find($sessionChannelId);
                 if ($initialChannel && $initialChannel->is_dm) {
                     $this->viewMode = "directMessages";
                 }
             }
-        } else {
-            $initialChannel = Channel::find($channelId);
-            if ($initialChannel && $initialChannel->is_dm) {
-                $this->viewMode = "directMessages";
-            }
         }
 
-        // Attempt to set the initial active channel ID based on localStorage or default
-        // $this->dispatch('requestInitialChannelId'); // Might interfere, keep commented for now
+        // selectedChannelId might still be useful for other logic if needed,
+        // but activeChannelId determines the highlighted state.
+        $this->selectedChannelId = $this->activeChannelId;
     }
 
     /**
@@ -170,7 +171,17 @@ class ChatSidebar extends Component
                 ->send();
             return;
         }
+        $currentUserRole = $currentUser->teamRole($this->team); // Assumes User->teamRole() exists
+        $otherUserRole = $otherUser->teamRole($this->team);
 
+        if ($currentUserRole === "parent" && $otherUserRole === "student") {
+            Notification::make()
+                ->title("Permission Denied")
+                ->body("Parents cannot initiate direct messages with students.")
+                ->warning()
+                ->send();
+            return; // Stop the process
+        }
         // Find or create the DM channel
         $channel = Channel::findOrCreateDirectMessage($currentUser, $otherUser);
 
@@ -378,11 +389,9 @@ class ChatSidebar extends Component
                     : "read,write";
             if (!$channel->is_private || $member->id === $this->team->user_id) {
                 // Add all if public, else only owner
-                $channel
-                    ->members()
-                    ->attach($member->id, [
-                        "permissions" => $memberPermissions,
-                    ]);
+                $channel->members()->attach($member->id, [
+                    "permissions" => $memberPermissions,
+                ]);
             }
         }
 
@@ -478,37 +487,94 @@ class ChatSidebar extends Component
         $currentUser = Auth::user();
         $activeChannel = null;
         $activeDmOtherUserId = null;
-
+        $userRole = null; // Initialize user role
         if ($this->team && $currentUser) {
+            $userRole = $currentUser->teamRole($this->team);
             // Fetch All Team Members using Jetstream's method
-            $teamMembers = $this->team->allUsers(); // Includes the owner and all members
+            $allTeamMembers = $this->team->allUsers();
+            // Includes the owner and all members
+            if ($userRole === "parent") {
+                // Parents should only see teachers (and maybe other parents? TBD)
+                // For now, let's filter out students. Adjust if needed.
+                $teamMembers = $allTeamMembers->filter(function ($member) use (
+                    $currentUser
+                ) {
+                    // Keep the current user (self) and non-students
+                    // You might need a more robust way to identify teachers if 'teacher' isn't a formal role
+                    return $member->id === $currentUser->id ||
+                        $member->teamRole($this->team) !== "student";
+                });
+            } else {
+                // Other roles see everyone
+                $teamMembers = $allTeamMembers;
+            }
+            if ($userRole !== "parent") {
+                $categories = ChannelCategory::where("team_id", $this->team->id)
+                    ->with([
+                        "channels" => function ($query) use ($currentUser) {
+                            // Pass currentUser for potential access check
+                            $query
+                                ->where("is_dm", false)
+                                // Optionally add ->whereHas('members', fn($q) => $q->where('user_id', $currentUser->id))
+                                // if even non-parents should only see channels they are members of
+                                ->orderBy("position")
+                                ->orderBy("name");
+                        },
+                    ])
+                    ->orderBy("position")
+                    ->get();
 
+                // Further filter categories/channels based on canAccess if needed,
+                // though canAccess in ChatWindow prevents loading messages anyway.
+            }
             // Fetch Categories and their NON-DM Channels
-            $categories = ChannelCategory::where('team_id', $this->team->id)
-                ->with(['channels' => function ($query) {
-                    $query->where('is_dm', false)->orderBy('position')->orderBy('name');
-                }])
-                ->orderBy('position')
+            $categories = ChannelCategory::where("team_id", $this->team->id)
+                ->with([
+                    "channels" => function ($query) {
+                        $query
+                            ->where("is_dm", false)
+                            ->orderBy("position")
+                            ->orderBy("name");
+                    },
+                ])
+                ->orderBy("position")
                 ->get();
 
             // Fetch the active channel model to check its type and members for highlighting
             if ($this->activeChannelId) {
-                $activeChannel = Channel::with('members:id')->find($this->activeChannelId);
-                if ($activeChannel && $activeChannel->is_dm) {
-                    $otherMember = $activeChannel->members->firstWhere('id', '!=', $currentUser->id);
-                    if ($otherMember) {
-                        $activeDmOtherUserId = $otherMember->id;
+                $activeChannel = Channel::with("members:id")->find(
+                    $this->activeChannelId
+                );
+                // Ensure the channel exists and the current user can access it
+                if ($activeChannel && $activeChannel->canAccess($currentUser)) {
+                    // <-- CORRECTED CALL
+                    if ($activeChannel->is_dm) {
+                        $otherMember = $activeChannel->members->firstWhere(
+                            "id",
+                            "!=",
+                            $currentUser->id
+                        );
+                        if ($otherMember) {
+                            $activeDmOtherUserId = $otherMember->id;
+                        }
                     }
+                } else {
+                    // The active channel ID is invalid or inaccessible, clear it
+                    $this->activeChannelId = null;
+                    $activeDmOtherUserId = null; // Also clear this if channel is inaccessible
+                    session()->forget("chat.selected_channel_id"); // Clear session too
+                    // Optionally load default or reset. Resetting activeChannelId might trigger default loading if handled elsewhere.
                 }
             }
         }
 
-        return view('livewire.chat.chat-sidebar', [
-            'teamMembers' => $teamMembers,
-            'categories' => $categories,
-            'channelTypes' => Channel::TYPES, // For create form
-            'activeChannelId' => $this->activeChannelId, 
-            'activeDmOtherUserId' => $activeDmOtherUserId, // Pass the ID for carousel highlighting
+        return view("livewire.chat.chat-sidebar", [
+            "teamMembers" => $teamMembers, // Pass potentially filtered list
+            "categories" => $categories, // Pass potentially empty list for parents
+            "channelTypes" => Channel::TYPES,
+            "activeChannelId" => $this->activeChannelId,
+            "activeDmOtherUserId" => $activeDmOtherUserId,
+            "currentUserRole" => $userRole, // Pass role to view if needed for other UI tweaks
         ]);
     }
 }

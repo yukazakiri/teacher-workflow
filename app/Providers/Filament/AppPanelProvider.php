@@ -211,13 +211,13 @@ class AppPanelProvider extends PanelProvider
                         return $user; // Return the created user
                     }),
 
-                FilamentDeveloperLoginsPlugin::make()
-                    ->enabled()
-                    ->users([
-                        "teacher" => "test@example.com",
-                        "User" => "sdavis@student.edu",
-                        "parent" => "your.email+fakedata38141@gmail.com",
-                    ]),
+                // FilamentDeveloperLoginsPlugin::make()
+                //     ->enabled()
+                //     ->users([
+                //         "teacher" => "test@example.com",
+                //         "User" => "sdavis@student.edu",
+                //         "parent" => "your.email+fakedata38141@gmail.com",
+                //     ]),
 
                 FilamentAssistantPlugin::make(),
                 \LaraZeus\Boredom\BoringAvatarPlugin::make()
