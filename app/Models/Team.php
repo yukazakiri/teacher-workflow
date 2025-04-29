@@ -70,6 +70,8 @@ class Team extends JetstreamTeam
         'college_prelim_weight', // Added
         'college_midterm_weight', // Added
         'college_final_weight', // Added
+        'college_term_ww_weight', // New
+        'college_term_pt_weight', // New
         'onboarding_step',
     ];
     public function getActivitylogOptions(): LogOptions
@@ -102,6 +104,8 @@ class Team extends JetstreamTeam
             'college_prelim_weight' => 'integer',
             'college_midterm_weight' => 'integer',
             'college_final_weight' => 'integer',
+            'college_term_ww_weight' => 'integer',
+            'college_term_pt_weight' => 'integer',
             'onboarding_step' => 'integer',
         ];
     }

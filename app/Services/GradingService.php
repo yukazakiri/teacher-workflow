@@ -319,88 +319,145 @@ class GradingService
 
     /**
      * Calculate the grade for a specific college term (Prelim, Midterm, Final).
-     * Calculates the average percentage of scored activities within the term,
-     * then converts that percentage to the specified college scale.
+     * Applies Written Work (WW) and Performance Task (PT) weights if provided,
+     * then converts the final term percentage to the specified college scale.
      */
     public function calculateCollegeTermGrade(
         array $studentScores,
         Collection $termActivities, // Activities ALREADY filtered for the specific term
+        ?int $wwWeight, // Weight for Written Work within the term (e.g., 40)
+        ?int $ptWeight, // Weight for Performance Task within the term (e.g., 60)
         ?string $numericScale // e.g., '5_point', '4_point', 'percentage'
     ): ?float {
         if (! $numericScale || $termActivities->isEmpty()) {
             return null;
         }
 
-        $totalPercentageSum = 0;
-        $scoredActivitiesCount = 0;
+        // Check if term weights are provided and valid
+        $useTermComponentWeights = $wwWeight !== null && $ptWeight !== null && ($wwWeight + $ptWeight === 100);
+
+        $wwTotalPercentageSum = 0;
+        $wwScoredCount = 0;
+        $ptTotalPercentageSum = 0;
+        $ptScoredCount = 0;
+        $otherTotalPercentageSum = 0; // For activities not categorized as WW or PT
+        $otherScoredCount = 0;
 
         foreach ($termActivities as $activity) {
             $score = $studentScores[$activity->id] ?? null;
 
-            // Only include activities with scores and positive total points
-            if ($score !== null && $activity->total_points > 0) {
-                $percentage = round(
-                    ((float) $score / (float) $activity->total_points) * 100,
-                    2
-                );
-                $percentage = min(max($percentage, 0), 100); // Clamp 0-100
+            if ($score === null || $activity->total_points <= 0) {
+                if ($score !== null) {
+                    Log::warning(
+                        "Activity ID {$activity->id} in term calc has score but zero/negative total_points."
+                    );
+                }
+                continue; // Skip activities without scores or valid points
+            }
 
-                $totalPercentageSum += $percentage;
-                $scoredActivitiesCount++;
-            } elseif ($score !== null && $activity->total_points <= 0) {
-                Log::warning(
-                    "Activity ID {$activity->id} in term calc has score but zero/negative total_points."
-                );
+            $percentage = round(
+                ((float) $score / (float) $activity->total_points) * 100,
+                2
+            );
+            $percentage = min(max($percentage, 0), 100); // Clamp 0-100
+
+            if ($useTermComponentWeights) {
+                // Use string comparison for category
+                if ($activity->category === 'written') {
+                    $wwTotalPercentageSum += $percentage;
+                    $wwScoredCount++;
+                } elseif ($activity->category === 'performance') {
+                    $ptTotalPercentageSum += $percentage;
+                    $ptScoredCount++;
+                } else {
+                    // Activities without WW/PT category are ignored when weights are active.
+                     Log::debug("Activity ID {$activity->id} ignored in weighted term calc (category: {$activity->category})");
+                }
+            } else {
+                // If not using term weights, average all activities together
+                $otherTotalPercentageSum += $percentage;
+                $otherScoredCount++;
             }
         }
 
-        if ($scoredActivitiesCount === 0) {
-            return null; // No scored activities in this term
+        $finalTermPercentage = null;
+
+        if ($useTermComponentWeights) {
+            $wwAverage = $wwScoredCount > 0 ? ($wwTotalPercentageSum / $wwScoredCount) : 0;
+            $ptAverage = $ptScoredCount > 0 ? ($ptTotalPercentageSum / $ptScoredCount) : 0;
+
+            // Calculate weighted average only if there are scores in weighted categories
+            if ($wwScoredCount > 0 || $ptScoredCount > 0) {
+                $finalTermPercentage = ($wwAverage * ($wwWeight / 100)) + ($ptAverage * ($ptWeight / 100));
+            } else {
+                 Log::debug("No WW or PT scores found for weighted term calculation.");
+            }
+        } else {
+            // Use simple average if term component weights are not used
+            if ($otherScoredCount > 0) {
+                $finalTermPercentage = $otherTotalPercentageSum / $otherScoredCount;
+            } else {
+                 Log::debug("No scores found for simple average term calculation.");
+            }
         }
 
-        // Calculate average percentage for the term
-        $averageTermPercentage = round(
-            $totalPercentageSum / $scoredActivitiesCount,
-            2
-        );
+        if ($finalTermPercentage === null) {
+            return null; // No scorable activities found for the term calculation
+        }
 
-        // Convert the average percentage to the required numeric scale
+        $finalTermPercentage = round($finalTermPercentage, 2);
+
+        // Convert the final term percentage to the required numeric scale
         return $this->convertPercentageToCollegeScale(
-            $averageTermPercentage,
+            $finalTermPercentage,
             $numericScale
         );
     }
 
+
     /**
      * Calculate the Final Final Grade for the College Term-Based system.
+     * This now considers weights for WW/PT *within* each term.
      */
     public function calculateCollegeFinalFinalGrade(
         array $studentScores,
         Collection $allActivities,
-        ?int $prelimWeight,
-        ?int $midtermWeight,
-        ?int $finalWeight,
+        ?int $prelimWeight, // Overall term weight
+        ?int $midtermWeight, // Overall term weight
+        ?int $finalWeight, // Overall term weight
+        ?int $termWwWeight, // WW weight WITHIN each term
+        ?int $termPtWeight, // PT weight WITHIN each term
         ?string $numericScale // e.g., '5_point', '4_point', 'percentage'
-    ): ?array {
-        // Return array: ['grade' => float|null, 'term_grades' => [...]]
-        if (
-            ! $numericScale ||
-            $prelimWeight === null ||
-            $midtermWeight === null ||
-            $finalWeight === null ||
-            $prelimWeight + $midtermWeight + $finalWeight !== 100
-        ) {
-            Log::warning(
-                'College term weights or scale not configured correctly.'
-            );
+    ): array { // Return array: ['final_grade' => float|null, 'term_grades' => [...]]
 
+        $weightsConfigured = $numericScale !== null &&
+                             $prelimWeight !== null &&
+                             $midtermWeight !== null &&
+                             $finalWeight !== null &&
+                             ($prelimWeight + $midtermWeight + $finalWeight === 100);
+
+        // Term component weights are optional but must sum to 100 if both are set
+        $termComponentWeightsValid = ($termWwWeight === null && $termPtWeight === null) ||
+                                     ($termWwWeight !== null && $termPtWeight !== null && ($termWwWeight + $termPtWeight === 100));
+
+        if (! $weightsConfigured || ! $termComponentWeightsValid) {
+            Log::warning(
+                'College term weights (overall or component) or scale not configured correctly.',
+                [
+                    'overall_weights_ok' => $weightsConfigured,
+                    'component_weights_ok' => $termComponentWeightsValid,
+                    'scale' => $numericScale,
+                    'prelim_w' => $prelimWeight, 'midterm_w' => $midtermWeight, 'final_w' => $finalWeight,
+                    'term_ww_w' => $termWwWeight, 'term_pt_w' => $termPtWeight
+                ]
+            );
             return ['final_grade' => null, 'term_grades' => []];
         }
 
         $termGrades = [];
         $validTermWeights = []; // Store weights only for terms with calculated grades
 
-        // Calculate Prelim Grade
+        // --- Calculate Prelim Grade --- 
         $prelimActivities = $allActivities->where(
             'term',
             Activity::TERM_PRELIM
@@ -408,6 +465,8 @@ class GradingService
         $prelimGrade = $this->calculateCollegeTermGrade(
             $studentScores,
             $prelimActivities,
+            $termWwWeight, // Pass term WW weight
+            $termPtWeight, // Pass term PT weight
             $numericScale
         );
         $termGrades[Activity::TERM_PRELIM] = $prelimGrade;
@@ -415,7 +474,7 @@ class GradingService
             $validTermWeights[Activity::TERM_PRELIM] = $prelimWeight;
         }
 
-        // Calculate Midterm Grade
+        // --- Calculate Midterm Grade --- 
         $midtermActivities = $allActivities->where(
             'term',
             Activity::TERM_MIDTERM
@@ -423,6 +482,8 @@ class GradingService
         $midtermGrade = $this->calculateCollegeTermGrade(
             $studentScores,
             $midtermActivities,
+            $termWwWeight, // Pass term WW weight
+            $termPtWeight, // Pass term PT weight
             $numericScale
         );
         $termGrades[Activity::TERM_MIDTERM] = $midtermGrade;
@@ -430,40 +491,51 @@ class GradingService
             $validTermWeights[Activity::TERM_MIDTERM] = $midtermWeight;
         }
 
-        // Calculate Final Grade
-        $finalActivities = $allActivities->where('term', Activity::TERM_FINAL);
-        $finalGradeVal = $this->calculateCollegeTermGrade(
+        // --- Calculate Final Term Grade --- 
+        $finalTermActivities = $allActivities->where(
+            'term',
+            Activity::TERM_FINAL
+        );
+        $finalTermGrade = $this->calculateCollegeTermGrade(
             $studentScores,
-            $finalActivities,
+            $finalTermActivities,
+            $termWwWeight, // Pass term WW weight
+            $termPtWeight, // Pass term PT weight
             $numericScale
         );
-        $termGrades[Activity::TERM_FINAL] = $finalGradeVal;
-        if ($finalGradeVal !== null) {
+        $termGrades[Activity::TERM_FINAL] = $finalTermGrade;
+        if ($finalTermGrade !== null) {
             $validTermWeights[Activity::TERM_FINAL] = $finalWeight;
         }
 
-        // Calculate Final Final Grade - Adjust weights if a term has no grade
+        // --- Calculate Final Final Grade --- 
         $finalFinalGrade = null;
         $totalValidWeight = array_sum($validTermWeights);
 
         if ($totalValidWeight > 0) {
             $weightedSum = 0;
             foreach ($validTermWeights as $term => $weight) {
-                // Adjust weight proportionally
-                $adjustedWeight = $weight / $totalValidWeight;
+                // Adjust weight proportionally based on available terms
+                $adjustedWeight = ($weight / $totalValidWeight);
                 $weightedSum += $termGrades[$term] * $adjustedWeight;
             }
-            $finalFinalGrade = round($weightedSum, 2); // Final grade usually 2 decimal places
+            // Rounding might depend on scale type (e.g., more precision for 5/4 point)
+            $finalFinalGrade = round($weightedSum, 2);
+            // Clamp based on scale (important for 5/4 point scales)
+            if ($numericScale === '5_point') {
+                 $finalFinalGrade = max(1.00, min(5.00, $finalFinalGrade));
+            } elseif ($numericScale === '4_point') {
+                 $finalFinalGrade = max(0.00, min(4.00, $finalFinalGrade));
+            }
+            // Add more clamps if other scales are introduced
 
-            // Apply scale specifics if necessary (e.g., rounding for 5-point might differ)
-            // For now, simple rounding is okay.
+        } else {
+            Log::info('No valid term grades to calculate final grade.');
         }
 
-        return [
-            'final_grade' => $finalFinalGrade,
-            'term_grades' => $termGrades, // Return calculated term grades for breakdown
-        ];
+        return ['final_grade' => $finalFinalGrade, 'term_grades' => $termGrades];
     }
+
 
     /**
      * Convert a percentage score to a college grade based on the numeric scale.
@@ -478,7 +550,7 @@ class GradingService
         switch ($numericScale) {
             // Use the extracted numeric scale
             case '5_point':
-                // ... (keep existing 5_point logic)
+                // Example 5-point scale (adjust as needed)
                 return match (true) {
                     $percentage >= 98 => 1.0,
                     $percentage >= 95 => 1.25,
@@ -493,7 +565,7 @@ class GradingService
                 };
 
             case '4_point':
-                // ... (keep existing 4_point logic)
+                 // Example 4-point scale (adjust as needed)
                 return match (true) {
                     $percentage >= 93 => 4.0,
                     $percentage >= 90 => 3.7,
@@ -527,7 +599,7 @@ class GradingService
     public function formatCollegeGrade(
         ?float $gradeValue,
         ?string $numericScale,
-        bool $raw = false
+        bool $raw = false // Add raw flag to omit '%' for exports
     ): string {
         if ($gradeValue === null || ! $numericScale) {
             return 'N/A';
@@ -557,7 +629,7 @@ class GradingService
 
         switch ($numericScale) {
             case '5_point':
-                // ... (keep existing 5_point logic)
+                // Adjust colors based on typical 5-point scale (lower is better)
                 return match (true) {
                     $gradeValue <= 1.5 => 'text-success-600 dark:text-success-400',
                     $gradeValue <= 2.0 => 'text-primary-600 dark:text-primary-400',
@@ -566,7 +638,7 @@ class GradingService
                     default => 'text-danger-600 dark:text-danger-400',
                 };
             case '4_point':
-                // ... (keep existing 4_point logic)
+                 // Adjust colors based on typical 4-point scale (higher is better)
                 return match (true) {
                     $gradeValue >= 3.7 => 'text-success-600 dark:text-success-400',
                     $gradeValue >= 3.0 => 'text-primary-600 dark:text-primary-400',
@@ -575,11 +647,11 @@ class GradingService
                     default => 'text-danger-600 dark:text-danger-400',
                 };
             case 'percentage':
-                // ... (keep existing percentage logic)
+                // Keep existing percentage logic
                 return match (true) {
                     $gradeValue >= 90 => 'text-success-600 dark:text-success-400',
                     $gradeValue >= 80 => 'text-primary-600 dark:text-primary-400',
-                    $gradeValue >= 75 => 'text-warning-600 dark:text-warning-400',
+                    $gradeValue >= 75 => 'text-warning-600 dark:text-warning-400', // Example passing threshold
                     default => 'text-danger-600 dark:text-danger-400',
                 };
             default:
