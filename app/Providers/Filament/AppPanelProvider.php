@@ -215,8 +215,8 @@ class AppPanelProvider extends PanelProvider
                     ->enabled()
                     ->users([
                         "teacher" => "test@example.com",
-                        "User" => "sdavis@student.edu",
-                        "parent" => "your.email+fakedata38141@gmail.com",
+                        "User" => "student@example.com",
+                        "parent" => "parent@example.com", // Updated parent email
                     ]),
 
                 FilamentAssistantPlugin::make(),

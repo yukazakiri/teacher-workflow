@@ -9,6 +9,8 @@ use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Event;
 use Laravel\Jetstream\Events\TeamMemberAdded;
+use App\Models\Exam; // Add Exam model import
+use App\Observers\ExamObserver; // Add ExamObserver import
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -42,7 +44,7 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Exam::observe(ExamObserver::class);
     }
 
     /**

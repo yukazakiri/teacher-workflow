@@ -9,6 +9,8 @@ use App\Models\ActivityType;
 use App\Models\Student;
 use App\Models\Team;
 use App\Models\User;
+use App\Models\Attendance; // Add Attendance model
+use App\Models\ParentStudentRelationship; // Add ParentStudentRelationship model
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -24,28 +26,47 @@ class DatabaseSeeder extends Seeder
         // Create teacher account
         $teacher = $this->createTeacherAccount();
 
+        // Create student account
+        $studentUser = $this->createStudentAccount();
+
+        // Create parent account
+        $parentUser = $this->createParentAccount();
+
         // Create activity types
         $this->createActivityTypes();
 
-        // Create first classroom with invited users
-        $classroomWithInvitedStudents = $this->createClassroomShs($teacher);
+        // Create first classroom with invited users (SHS)
+        $classroomShs = $this->createClassroomShs($teacher);
 
-        // Create second classroom with unlinked student records
-        $classroomWithUnlinkedStudents = $this->createClassroomCollegeTerm(
-            $teacher
+        // Create second classroom (College) including the specific student and parent
+        $classroomCollege = $this->createClassroomCollegeTerm(
+            $teacher,
+            $studentUser,
+            $parentUser
         );
+
+        // Find the student record created for the student user in the college class
+        $collegeStudent = Student::where('user_id', $studentUser->id)
+                                 ->where('team_id', $classroomCollege->id)
+                                 ->first();
+
+        // Seed attendance for the specific student in the college class
+        if ($collegeStudent) {
+            $this->seedStudentAttendance($collegeStudent, $classroomCollege, $teacher);
+        }
+
 
         // Set default team for teacher if not already set
         if (! $teacher->current_team_id) {
-            $teacher->current_team_id = $classroomWithInvitedStudents->id;
+            $teacher->current_team_id = $classroomShs->id; // Default to SHS classroom
             $teacher->save();
         }
 
-        // Seed exams
-        $this->call(ExamSeeder::class);
+        // Seed exams (if needed, ensure ExamSeeder handles different classroom types)
+         $this->call(ExamSeeder::class);
 
-        // Seed chat system
-        $this->call(ChatSystemSeeder::class);
+        // Seed chat system (if needed)
+        // $this->call(ChatSystemSeeder::class);
     }
 
     /**
@@ -58,6 +79,40 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Test User',
                 'email' => 'test@example.com',
+                'password' => Hash::make('password'),
+                'email_verified_at' => now(),
+                'remember_token' => Str::random(10),
+            ]
+        );
+    }
+
+    /**
+     * Create student account
+     */
+    private function createStudentAccount(): User
+    {
+        return User::firstOrCreate(
+            ['email' => 'student@example.com'],
+            [
+                'name' => 'Student User',
+                'email' => 'student@example.com',
+                'password' => Hash::make('password'),
+                'email_verified_at' => now(),
+                'remember_token' => Str::random(10),
+            ]
+        );
+    }
+
+    /**
+     * Create parent account
+     */
+    private function createParentAccount(): User
+    {
+        return User::firstOrCreate(
+            ['email' => 'parent@example.com'],
+            [
+                'name' => 'Parent User',
+                'email' => 'parent@example.com',
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
                 'remember_token' => Str::random(10),
@@ -100,8 +155,8 @@ class DatabaseSeeder extends Seeder
                 'description' => 'Written composition on a specific topic',
             ],
             [
-                'name' => 'Exam',
-                'description' => 'Formal assessment of knowledge',
+                'name' => 'Exam', // Add Exam type
+                'description' => 'Formal assessment of knowledge (linked to an Exam record)',
             ],
         ];
 
@@ -209,9 +264,10 @@ class DatabaseSeeder extends Seeder
     }
 
     /**
-     * Create a College (Term-Based) classroom with unlinked student records
+     * Create a College (Term-Based) classroom with unlinked student records,
+     * including the specific student@example.com and linking their parent.
      */
-    private function createClassroomCollegeTerm(User $teacher): Team
+    private function createClassroomCollegeTerm(User $teacher, User $studentUser, User $parentUser): Team
     {
         // Create or retrieve team with College Term config
         $classroom = Team::firstOrCreate(
@@ -236,36 +292,73 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Create unlinked student records (existing logic is fine)
-        $students = [];
-        $studentNames = $this->getRealisticStudentNames(30); // Get different names
-        for ($i = 0; $i < 20; $i++) {
-            // ... (existing unlinked student creation logic) ...
-            $studentName = $studentNames[$i];
-            $email = $this->generateStudentEmail($studentName);
+        // Add the specific student user to the team
+        if (! $studentUser->belongsToTeam($classroom)) {
+            $classroom->users()->attach($studentUser, ['role' => 'student']);
+            if (is_null($studentUser->current_team_id)) {
+                $studentUser->forceFill(['current_team_id' => $classroom->id])->save();
+            }
+        }
+
+        // Add the parent user to the team with the 'parent' role
+        if (! $parentUser->belongsToTeam($classroom)) {
+            $classroom->users()->attach($parentUser, ['role' => 'parent']);
+            // Optionally set the parent's current team if it's their first/only team
+             if (is_null($parentUser->current_team_id)) {
+                 $parentUser->forceFill(['current_team_id' => $classroom->id])->save();
+             }
+        }
+
+        // Create the linked student record for the specific student
+        $specificStudent = Student::firstOrCreate(
+            ['team_id' => $classroom->id, 'user_id' => $studentUser->id],
+            [
+                'name' => $studentUser->name,
+                'email' => $studentUser->email,
+                'status' => 'active',
+                'student_id' => 'COLL' . str_pad('1', 4, '0', STR_PAD_LEFT), // Specific ID
+                'gender' => 'female', // Example gender
+                'birth_date' => now()->subYears(19)->subDays(rand(1, 365)), // College age range
+                'notes' => 'Star student.',
+            ]
+        );
+
+        // Link the parent user to the specific student record
+        ParentStudentRelationship::firstOrCreate([
+            'user_id' => $parentUser->id,
+            'student_id' => $specificStudent->id,
+        ]);
+
+        // Create other unlinked student records (19 of them)
+        $otherStudents = [];
+        $studentNames = $this->getRealisticStudentNames(1); // Start from index 1 to avoid name clash
+        for ($i = 0; $i < 19; $i++) { // Create 19 other students
+            $studentName = $studentNames[$i] ?? "Record Student ".($i + 2); // Fallback name
+            $email = $this->generateStudentEmail($studentName); // Use helper
             $student = Student::firstOrCreate(
-                ['team_id' => $classroom->id, 'email' => $email],
+                ['team_id' => $classroom->id, 'email' => $email], // Use email as unique key for unlinked
                 [
                     'name' => $studentName,
                     'status' => 'active',
                     'user_id' => null,
-                    'student_id' => 'COLL'.
-                        str_pad((string) ($i + 1), 4, '0', STR_PAD_LEFT), // Use COLL prefix
-                    'gender' => $i % 2 === 0 ? 'female' : 'male',
-                    'birth_date' => now()
-                        ->subYears(rand(18, 22))
-                        ->subDays(rand(1, 365)), // College age range
-                    'notes' => $this->getRandomStudentNote($i),
+                    'student_id' => 'COLL' . str_pad((string)($i + 2), 4, '0', STR_PAD_LEFT), // Start IDs from 2
+                    'gender' => $i % 2 === 0 ? 'male' : 'female',
+                    'birth_date' => now()->subYears(rand(18, 22))->subDays(rand(1, 365)),
+                    'notes' => $this->getRandomStudentNote($i + 1), // Offset index for notes
                 ]
             );
-            $students[] = $student;
+            $otherStudents[] = $student;
         }
+
+        // Combine specific student and other students for activity seeding
+        // Pass specific student as an object, others as collection
+        $allStudentsForActivities = collect($otherStudents)->prepend($specificStudent);
 
         // Create sample activities and submissions FOR College Term
         $this->createClassroomActivities(
             $classroom,
             $teacher,
-            collect($students)
+            $allStudentsForActivities
         );
 
         return $classroom;
@@ -569,47 +662,43 @@ class DatabaseSeeder extends Seeder
             'not_started',
             'in_progress',
             'submitted',
-            'graded',
-        ];
-        $contents = [
-            /* ... existing contents ... */
         ];
 
         foreach ($students as $index => $studentData) {
-            $student = isset($studentData['student'])
-                ? $studentData['student']
-                : $studentData;
-            $statusIndex = $index % count($submissionStatuses);
-            $status = $submissionStatuses[$statusIndex];
-            $score = null;
-            // $finalGrade = null; // We no longer store final_grade on submission
+            // Handle potential structure differences (SHS vs College)
+            $student = $studentData instanceof Student ? $studentData : ($studentData['student'] ?? null);
+            if (!$student) continue; // Skip if student object cannot be determined
 
-            if ($status === 'graded' && $activity->total_points > 0) {
-                // Realistic grade distribution
-                $scorePercentages = [
-                    0.5,
-                    0.55,
-                    0.6,
-                    0.65,
-                    0.7,
-                    0.75,
-                    0.8,
-                    0.85,
-                    0.9,
-                    0.95,
-                    1.0,
-                ];
-                $scorePercentage =
-                    $scorePercentages[array_rand($scorePercentages)];
-                $scorePercentage = max(
-                    0,
-                    min(1, $scorePercentage + mt_rand(-5, 5) / 100)
-                );
-                $score = round($activity->total_points * $scorePercentage);
-            } elseif ($status === 'graded') {
-                $score = 0; // Assign 0 if graded but total_points is 0 or less
+            // Default status and score
+            $status = 'not_started';
+            $score = null;
+
+            // If student is student@example.com, give a decent grade
+            if ($student->email === 'student@example.com') {
+                $status = 'graded'; // Ensure status is graded
+                if ($activity->total_points > 0) {
+                    // Give a score between 85% and 95% of total points
+                    $scorePercentage = mt_rand(85, 95) / 100;
+                    $score = round($activity->total_points * $scorePercentage);
+                } else {
+                    $score = 0; // Assign 0 if total_points is 0 or less
+                }
+            } else {
+                // Existing random grade logic for other students
+                $statusIndex = $index % count($submissionStatuses); // Use index for variation
+                $status = $submissionStatuses[$statusIndex];
+
+                if ($status === 'graded' && $activity->total_points > 0) {
+                    $scorePercentages = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0];
+                    $scorePercentage = $scorePercentages[array_rand($scorePercentages)];
+                    $scorePercentage = max(0, min(1, $scorePercentage + mt_rand(-5, 5) / 100));
+                    $score = round($activity->total_points * $scorePercentage);
+                } elseif ($status === 'graded') {
+                    $score = 0;
+                }
             }
 
+            // Determine content based on final status
             $content = null;
             if ($status === 'submitted' || $status === 'graded') {
                 $content =
@@ -797,6 +886,64 @@ class DatabaseSeeder extends Seeder
 
         return $feedback[array_rand($feedback)];
     }
+
+    /**
+     * Seed realistic attendance records for a specific student.
+     */
+    private function seedStudentAttendance(Student $student, Team $classroom, User $teacher): void
+    {
+        $attendanceStatuses = ['present', 'present', 'present', 'present', 'late', 'excused', 'absent'];
+        $today = now()->startOfDay();
+        $numberOfDays = 30; // Seed attendance for the past 30 days
+
+        for ($i = 0; $i < $numberOfDays; $i++) {
+            $date = $today->copy()->subDays($i);
+
+            // Skip weekends (optional)
+            if ($date->isWeekend()) {
+                continue;
+            }
+
+            // Randomly decide if there was a class session this day (e.g., 80% chance)
+            if (rand(1, 100) > 80) {
+                 continue;
+            }
+
+            $status = $attendanceStatuses[array_rand($attendanceStatuses)];
+            $timeIn = null;
+            $timeOut = null;
+            $notes = null;
+
+            if ($status === 'present') {
+                $timeIn = $date->copy()->setTime(rand(8, 9), rand(0, 15)); // Arrived between 8:00-9:15 AM
+                $timeOut = $timeIn->copy()->addHours(rand(1, 2))->addMinutes(rand(0, 59)); // Stayed 1-3 hours
+            } elseif ($status === 'late') {
+                $timeIn = $date->copy()->setTime(rand(9, 10), rand(16, 59)); // Arrived between 9:16-10:59 AM
+                $timeOut = $timeIn->copy()->addHours(rand(1, 2))->addMinutes(rand(0, 59));
+                $notes = 'Arrived late.';
+            } elseif ($status === 'excused') {
+                $notes = array_random(['Doctor\'s appointment', 'Family emergency', 'Approved leave']);
+            } // 'absent' needs no time/notes by default
+
+
+            Attendance::updateOrCreate(
+                [
+                    'student_id' => $student->id,
+                    'date' => $date->toDateString(), // Store only date part for uniqueness check
+                ],
+                [
+                    'team_id' => $classroom->id,
+                    'created_by' => $teacher->id, // Assume teacher recorded it
+                    'status' => $status,
+                    'time_in' => $timeIn,
+                    'time_out' => $timeOut,
+                    'qr_verified' => false, // Default
+                    'notes' => $notes,
+                ]
+            );
+        }
+    }
+
 }
 
 // Helper function to randomly select an item from an array
