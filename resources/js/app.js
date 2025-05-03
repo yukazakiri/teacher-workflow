@@ -2,9 +2,14 @@ import Alpine from "alpinejs";
 import collapse from "@alpinejs/collapse";
 import Echo from "laravel-echo";
 import Pusher from "pusher-js";
-
+import formbricks from "@formbricks/js";
 // Set Alpine globally immediately
 window.Alpine = Alpine;
+
+formbricks.setup({
+    environmentId: "cma82f7r15cpgxy01kc6ojjvm",
+    appUrl: "https://app.formbricks.com",
+});
 
 // Apply Alpine plugins
 Alpine.plugin(collapse);

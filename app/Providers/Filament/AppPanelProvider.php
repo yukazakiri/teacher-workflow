@@ -392,7 +392,16 @@ class AppPanelProvider extends PanelProvider
             ->livewireComponents([
                 // Register other Livewire components
                 SelectRole::class,
-            ]);
+            ])
+            ->renderHook(
+                "panels::body.end",
+                fn() => new HtmlString(' <script type="text/javascript">
+                 !function(){
+                     var appUrl = "https://app.formbricks.com";
+                     var environmentId = "cma82f7r15cpgxy01kc6ojjvm";
+                     var t=document.createElement("script");t.type="text/javascript",t.async=!0,t.src=appUrl+"/js/formbricks.umd.cjs",t.onload=function(){window.formbricks?window.formbricks.setup({environmentId:environmentId,appUrl:appUrl}):console.error("Formbricks library failed to load properly. The formbricks object is not available.");};var e=document.getElementsByTagName("script")[0];e.parentNode.insertBefore(t,e)}();
+                 </script>')
+            );
 
         if (Features::hasApiFeatures()) {
             $panel->userMenuItems([

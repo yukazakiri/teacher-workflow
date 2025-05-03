@@ -21,6 +21,7 @@
     },
     "dependencies": {
         "@alpinejs/collapse": "^3.14.9",
+        "@formbricks/js": "^4.1.0",
         "@vitejs/plugin-vue": "^5.2.3",
         "alpinejs": "^3.14.9",
         "dompurify": "^3.2.5",
