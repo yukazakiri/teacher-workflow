@@ -855,7 +855,7 @@ class ActivityResource extends Resource
                 ]),
             Block::make('select')
                 ->label('Dropdown / Multiple Choice')
-                ->icon('heroicon-o-chevron-down-square')
+                ->icon('heroicon-m-chevron-down')
                 ->schema([
                     TextInput::make('name')->label('Field Name/ID')->required(),
                     TextInput::make('label')
@@ -878,7 +878,7 @@ class ActivityResource extends Resource
                 ]),
             Block::make('checkbox_list')
                 ->label('Checkbox List')
-                ->icon('heroicon-o-check-square')
+                ->icon('heroicon-o-check')
                 ->schema([
                     TextInput::make('name')->label('Field Name/ID')->required(),
                     TextInput::make('label')

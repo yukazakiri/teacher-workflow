@@ -48,6 +48,7 @@ use App\Filament\Resources\ResourceCategoryResource;
 use AssistantEngine\Filament\FilamentAssistantPlugin;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use AssistantEngine\Filament\Chat\Pages\AssistantChat;
+use Awcodes\LightSwitch\LightSwitchPlugin;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Laravel\WorkOS\Http\Requests\AuthKitLogoutRequest;
@@ -218,8 +219,15 @@ class AppPanelProvider extends PanelProvider
                         "User" => "student@example.com",
                         "parent" => "parent@example.com", // Updated parent email
                     ]),
-
+                LightSwitchPlugin::make()->enabledOn([
+                    "auth.email",
+                    "auth.login",
+                    "auth.password",
+                    "auth.profile",
+                    "auth.register",
+                ]),
                 FilamentAssistantPlugin::make(),
+
                 \LaraZeus\Boredom\BoringAvatarPlugin::make()
 
                     ->variant(Variants::MARBLE)
@@ -326,6 +334,7 @@ class AppPanelProvider extends PanelProvider
                             ->label("Parent Dashboard")
                             ->items([
                                 ...\App\Filament\Pages\ParentDashboard::getNavigationItems(),
+                                ...Messages::getNavigationItems(),
                             ]),
                         NavigationGroup::make()
                             ->label("Academic")
