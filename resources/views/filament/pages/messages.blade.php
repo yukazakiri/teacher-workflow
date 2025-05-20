@@ -1,7 +1,7 @@
-<x-filament-panels::page>
-    {{-- Alpine component to manage mobile view state --}}
-    <div 
-        class="flex h-[calc(100vh-10rem)] md:h-[calc(100vh-8rem)]" {{-- Adjust height as needed, potentially different for mobile/desktop --}}
+<x-filament-panels::page class="!p-0 max-w-full"> {{-- Remove padding, ensure full width --}}
+    {{-- Main container using screen height --}}
+    <div
+        class="flex h-screen overflow-hidden rounded-lg" {{-- Use h-screen for full viewport height --}}
         x-data="{
             view: 'sidebar', // Can be 'sidebar' or 'chat'
             isMobile: window.innerWidth < 768, // md breakpoint
@@ -31,18 +31,16 @@
         }"
     >
         {{-- Sidebar --}}
-        <div 
-            class="border-r border-gray-200 dark:border-gray-700 overflow-y-auto shrink-0"
+        <div
+            class="overflow-y-auto shrink-0 transition-all duration-300 ease-in-out" {{-- Removed border, added transition --}}
             :class="{
-                'w-full': isMobile && view === 'sidebar',
-                'w-0 hidden': isMobile && view === 'chat',
-                'w-80 xl:w-96': !isMobile, // Fixed width sidebar on desktop (adjust as needed)
-                'block': view === 'sidebar' || !isMobile, 
-                'hidden': view === 'chat' && isMobile
+                'w-full md:w-80 xl:w-96': !isMobile || view === 'sidebar', {{-- Show full width on mobile sidebar view, fixed on desktop --}}
+                'w-0': isMobile && view === 'chat', {{-- Collapse on mobile chat view --}}
+                'hidden md:block': isMobile && view === 'chat' {{-- Hide completely on mobile chat view, but keep structure on desktop --}}
             }"
-             x-show="view === 'sidebar' || !isMobile" 
-             x-transition:enter="transition ease-out duration-300" 
-             x-transition:enter-start="opacity-0 transform -translate-x-full" 
+             x-show="!isMobile || view === 'sidebar'" {{-- Simplified show logic --}}
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 transform -translate-x-full"
              x-transition:enter-end="opacity-100 transform translate-x-0" 
              x-transition:leave="transition ease-in duration-300" 
              x-transition:leave-start="opacity-100 transform translate-x-0" 
@@ -53,26 +51,23 @@
         </div>
 
         {{-- Chat Window --}}
-        <div 
-            class="flex flex-col grow"
-            :class="{
-                'w-full': isMobile && view === 'chat',
-                'w-0 hidden': isMobile && view === 'sidebar',
-                'grow': !isMobile,
-                'flex': view === 'chat' || !isMobile, 
-                'hidden': view === 'sidebar' && isMobile
+        <div
+            class="flex flex-col flex-grow transition-all duration-300 ease-in-out" {{-- Use flex-grow, add transition --}}
+             :class="{
+                'w-full': !isMobile || view === 'chat', {{-- Show full width on mobile chat view and desktop --}}
+                'w-0': isMobile && view === 'sidebar', {{-- Collapse on mobile sidebar view --}}
+                'hidden md:flex': isMobile && view === 'sidebar' {{-- Hide completely on mobile sidebar view, but keep structure on desktop --}}
             }"
-            x-show="view === 'chat' || !isMobile"
-            x-transition:enter="transition ease-out duration-300" 
-            x-transition:enter-start="opacity-0 transform translate-x-full" 
+            x-show="!isMobile || view === 'chat'" {{-- Simplified show logic --}}
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 transform translate-x-full"
             x-transition:enter-end="opacity-100 transform translate-x-0" 
             x-transition:leave="transition ease-in duration-300" 
             x-transition:leave-start="opacity-100 transform translate-x-0" 
             x-transition:leave-end="opacity-0 transform translate-x-full"
         >
-            {{-- Pass channelId, ChatWindow handles loading messages --}}
-            {{-- Use key() to ensure it re-renders if needed, though properties handle most cases --}}
-           @livewire('chat.chat-window', ['channelId' => $channelId], key('chat-window-'.($channelId ?? 'none')))
+            {{-- Pass channelId for initial load, but let the component's listener handle subsequent updates --}}
+           @livewire('chat.chat-window', ['channelId' => $channelId], key('chat-window')) {{-- Removed dynamic part of key --}}
         </div>
     </div>
 </x-filament-panels::page>

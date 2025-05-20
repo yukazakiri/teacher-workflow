@@ -53,8 +53,10 @@ class ChatWindow extends Component
     public function restoreChannel(?string $channelId): void
     {
         if ($channelId) {
+            $user = Auth::user();
             $channel = Channel::with('team')->find($channelId);
-            if ($channel && Auth::user()?->belongsToTeam($channel->team)) {
+            // Revert to belongsToTeam check, ensuring $channel->team is a valid Team object
+            if ($channel && $channel->team && $user && $user->belongsToTeam($channel->team)) {
                 $this->loadChannel($channelId);
                 // Store in session for persistence
                 session(['chat.selected_channel_id' => $channelId]);
@@ -94,8 +96,12 @@ class ChatWindow extends Component
     #[On('channelSelected')]
     public function loadChannel(string $channelId): void
     {
+        // Removed Log::info here
+        $user = Auth::user();
         $newChannel = Channel::with(['team', 'members'])->find($channelId);
-        if (! $newChannel || ! Auth::user()?->belongsToTeam($newChannel->team)) {
+        // Revert to belongsToTeam check, ensuring $newChannel->team is valid
+        if (! $newChannel || ! $newChannel->team || ! $user || ! $user->belongsToTeam($newChannel->team)) {
+            // Removed Log::warning here
             $this->resetState();
             $this->dispatch('clearStoredChannel');
             session()->forget('chat.selected_channel_id');

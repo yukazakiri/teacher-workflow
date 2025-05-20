@@ -17,6 +17,7 @@
         "bezhansalleh/filament-shield": "^3.3",
         "coderflex/filament-turnstile": "^2.3",
         "codewithdennis/filament-theme-inspector": "^0.0.7",
+        "cweagans/composer-patches": "*",
         "cwsps154/app-settings": "^1.0",
         "devonab/filament-easy-footer": "^1.1",
         "dutchcodingcompany/filament-developer-logins": "^1.8",
@@ -104,8 +105,16 @@
         "preferred-install": "dist",
         "sort-packages": true,
         "allow-plugins": {
+            "cweagans/composer-patches": true,
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
+        }
+    },
+    "extra": {
+        "patches": {
+            "nunomaduro/termwind": {
+                "Patches issue with libxml": "./patches/termwind.patch"
+            }
         }
     },
     "minimum-stability": "dev",
