@@ -34,6 +34,7 @@ use App\Filament\Pages\ClassesResources;
 use App\Filament\Resources\ExamResource;
 use Filament\Navigation\NavigationGroup;
 use App\Filament\Pages\AttendanceManager;
+use App\Filament\Pages\LoginPage;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Navigation\NavigationBuilder;
 use App\Filament\Resources\StudentResource;
@@ -70,13 +71,14 @@ class AppPanelProvider extends PanelProvider
             ->default()
             ->id("app")
             ->path("app")
-            ->login()
+            ->login(LoginPage::class)
             ->spa()
             ->brandName("FilaGrade")
             // ->sidebarCollapsibleOnDesktop(true)
             ->sidebarFullyCollapsibleOnDesktop()
             // ->emailVerification()
-            // ->topNavigation()
+        // ->topNavigation()
+            ->registration()
             ->passwordReset()
             ->emailVerification()
             ->databaseNotifications()
