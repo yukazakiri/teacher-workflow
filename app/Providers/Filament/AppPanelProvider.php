@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use Carbon\Carbon;
 use Filament\Panel;
 use App\Models\Team;
 use App\Models\User;
@@ -18,10 +19,12 @@ use App\Filament\Pages\EditTeam;
 use App\Filament\Pages\Messages;
 use Laravel\Jetstream\Jetstream;
 use App\Filament\Pages\ApiTokens;
+use App\Filament\Pages\LoginPage;
 use Filament\Navigation\MenuItem;
 use App\Filament\Pages\CreateTeam;
 use App\Filament\Pages\Gradesheet;
 use Filament\Support\Colors\Color;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
 use App\Filament\Pages\EditProfile;
 use Illuminate\Support\Facades\Auth;
@@ -30,11 +33,12 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use App\Filament\Pages\WeeklySchedule;
 use Filament\Navigation\NavigationItem;
+use Illuminate\Database\Eloquent\Model;
 use App\Filament\Pages\ClassesResources;
 use App\Filament\Resources\ExamResource;
 use Filament\Navigation\NavigationGroup;
 use App\Filament\Pages\AttendanceManager;
-use App\Filament\Pages\LoginPage;
+use Awcodes\LightSwitch\LightSwitchPlugin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Navigation\NavigationBuilder;
 use App\Filament\Resources\StudentResource;
@@ -43,13 +47,13 @@ use App\Filament\Resources\AttendanceResource;
 use Illuminate\Session\Middleware\StartSession;
 use Devonab\FilamentEasyFooter\EasyFooterPlugin;
 use Illuminate\Cookie\Middleware\EncryptCookies;
+use Niladam\FilamentAutoLogout\AutoLogoutPlugin;
 use DutchCodingCompany\FilamentSocialite\Provider;
 use App\Filament\Resources\AttendanceQrCodeResource;
 use App\Filament\Resources\ResourceCategoryResource;
 use AssistantEngine\Filament\FilamentAssistantPlugin;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use AssistantEngine\Filament\Chat\Pages\AssistantChat;
-use Awcodes\LightSwitch\LightSwitchPlugin;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Laravel\WorkOS\Http\Requests\AuthKitLogoutRequest;
@@ -60,8 +64,6 @@ use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Laravel\Socialite\Contracts\User as SocialiteUserContract;
 use DutchCodingCompany\FilamentSocialite\FilamentSocialitePlugin;
 use DutchCodingCompany\FilamentDeveloperLogins\FilamentDeveloperLoginsPlugin;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
 
 class AppPanelProvider extends PanelProvider
 {
@@ -147,6 +149,14 @@ class AppPanelProvider extends PanelProvider
             ->globalSearch(false)
 
             ->plugins([
+                        AutoLogoutPlugin::make()
+            ->color(Color::Emerald)                         // Set the color. Defaults to Zinc
+            ->disableIf(fn () => Auth::id() === 1)        // Disable the user with ID 1
+            ->logoutAfter(Carbon::SECONDS_PER_MINUTE * 5)   // Logout the user after 5 minutes
+            ->withoutWarning()                              // Disable the warning before logging out
+            ->withoutTimeLeft()                             // Disable the time left
+            ->timeLeftText('Oh no. Kicking you in...')      // Change the time left text
+            ->timeLeftText(''),    
                 FilamentSocialitePlugin::make()
 
                     ->providers([
