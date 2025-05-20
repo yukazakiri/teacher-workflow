@@ -64,6 +64,7 @@ use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Laravel\Socialite\Contracts\User as SocialiteUserContract;
 use DutchCodingCompany\FilamentSocialite\FilamentSocialitePlugin;
 use DutchCodingCompany\FilamentDeveloperLogins\FilamentDeveloperLoginsPlugin;
+use ShuvroRoy\FilamentSpatieLaravelBackup\FilamentSpatieLaravelBackupPlugin;
 
 class AppPanelProvider extends PanelProvider
 {
@@ -149,6 +150,7 @@ class AppPanelProvider extends PanelProvider
             ->globalSearch(false)
 
             ->plugins([
+          
                         AutoLogoutPlugin::make()
             ->color(Color::Emerald)                         // Set the color. Defaults to Zinc
             ->disableIf(fn () => Auth::id() === 1)        // Disable the user with ID 1
