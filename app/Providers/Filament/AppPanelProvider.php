@@ -80,7 +80,7 @@ class AppPanelProvider extends PanelProvider
             // ->sidebarCollapsibleOnDesktop(true)
             ->sidebarFullyCollapsibleOnDesktop()
             // ->emailVerification()
-        // ->topNavigation()
+            // ->topNavigation()
             ->registration()
             ->passwordReset()
             ->emailVerification()
@@ -150,15 +150,14 @@ class AppPanelProvider extends PanelProvider
             ->globalSearch(false)
 
             ->plugins([
-          
-                        AutoLogoutPlugin::make()
-            ->color(Color::Emerald)                         // Set the color. Defaults to Zinc
-            ->disableIf(fn () => Auth::id() === 1)        // Disable the user with ID 1
-            ->logoutAfter(Carbon::SECONDS_PER_MINUTE * 5)   // Logout the user after 5 minutes
-            ->withoutWarning()                              // Disable the warning before logging out
-            ->withoutTimeLeft()                             // Disable the time left
-            ->timeLeftText('Oh no. Kicking you in...')      // Change the time left text
-            ->timeLeftText(''),    
+                AutoLogoutPlugin::make()
+                    ->color(Color::Emerald) // Set the color. Defaults to Zinc
+                    ->disableIf(fn() => Auth::id() === 1) // Disable the user with ID 1
+                    ->logoutAfter(Carbon::SECONDS_PER_MINUTE * 5) // Logout the user after 5 minutes
+                    ->withoutWarning() // Disable the warning before logging out
+                    ->withoutTimeLeft() // Disable the time left
+                    ->timeLeftText("Oh no. Kicking you in...") // Change the time left text
+                    ->timeLeftText(""),
                 FilamentSocialitePlugin::make()
 
                     ->providers([

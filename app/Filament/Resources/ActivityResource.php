@@ -788,6 +788,7 @@ class ActivityResource extends Resource
             // Keep other routes if needed
             'create' => Pages\CreateActivity::route('/create'), // Keep standard if you need it
             'edit' => Pages\EditActivity::route('/{record}/edit'),
+            'view' => Pages\ViewActivity::route('/{record}'),
             // "custom-create" => CreateActivityCustom::route("/create-custom"), // Remove or rename if replaced
         ];
     }

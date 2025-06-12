@@ -24,6 +24,12 @@
     <div class="mt-10 sm:mt-0">
         @livewire(Laravel\Jetstream\Http\Livewire\LogoutOtherBrowserSessionsForm::class)
     </div>
+    
+    <x-section-border/>
+    
+    <div class="mt-10 sm:mt-0">
+        @livewire('restore-deleted-teams')
+    </div>
 
     @if (Laravel\Jetstream\Jetstream::hasAccountDeletionFeatures())
         <x-section-border/>
@@ -32,4 +38,5 @@
             @livewire(Laravel\Jetstream\Http\Livewire\DeleteUserForm::class)
         </div>
     @endif
+
 </x-filament-panels::page>

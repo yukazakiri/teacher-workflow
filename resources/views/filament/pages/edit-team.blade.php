@@ -10,7 +10,6 @@
     <!-- Team Basic Information -->
     @livewire(Laravel\Jetstream\Http\Livewire\UpdateTeamNameForm::class, compact('team'))
 
-    <!-- NEW: Team Join QR Code -->
  
     <!-- Team Members Management -->
     <x-section-border/>
@@ -19,6 +18,6 @@
     @if (Gate::check('delete', $team) && ! $team->personal_team)
         <x-section-border/>
 
-        @livewire(Laravel\Jetstream\Http\Livewire\DeleteTeamForm::class, compact('team'))
+        @livewire(\App\Livewire\DeleteTeamCustomForm::class, compact('team'))
     @endif
 </x-filament-panels::page>

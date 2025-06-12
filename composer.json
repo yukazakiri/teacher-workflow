@@ -112,13 +112,6 @@
             "php-http/discovery": true
         }
     },
-    "extra": {
-        "patches": {
-            "nunomaduro/termwind": {
-                "Patches issue with libxml": "./patches/termwind.patch"
-            }
-        }
-    },
     "minimum-stability": "dev",
     "prefer-stable": true
 }
