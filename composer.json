@@ -50,6 +50,7 @@
         "spatie/laravel-medialibrary": "^11.12",
         "spatie/pdf-to-text": "^1.54",
         "stephenjude/filament-jetstream": "^0.0.16",
+        "tomatophp/filament-pwa": "^1.0",
         "tomatophp/filament-simple-theme": "^1.0"
     },
     "require-dev": {

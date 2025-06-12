@@ -29,43 +29,53 @@ class AdminPanelProvider extends PanelProvider
     public function panel(Panel $panel): Panel
     {
         return $panel
-            ->id('admin')
-            ->path('admin')
-            ->brandName('TWOP Admin')
-            ->favicon(asset('favicon.ico'))
+            ->id("admin")
+            ->path("admin")
+            ->brandName("TWOP Admin")
+            ->favicon(asset("favicon.ico"))
             ->colors([
-                'primary' => Color::Amber,
-                'gray' => Color::Slate,
-                'danger' => Color::Rose,
-                'info' => Color::Blue,
-                'success' => Color::Emerald,
-                'warning' => Color::Orange,
+                "primary" => Color::Amber,
+                "gray" => Color::Slate,
+                "danger" => Color::Rose,
+                "info" => Color::Blue,
+                "success" => Color::Emerald,
+                "warning" => Color::Orange,
             ])
-            ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
-            ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
+            ->discoverResources(
+                in: app_path("Filament/Admin/Resources"),
+                for: "App\\Filament\\Admin\\Resources"
+            )
+            ->discoverPages(
+                in: app_path("Filament/Admin/Pages"),
+                for: "App\\Filament\\Admin\\Pages"
+            )
             ->pages([
                 Pages\Dashboard::class,
                 \App\Filament\Admin\Pages\GenerateReport::class,
             ])
-            ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\\Filament\\Admin\\Widgets')
+            ->discoverWidgets(
+                in: app_path("Filament/Admin/Widgets"),
+                for: "App\\Filament\\Admin\\Widgets"
+            )
             ->widgets([
                 StatsOverview::class,
                 // StatisticsDashboard::class,
                 // Widgets\AccountWidget::class,
             ])
             ->plugins([
-                      FilamentSpatieLaravelBackupPlugin::make()
-                // ->authorize(fn (): bool => Auth::user()->email === 'admin@example.com')
-                ->noTimeout(),
+                \TomatoPHP\FilamentPWA\FilamentPWAPlugin::make(),
+                FilamentSpatieLaravelBackupPlugin::make()
+                    // ->authorize(fn (): bool => Auth::user()->email === 'admin@example.com')
+                    ->noTimeout(),
                 AppSettingsPlugin::make(),
                 ActivitylogPlugin::make(),
             ])
             ->navigationGroups([
-                'Learning Management',
-                'Exam Management',
-                'User Management',
-                'Organization',
-                'Reporting',
+                "Learning Management",
+                "Exam Management",
+                "User Management",
+                "Organization",
+                "Reporting",
             ])
             ->databaseNotifications()
             ->middleware([
@@ -79,8 +89,6 @@ class AdminPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
-            ->authMiddleware([
-                Authenticate::class,
-            ]);
+            ->authMiddleware([Authenticate::class]);
     }
 }

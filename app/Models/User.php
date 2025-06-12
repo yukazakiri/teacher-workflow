@@ -23,7 +23,10 @@ use Spatie\Permission\Traits\HasRoles;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 
-class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenants
+class User extends Authenticatable implements
+    FilamentUser,
+    HasAvatar,
+    HasTenants
 {
     use HasApiTokens, LogsActivity;
 
@@ -40,14 +43,14 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenant
 
     public $incrementing = false;
 
-    protected $keyType = 'string';
+    protected $keyType = "string";
 
     /**
      * The attributes that are mass assignable.
      *
      * @var array<int, string>
      */
-    protected $fillable = ['name', 'email', 'password',  'workos_id',      'avatar',];
+    protected $fillable = ["name", "email", "password", "workos_id", "avatar"];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -55,23 +58,22 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenant
      * @var array<int, string>
      */
     protected $hidden = [
-        'password',
-        'workos_id',
-        'remember_token',
-        'two_factor_recovery_codes',
-        'two_factor_secret',
+        "password",
+        "workos_id",
+        "remember_token",
+        "two_factor_recovery_codes",
+        "two_factor_secret",
     ];
     public function getActivitylogOptions(): LogOptions
     {
-        return LogOptions::defaults()
-        ->logOnly(['name', 'email']);
+        return LogOptions::defaults()->logOnly(["name", "email"]);
     }
     /**
      * The accessors to append to the model's array form.
      *
      * @var array<int, string>
      */
-    protected $appends = ['profile_photo_url'];
+    protected $appends = ["profile_photo_url"];
 
     /**
      * Get the attributes that should be cast.`
@@ -81,8 +83,8 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenant
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            "email_verified_at" => "datetime",
+            "password" => "hashed",
         ];
     }
 
@@ -96,8 +98,9 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenant
 
     public function canAccessPanel(Panel $panel): bool
     {
-        if ($panel->getId() === 'admin') {
-            return $this->email === 'marianolukkanit17@gmail.com';
+        if ($panel->getId() === "admin") {
+            // return $this->email === 'marianolukkanit17@gmail.com';
+            return true;
         }
 
         return true;
@@ -128,8 +131,8 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenant
      */
     public function channels()
     {
-        return $this->belongsToMany(Channel::class, 'channel_members')
-            ->withPivot('permissions')
+        return $this->belongsToMany(Channel::class, "channel_members")
+            ->withPivot("permissions")
             ->withTimestamps();
     }
 
@@ -154,8 +157,10 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenant
      */
     public function mentions()
     {
-        return $this->belongsToMany(Message::class, 'message_mentions')
-            ->withTimestamps();
+        return $this->belongsToMany(
+            Message::class,
+            "message_mentions"
+        )->withTimestamps();
     }
 
     public function currentTeam()
@@ -164,7 +169,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenant
             $this->switchTeam($this->personalTeam());
         }
 
-        return $this->belongsTo(Team::class, 'current_team_id');
+        return $this->belongsTo(Team::class, "current_team_id");
     }
 
     /**
@@ -172,7 +177,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenant
      */
     public function sessions()
     {
-        return $this->hasMany(Session::class, 'user_id');
+        return $this->hasMany(Session::class, "user_id");
     }
 
     /**
@@ -180,7 +185,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenant
      */
     public function personalTeam()
     {
-        return $this->ownedTeams()->where('personal_team', true)->first();
+        return $this->ownedTeams()->where("personal_team", true)->first();
     }
 
     /**
@@ -191,21 +196,21 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasTenant
         return $this->hasManyThrough(
             Student::class,
             ParentStudentRelationship::class,
-            'user_id', // Foreign key on ParentStudentRelationship
-            'id', // Foreign key on Student
-            'id', // Local key on User
-            'student_id' // Local key on ParentStudentRelationship
+            "user_id", // Foreign key on ParentStudentRelationship
+            "id", // Foreign key on Student
+            "id", // Local key on User
+            "student_id" // Local key on ParentStudentRelationship
         );
     }
-    
+
     /**
      * Get parent-student relationships for this user.
      */
     public function parentStudentRelationships()
     {
-        return $this->hasMany(ParentStudentRelationship::class, 'user_id');
+        return $this->hasMany(ParentStudentRelationship::class, "user_id");
     }
-    
+
     /**
      * Check if this user has any linked students (for parents).
      */

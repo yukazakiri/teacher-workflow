@@ -158,6 +158,7 @@ class AppPanelProvider extends PanelProvider
                     ->withoutTimeLeft() // Disable the time left
                     ->timeLeftText("Oh no. Kicking you in...") // Change the time left text
                     ->timeLeftText(""),
+                \TomatoPHP\FilamentPWA\FilamentPWAPlugin::make(),
                 FilamentSocialitePlugin::make()
 
                     ->providers([
